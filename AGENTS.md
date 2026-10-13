@@ -6,7 +6,7 @@
 
 主要技术栈：
 
-- 管理后台：TypeScript、React、Ant Design、ProComponents
+- 管理后台：Ant Design Pro、Umi Max、TypeScript、React、Ant Design、ProComponents
 - 后端：Python、FastAPI
 - 数据库：MySQL
 - 居民端：微信小程序

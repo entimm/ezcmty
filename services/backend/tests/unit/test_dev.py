@@ -89,12 +89,29 @@ class Harness:
         from scripts.dev.services import services
 
         service = services(ROOT, ["admin"])[0]
-        if not Path(service.command[1]).is_file():
-            pytest.skip("Vite dependencies are not installed; run make install")
+        project = ROOT / "apps" / "admin-web"
+        if not (project / "node_modules" / "@umijs" / "max" / "bin" / "max.js").is_file():
+            pytest.skip("Umi dependencies are not installed; run make install")
         port = free_port()
-        command = list(service.command)
-        command[command.index("--port") + 1] = str(port)
-        return replace(service, command=command, port=port)
+        # Exercise the real Umi process with an isolated frontend and listener.
+        fixture = self.registry.root / "admin"
+        (fixture / "src").mkdir(parents=True)
+        (fixture / "node_modules").symlink_to(project / "node_modules", target_is_directory=True)
+        (fixture / "package.json").write_text((project / "package.json").read_text())
+        (fixture / "src" / "Home.tsx").write_text(
+            "export default function Home() { return <main>Admin fixture</main>; }\n"
+        )
+        plugin = project / "config" / "plugins" / "dev-server.ts"
+        (fixture / "dev-server.ts").write_text(
+            f"import {{ configureDevServer }} from {json.dumps(str(plugin))};\n"
+            f"export default function plugin(api) {{ configureDevServer(api, {port}); }}\n"
+        )
+        (fixture / ".umirc.ts").write_text(
+            "export default { layout: false, antd: false, mfsu: false, "
+            "routes: [{ path: '/', component: '@/Home' }], plugins: ['./dev-server.ts'] };\n"
+        )
+        self.timing = replace(self.timing, startup=60)
+        return replace(service, cwd=str(fixture), port=port)
 
     def start(
         self,
@@ -127,7 +144,7 @@ class Harness:
                 )
             return bool(state["status"] == "running")
 
-        eventually(completed)
+        eventually(completed, seconds=max(12, self.timing.startup))
 
     def client(
         self,
@@ -481,6 +498,41 @@ def test_admin_runs_without_backend_configuration(
     assert_ports_released([service])
 
 
+def test_admin_missing_dependency_is_rejected_before_registration(harness: Harness) -> None:
+    from scripts.dev.processes import DevError
+    from scripts.dev.services import services
+
+    uninstalled = harness.registry.root / "uninstalled-admin"
+    uninstalled.mkdir()
+    service = replace(services(ROOT, ["admin"])[0], cwd=str(uninstalled))
+    with pytest.raises(DevError, match="管理后台依赖未安装"):
+        harness.start([service])
+    with harness.registry.locked() as state:
+        assert not state["batches"]
+
+
+def test_admin_cli_port_conflict_returns_failure(harness: Harness) -> None:
+    from scripts.dev.processes import subprocess_environment
+
+    service = harness.admin()
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", service.port))
+        listener.listen()
+        process = subprocess.Popen(
+            service.command,
+            cwd=service.cwd,
+            env=subprocess_environment(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+        harness.processes.append(process)
+        output, _ = process.communicate(timeout=30)
+        assert process.returncode == 1, output.decode()
+        assert "已被占用" in output.decode()
+        assert "不会自动切换端口" in output.decode()
+
+
 def test_concurrent_launches_accept_only_one_batch(harness: Harness) -> None:
     service = harness.api()
     first = harness.client([service])
@@ -584,12 +636,13 @@ def test_explicit_backend_env_and_environment_priority(
     assert "secret" not in json.dumps(dependency_probe())
 
 
-def test_service_mapping_ports_strict_vite_and_readiness_identity(harness: Harness) -> None:
+def test_service_mapping_ports_umi_and_readiness_identity(harness: Harness) -> None:
     from scripts.dev.services import http_probe, services
 
     definitions = services(ROOT, ["all"])
     assert [service.port for service in definitions] == [8001, 8002, 8003, 8004, None, 5173]
-    assert "--strictPort" in definitions[-1].command
+    assert definitions[-1].command[1].endswith("apps/admin-web/scripts/dev.cjs")
+    assert len(definitions[-1].command) == 2
     selected = [harness.api()]
     batch, _ = harness.start(selected)
     harness.ready(batch)

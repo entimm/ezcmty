@@ -22,7 +22,7 @@
 
 各 API 进程共享 Service、Repository、Model 和 Integration。
 
-管理后台平台和物业功能共用项目，但保持独立路由、布局、会话和权限上下文。
+管理后台平台和物业功能共用 Ant Design Pro 项目，但保持独立路由、布局、会话和权限上下文；前端工程与缓存隔离见 [管理后台前端设计](admin-web.md)。
 
 ## 后端分层
 

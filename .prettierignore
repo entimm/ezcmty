@@ -3,6 +3,9 @@ dist
 build
 coverage
 .dev
+.umi
+.umi-production
+.umi-test
 services/backend/.venv
 services/backend/uv.lock
 pnpm-lock.yaml

@@ -248,8 +248,10 @@ def launch(
                 + "\n原实例继续运行；停止方式：make stop。"
             )
         for service in selected:
-            if service.name == "admin" and not Path(service.command[1]).is_file():
-                raise DevError("管理后台依赖未安装；请先执行 make install。")
+            if service.name == "admin":
+                umi = Path(service.cwd) / "node_modules" / "@umijs" / "max" / "bin" / "max.js"
+                if not Path(service.command[1]).is_file() or not umi.is_file():
+                    raise DevError("管理后台依赖未安装；请先执行 make install。")
         check_ports(selected)
         directory = registry.batch_directory(batch_id)
         directory.mkdir(mode=0o700)

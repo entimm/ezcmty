@@ -1,7 +1,7 @@
 import { Result } from 'antd';
-import { Link } from 'react-router-dom';
+import { Link } from '@umijs/max';
 
-export function NotFoundPage() {
+export default function NotFoundPage() {
   return (
     <Result
       status="404"

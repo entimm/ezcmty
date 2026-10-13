@@ -23,6 +23,9 @@ node_modules/
 dist/
 coverage/
 .vite/
+.umi/
+.umi-production/
+.umi-test/
 
 # Generated documentation and build output
 build/

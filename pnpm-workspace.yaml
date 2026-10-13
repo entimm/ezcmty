@@ -1,5 +1,7 @@
 packages:
   - apps/*
+overrides:
+  '@umijs/plugins>@ant-design/pro-components': 3.1.14-2
 onlyBuiltDependencies:
   - '@swc/core'
   - esbuild

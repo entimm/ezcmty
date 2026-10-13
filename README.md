@@ -4,7 +4,7 @@
 
 当前采用单仓库组织：
 
-- `apps/admin-web/`：平台管理端和物业管理端共用的 React 项目。
+- `apps/admin-web/`：平台管理端和物业管理端共用的 Ant Design Pro 项目，工程与隔离设计见 [管理后台前端设计](docs/architecture/admin-web.md)。
 - `apps/miniapp/`：居民微信小程序。
 - `services/backend/`：共享 Python 后端包和独立运行进程。
 - `docs/`：按主题组织的项目文档。

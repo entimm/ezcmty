@@ -38,7 +38,7 @@ URL 中的账号、密码须按 URL 规则编码。若 Redis 需要认证，配�
 
 后端依赖检查及所有后端进程的工作目录固定为 `services/backend/`，沿用现有 Settings 读取该处 `.env`；**已有环境变量优先于 `.env`**。仓库根目录的 `.env` 不作为后端配置来源。包含 Worker 的启动批次需要 `APP_LOG_LEVEL=INFO` 或 `DEBUG`，以观察现有启动标记。配置及运行日志均不提交 Git。
 
-管理后台沿用 Vite 配置机制，可按需参考 `apps/admin-web/.env.example` 配置该目录的本地环境文件。单独启动管理后台无需 MySQL、Redis 或后端配置。
+管理后台使用 Umi 环境配置，可按需参考 [apps/admin-web/.env.example](../../apps/admin-web/.env.example) 配置该目录的本地环境文件。`UMI_APP_NAME` 配置公开应用名称，`UMI_APP_PLATFORM_API_BASE` 和 `UMI_APP_PROPERTY_API_BASE` 分别配置同源 API 前缀，默认是 `/api/platform`、`/api/property`；这些 `UMI_APP_*` 值会进入浏览器构建产物，不得包含密钥。开发代理将对应前缀转发到本机 8001、8002 并移除端入口前缀。单独启动管理后台无需 MySQL、Redis 或后端配置。
 
 ## 开发命令
 
@@ -73,7 +73,7 @@ URL 中的账号、密码须按 URL 规则编码。若 Redis 需要认证，配�
 make dev
 ```
 
-日志标明所属服务，全部服务就绪后显示地址。四个 API 默认开启 Uvicorn 热重载，监听 `services/backend/src/`；管理后台沿用 Vite 热更新和严格端口模式。所有服务仅监听本机 `127.0.0.1`。
+日志标明所属服务，全部服务就绪后显示地址。四个 API 默认开启 Uvicorn 热重载，监听 `services/backend/src/`；管理后台使用 Umi 热更新，开发端口固定且不自动切换。所有服务仅监听本机 `127.0.0.1`。
 
 | 服务         | 访问地址                                                            |
 | ------------ | ------------------------------------------------------------------- |

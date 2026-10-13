@@ -71,17 +71,12 @@ def services(root: Path, selected: list[str]) -> list[Service]:
         str(backend),
         worker=True,
     )
-    vite = root / "apps" / "admin-web" / "node_modules" / "vite" / "bin" / "vite.js"
+    umi = root / "apps" / "admin-web" / "scripts" / "dev.cjs"
     definitions["admin"] = Service(
         "admin",
         [
             shutil.which("node") or "node",
-            str(vite),
-            "--host",
-            "127.0.0.1",
-            "--port",
-            "5173",
-            "--strictPort",
+            str(umi),
         ],
         str(root / "apps" / "admin-web"),
         5173,
