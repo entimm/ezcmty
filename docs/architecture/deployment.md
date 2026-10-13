@@ -7,6 +7,7 @@
 - 管理后台使用 `pnpm` 和 Vite。
 - 小程序使用微信开发者工具，TypeScript 源码先构建到 `dist/`。
 - 依赖安装、配置优先级、启动停止、访问地址和质量检查操作集中维护在 [本地开发指南](../guidelines/local-development.md)。
+- 开发入口的模块协作、批次与进程管理见 [本地开发入口设计](local-development.md)。
 
 ## 单机部署
 

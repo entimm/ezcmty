@@ -1,5 +1,7 @@
 # 本地开发指南
 
+本指南维护本地开发操作。启动器的模块职责、批次归属、就绪判断和故障处理见 [本地开发入口设计](../architecture/local-development.md)。
+
 ## 开发环境
 
 - Python 3.12+
@@ -22,7 +24,7 @@ cp services/backend/.env.example services/backend/.env
 
 [services/backend/.env.example](../../services/backend/.env.example) 是本地后端配置模板，仅包含 `APP_*`，默认连接本机 MySQL 和 Redis。实际 `.env` 文件只在首次初始化时从对应模板复制，已有文件直接编辑。
 
-启动前，使用你本机已有的管理方式启动 MySQL 和 Redis，并确认已有数据库、账号及访问权限满足应用配置。开发入口只做连接、`SELECT 1` 和 Redis `PING` 检查，不启停系统服务、不建库或创建账号、不执行迁移、不修改已有数据。
+启动前，使用你本机已有的管理方式启动 MySQL 和 Redis，并确认已有数据库、账号及访问权限满足应用配置。开发入口仅检查已有配置与依赖；检查范围及处理方式见 [启动流程](../architecture/local-development.md#启动流程)。
 
 编辑 `services/backend/.env`：
 
@@ -83,7 +85,7 @@ make dev
 | 物业管理页面 | http://127.0.0.1:5173/property                                      |
 | Worker       | 无 HTTP 入口；当前为 `task_handlers=0` 的占位进程，尚无任务处理能力 |
 
-API 就绪依据各自 `/readyz` 的 HTTP 200、服务标识以及 MySQL、Redis 的 `ok` 状态；Worker 依据启动前只读依赖检查、本次 `worker_started task_handlers=0` 标记与实际进程存活；管理后台依据 HTTP 页面可访问。进程存活或端口监听本身不足以报告启动成功。
+启动入口会等待全部所选服务通过各自的 [就绪判断](../architecture/local-development.md#就绪判断)，再报告启动成功。
 
 后台运行：
 
@@ -95,7 +97,7 @@ make dev-bg
 
 每批日志位于 `.dev/run/<批次 ID>/`：`platform.log`、`property.log`、`resident.log`、`webhook.log`、`worker.log`、`admin.log`，以及记录启动、重载、失败和停止原因的 `coordinator.log`。该目录的 `state.json` 保留批次最终状态，仓库活动登记位于 `.dev/run/state.json`。整个 `.dev/` 已加入 Git 和 Prettier 忽略规则。
 
-启动总超时为 **60 秒**，包含后端依赖检查与全部所选服务就绪；单次探测最多 **10 秒**，探测和进程检查间隔为 **0.5 秒**。未通过的探测在总期限内重试，确定的配置错误或进程退出直接失败。正常热重载允许旧子进程被替换，新进程须在 **20 秒**内重新就绪；连续变更不会无限延长恢复期限。
+启动、单次探测、热重载恢复和停止的默认时限见 [时间限制](../architecture/local-development.md#时间限制)。正常热重载及实际 API 子进程故障的识别方式见 [API 热重载与故障识别](../architecture/local-development.md#api-热重载与故障识别)。
 
 ## 停止与启动冲突
 
@@ -105,11 +107,11 @@ make dev-bg
 make stop
 ```
 
-停止先请求正常退出，等待最多 **10 秒**，随后终止仍存活的所属进程，再等待最多 **5 秒**。每次发信号前验证 PID、进程组和精确启动时间，清理子进程与过期登记。没有运行服务或重复停止时正常返回。
+停止命令会请求正常退出并清理所属子进程，没有运行服务或重复停止时正常返回。身份校验、超时终止和过期登记的处理见 [停止与故障清理](../architecture/local-development.md#停止与故障清理)。
 
-每次启动都是独立批次。请求中的任一服务已经运行或正在启动时，整条请求拒绝并返回非零，显示已有实例及停止方式，不补启动其余服务。例如先运行 `make platform`，再运行 `make dev-bg`，后者会拒绝且原平台 API 继续运行。不同服务可分别启动；`make stop` 会停止所有批次。启停通过仓库锁协调，停止期间的新启动请求会被拒绝。
+每次启动都是独立批次。例如先运行 `make platform`，再运行 `make dev-bg`，后者会拒绝且原平台 API 继续运行。不同服务可分别启动；`make stop` 会停止所有批次。完整的冲突与并发启停规则见 [批次登记与并发控制](../architecture/local-development.md#批次登记与并发控制)。
 
-端口被其他进程占用时明确报错，不终止占用者或自动换端口。任一服务启动失败、超时或意外退出（包括意外零退出码），只清理同批进程，保留其他独立批次。API 监控实际子进程，重载父进程存活不会掩盖子进程故障。后台发生故障时，查看对应批次的 `coordinator.log` 和 `state.json`。
+端口冲突时，按错误提示自行处理占用者后重新启动。后台发生故障时，查看对应批次的 `coordinator.log` 和 `state.json`；批次清理机制见 [停止与故障清理](../architecture/local-development.md#停止与故障清理)。
 
 ## 质量检查
 
