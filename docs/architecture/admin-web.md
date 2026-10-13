@@ -8,9 +8,9 @@
 
 | 依赖              | 版本     |
 | ----------------- | -------- |
-| Umi Max           | 4.7.3    |
-| React / React DOM | 19.2.7   |
-| Ant Design        | 6.6.0    |
+| Umi Max           | 4.7.24   |
+| React / React DOM | 19.3.0   |
+| Ant Design        | 6.6.6    |
 | ProComponents     | 3.1.14-2 |
 
 ProComponents 沿用该正式模板锁定的预发布版本，支持 Ant Design 6。pnpm 对齐 Umi 插件的 ProComponents 依赖，避免运行时混用不同组件主版本。

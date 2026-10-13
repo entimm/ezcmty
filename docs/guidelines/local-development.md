@@ -6,7 +6,7 @@
 
 - Python 3.12+
 - `uv`
-- Node.js 22+
+- Node.js（默认使用 [.node-version](../../.node-version) 指定的 24.x，具体版本须满足 [package.json](../../package.json) 的 `engines.node`）
 - `pnpm`
 - MySQL 8.x 和 Redis（默认复用本机已安装实例）
 - 微信开发者工具
@@ -20,7 +20,7 @@ make install
 cp services/backend/.env.example services/backend/.env
 ```
 
-后端支持 Python 3.12、3.13，Node.js 要求 22+；`make install` 按现有锁文件安装后端开发依赖与整个 pnpm 工作区依赖。
+后端支持 Python 3.12、3.13；`make install` 按现有锁文件安装后端开发依赖与整个 pnpm 工作区依赖。
 
 [services/backend/.env.example](../../services/backend/.env.example) 是本地后端配置模板，仅包含 `APP_*`，默认连接本机 MySQL 和 Redis。实际 `.env` 文件只在首次初始化时从对应模板复制，已有文件直接编辑。
 
