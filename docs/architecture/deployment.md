@@ -2,10 +2,12 @@
 
 ## 本地开发
 
-- Docker Compose 启动 MySQL 和 Redis。
+- 默认复用本机已有 MySQL 和 Redis；启动前由开发者确保实例已运行，并具备配置所需的数据库、账号和权限。
+- Docker Compose 可作为依赖运行的可选方式，不是本地开发入口的必选前提。
 - 后端使用 `uv` 管理环境和进程。
 - 管理后台使用 `pnpm` 和 Vite。
 - 小程序使用微信开发者工具，TypeScript 源码先构建到 `dist/`。
+- 依赖安装、配置优先级、启动停止、访问地址和质量检查操作集中维护在 [本地开发指南](../guidelines/local-development.md)。
 
 ## 单机部署
 

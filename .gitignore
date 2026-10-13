@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# Local development process ownership, readiness state and logs
+.dev/
+
 # Python
 __pycache__/
 *.py[cod]

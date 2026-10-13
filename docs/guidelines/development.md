@@ -10,6 +10,7 @@
 
 ## 专题约定
 
+- 本地环境准备、配置、运行和检查命令见 [本地开发指南](local-development.md)。
 - 代码组织与进程边界见 [系统架构](../architecture/overview.md)。
 - API 设计与契约维护见 [API 规范](../api/conventions.md)。
 - 数据库与迁移见 [数据库规范](../database/conventions.md)。

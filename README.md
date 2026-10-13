@@ -12,53 +12,6 @@
 
 后端包、API 模块、进程职责及项目命名见 [系统架构](docs/architecture/overview.md)。
 
-## 开发环境
-
-- Python 3.12+
-- `uv`
-- Node.js 22+
-- `pnpm`
-- Docker Compose
-- 微信开发者工具
-
-## 初始化本地环境
-
-```bash
-cp deploy/env/.env.example services/backend/.env
-docker compose -f deploy/compose/docker-compose.yml up -d mysql redis
-uv sync --project services/backend --extra dev
-pnpm install
-```
-
-启动一个后端进程示例：
-
-```bash
-cd services/backend
-uv run uvicorn backend_app.runtimes.platform_admin_api:app --reload --port 8001
-```
-
-管理后台：
-
-```bash
-pnpm --filter admin-web dev
-```
-
-OpenAPI 校验和构建：
-
-```bash
-pnpm api:check
-```
-
-后端质量检查从 `services/backend/` 目录执行：
-
-```bash
-cd services/backend
-uv run ruff check --config pyproject.toml src tests ../../scripts
-uv run ruff format --config pyproject.toml --check src tests ../../scripts
-uv run mypy
-uv run pytest
-```
-
-契约测试会调用现有 `pnpm api:bundle`，确保使用最新 OpenAPI 文件。API 设计与错误处理约定见 [API 规范](docs/api/conventions.md)。
+本地开发的环境准备、配置、命令、运行与质量检查见 [本地开发指南](docs/guidelines/local-development.md)。
 
 执行要求及专题文档入口见 [AGENTS.md](AGENTS.md)。

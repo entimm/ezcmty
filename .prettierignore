@@ -2,6 +2,7 @@ node_modules
 dist
 build
 coverage
+.dev
 services/backend/.venv
 services/backend/uv.lock
 pnpm-lock.yaml
