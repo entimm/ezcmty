@@ -1,0 +1,6 @@
+InternalError:
+  description: 服务内部错误；响应及日志不包含原始异常或敏感输入。
+  content:
+    application/json:
+      schema:
+        $ref: './schemas.yaml#/ErrorResponse'

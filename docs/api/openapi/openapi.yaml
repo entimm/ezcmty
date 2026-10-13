@@ -1,0 +1,33 @@
+openapi: 3.1.0
+info:
+  title: Community Property Platform API
+  version: 0.1.0
+  description: 社区物业消费返利与物业费抵扣平台 API 契约。
+servers:
+  - url: /
+tags:
+  - name: system
+    description: 运行状态接口
+paths:
+  /healthz:
+    $ref: './modules/system.yaml#/health'
+  /readyz:
+    $ref: './modules/system.yaml#/readiness'
+components:
+  schemas:
+    HealthResponse:
+      $ref: './components/schemas.yaml#/HealthResponse'
+    ReadinessResponse:
+      $ref: './components/schemas.yaml#/ReadinessResponse'
+    ErrorResponse:
+      $ref: './components/schemas.yaml#/ErrorResponse'
+  responses:
+    InternalError:
+      $ref: './components/responses.yaml#/InternalError'
+  securitySchemes:
+    AdminSession:
+      $ref: './components/security-schemes.yaml#/AdminSession'
+    ResidentToken:
+      $ref: './components/security-schemes.yaml#/ResidentToken'
+    WebhookSignature:
+      $ref: './components/security-schemes.yaml#/WebhookSignature'

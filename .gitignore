@@ -1,0 +1,35 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+*.egg-info/
+
+# JavaScript
+node_modules/
+dist/
+coverage/
+.vite/
+
+# Generated documentation and build output
+build/
+
+# IDEs
+.idea/
+.vscode/
+
+# WeChat Mini Program local output
+apps/miniapp/dist/
+apps/miniapp/.tmp/
+apps/miniapp/project.private.config.json
+*.tsbuildinfo

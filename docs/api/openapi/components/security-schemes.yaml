@@ -1,0 +1,13 @@
+AdminSession:
+  type: apiKey
+  in: cookie
+  name: admin_session
+
+ResidentToken:
+  type: http
+  scheme: bearer
+
+WebhookSignature:
+  type: apiKey
+  in: header
+  name: X-Webhook-Signature

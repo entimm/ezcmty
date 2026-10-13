@@ -1,0 +1,12 @@
+node_modules
+dist
+build
+coverage
+services/backend/.venv
+services/backend/uv.lock
+pnpm-lock.yaml
+**/*.py
+**/*.mako
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache

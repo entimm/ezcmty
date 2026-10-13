@@ -1,0 +1,1 @@
+"""Property administrator API routes."""

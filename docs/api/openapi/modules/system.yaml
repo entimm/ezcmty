@@ -1,0 +1,39 @@
+health:
+  get:
+    operationId: getHealth
+    tags: [system]
+    summary: 检查进程存活状态
+    description: 公开接口，只检查进程存活，不检查外部依赖。
+    security: []
+    responses:
+      '200':
+        description: 进程正常
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas.yaml#/HealthResponse'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+readiness:
+  get:
+    operationId: getReadiness
+    tags: [system]
+    summary: 检查依赖是否就绪
+    description: 公开运维接口，返回 MySQL 和 Redis 的连接状态，不返回连接地址或异常详情。
+    security: []
+    responses:
+      '200':
+        description: 依赖正常
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas.yaml#/ReadinessResponse'
+      '503':
+        description: 依赖未就绪
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas.yaml#/ReadinessResponse'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

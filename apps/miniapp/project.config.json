@@ -1,0 +1,15 @@
+{
+  "description": "Community property resident mini-program",
+  "compileType": "miniprogram",
+  "miniprogramRoot": "dist/",
+  "libVersion": "3.8.0",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": false,
+    "urlCheck": false
+  },
+  "appid": "touristappid",
+  "projectname": "resident-miniapp"
+}

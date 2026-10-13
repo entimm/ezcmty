@@ -1,0 +1,46 @@
+HealthResponse:
+  type: object
+  required:
+    - status
+    - service
+  properties:
+    status:
+      type: string
+      const: ok
+    service:
+      type: string
+
+ReadinessResponse:
+  type: object
+  required:
+    - status
+    - service
+    - dependencies
+  properties:
+    status:
+      type: string
+      enum: [ok, not_ready]
+    service:
+      type: string
+    dependencies:
+      type: object
+      additionalProperties:
+        type: string
+        enum: [ok, unavailable]
+
+ErrorResponse:
+  type: object
+  required:
+    - code
+    - message
+    - request_id
+  properties:
+    code:
+      type: string
+    message:
+      type: string
+    request_id:
+      type: string
+    details:
+      type: object
+      additionalProperties: true

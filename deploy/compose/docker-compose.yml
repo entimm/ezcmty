@@ -1,0 +1,190 @@
+name: ${COMPOSE_PROJECT_NAME:-community-platform}
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?MYSQL_DATABASE is required}
+      MYSQL_USER: ${MYSQL_USER:?MYSQL_USER is required}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.2-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  platform-admin-api:
+    build:
+      context: ../../services/backend
+    environment:
+      APP_NAME: ${APP_NAME:-Community Property Platform}
+      APP_ENV: ${APP_ENV:-local}
+      APP_VERSION: ${APP_VERSION:-0.1.0}
+      APP_DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}?charset=utf8mb4
+      APP_REDIS_URL: redis://redis:6379/0
+      APP_SESSION_TTL_SECONDS: ${APP_SESSION_TTL_SECONDS:-86400}
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+    command:
+      [
+        'uv',
+        'run',
+        'uvicorn',
+        'backend_app.runtimes.platform_admin_api:app',
+        '--host',
+        '0.0.0.0',
+        '--port',
+        '8001',
+      ]
+    ports:
+      - '8001:8001'
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  property-admin-api:
+    build:
+      context: ../../services/backend
+    environment:
+      APP_NAME: ${APP_NAME:-Community Property Platform}
+      APP_ENV: ${APP_ENV:-local}
+      APP_VERSION: ${APP_VERSION:-0.1.0}
+      APP_DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}?charset=utf8mb4
+      APP_REDIS_URL: redis://redis:6379/0
+      APP_SESSION_TTL_SECONDS: ${APP_SESSION_TTL_SECONDS:-86400}
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+    command:
+      [
+        'uv',
+        'run',
+        'uvicorn',
+        'backend_app.runtimes.property_admin_api:app',
+        '--host',
+        '0.0.0.0',
+        '--port',
+        '8002',
+      ]
+    ports:
+      - '8002:8002'
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  resident-api:
+    build:
+      context: ../../services/backend
+    environment:
+      APP_NAME: ${APP_NAME:-Community Property Platform}
+      APP_ENV: ${APP_ENV:-local}
+      APP_VERSION: ${APP_VERSION:-0.1.0}
+      APP_DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}?charset=utf8mb4
+      APP_REDIS_URL: redis://redis:6379/0
+      APP_SESSION_TTL_SECONDS: ${APP_SESSION_TTL_SECONDS:-86400}
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+    command:
+      [
+        'uv',
+        'run',
+        'uvicorn',
+        'backend_app.runtimes.resident_api:app',
+        '--host',
+        '0.0.0.0',
+        '--port',
+        '8003',
+      ]
+    ports:
+      - '8003:8003'
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  webhook:
+    build:
+      context: ../../services/backend
+    environment:
+      APP_NAME: ${APP_NAME:-Community Property Platform}
+      APP_ENV: ${APP_ENV:-local}
+      APP_VERSION: ${APP_VERSION:-0.1.0}
+      APP_DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}?charset=utf8mb4
+      APP_REDIS_URL: redis://redis:6379/0
+      APP_SESSION_TTL_SECONDS: ${APP_SESSION_TTL_SECONDS:-86400}
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+    command:
+      [
+        'uv',
+        'run',
+        'uvicorn',
+        'backend_app.runtimes.webhook:app',
+        '--host',
+        '0.0.0.0',
+        '--port',
+        '8004',
+      ]
+    ports:
+      - '8004:8004'
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ../../services/backend
+    environment:
+      APP_NAME: ${APP_NAME:-Community Property Platform}
+      APP_ENV: ${APP_ENV:-local}
+      APP_VERSION: ${APP_VERSION:-0.1.0}
+      APP_DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}?charset=utf8mb4
+      APP_REDIS_URL: redis://redis:6379/0
+      APP_SESSION_TTL_SECONDS: ${APP_SESSION_TTL_SECONDS:-86400}
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+    command: ['uv', 'run', 'python', '-m', 'backend_app.runtimes.worker']
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - '80:80'
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - platform-admin-api
+      - property-admin-api
+      - resident-api
+      - webhook
+
+volumes:
+  mysql-data:
+  redis-data:
