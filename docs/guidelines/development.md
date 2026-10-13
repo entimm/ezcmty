@@ -2,25 +2,17 @@
 
 ## 范围
 
-本文件记录稳定的工程约束。任务状态、执行记录和临时问题不写入长期文档。
+本文件维护工程原则、安全、质量检查和 Git 约定。文档维护遵循 [长期文档治理规范](../standards/documentation.md)。
 
-## 代码组织
+## 工程原则
 
-- 后端遵循 `API → Service → Repository → Model`。
-- API 只负责 HTTP、输入校验、认证入口和响应转换。
-- Service 负责业务规则、权限、数据范围、状态流转和事务边界。
-- Repository 负责数据库访问。
-- Integration 负责第三方协议和外部能力。
-- 管理后台平台和物业功能共用项目，但保持独立路由、布局、会话和权限上下文。
-- 后端平台、物业、居民和 Webhook 接口共用 Python 包，但使用独立进程运行。
+遵循 KISS、YAGNI、DRY，优先选择简单实现。
 
-## API 与数据库
+## 专题约定
 
-- API 遵循 OpenAPI First。
-- OpenAPI 契约位于 `docs/api/openapi/`，按业务模块拆分。
-- 数据库结构变更必须通过版本化迁移。
-- 金额以分为单位，禁止使用浮点数。
-- 数据库访问必须经过 Repository。
+- 代码组织与进程边界见 [系统架构](../architecture/overview.md)。
+- API 设计与契约维护见 [API 规范](../api/conventions.md)。
+- 数据库与迁移见 [数据库规范](../database/conventions.md)。
 
 ## 安全
 
@@ -33,7 +25,7 @@
 
 - Python 使用 Ruff、mypy 和 pytest。
 - TypeScript 使用 ESLint、Prettier、TypeScript 和 Vitest。
-- 修改完成后执行与改动相关的检查。
+- 修改完成后执行与改动相关的必要格式、Lint、类型检查和测试。
 - 未执行或未通过的检查不得声称已通过。
 
 ## Git
@@ -44,4 +36,4 @@
 <type>(<scope>): <中文描述>
 ```
 
-非简单改动使用独立分支或 worktree。无关问题只记录建议，不顺带处理。
+非简单改动使用独立分支或 worktree。任务范围控制遵循 [AGENTS.md](../../AGENTS.md#执行要求)。

@@ -7,18 +7,10 @@
 - `apps/admin-web/`：平台管理端和物业管理端共用的 React 项目。
 - `apps/miniapp/`：居民微信小程序。
 - `services/backend/`：共享 Python 后端包和独立运行进程。
-- `docs/`：项目规范、架构、API、数据库和模块文档。
+- `docs/`：按主题组织的项目文档。
 - `deploy/`：本地和服务器部署模板。
 
-后端进程：
-
-- `platform-admin-api`
-- `property-admin-api`
-- `resident-api`
-- `webhook`
-- `worker`
-
-后端包的稳定 Python 命名空间为 `backend_app`。本地仓库目录 `xlife2` 是临时名称，不参与代码、包或部署命名。
+后端包、API 模块、进程职责及项目命名见 [系统架构](docs/architecture/overview.md)。
 
 ## 开发环境
 
@@ -67,4 +59,4 @@ uv run mypy
 uv run pytest
 ```
 
-详细规则请阅读 `AGENTS.md` 及 `docs/` 下的专题文档。
+执行要求及专题文档入口见 [AGENTS.md](AGENTS.md)。

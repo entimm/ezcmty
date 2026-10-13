@@ -20,7 +20,9 @@
 | `webhook`            | 外部回调接收和校验 |
 | `worker`             | 异步任务执行       |
 
-居民 API 不与物业管理 API 共用进程，但共享 Service、Repository、Model 和 Integration。
+各 API 进程共享 Service、Repository、Model 和 Integration。
+
+管理后台平台和物业功能共用项目，但保持独立路由、布局、会话和权限上下文。
 
 ## 后端分层
 
@@ -30,7 +32,10 @@ Service → Integration → 第三方服务
 Worker → Service
 ```
 
-路由层不直接访问数据库。Service 层负责业务规则、权限、数据范围、事务边界和状态流转。
+- API 只负责 HTTP 请求处理、输入校验、认证入口和响应转换，不直接访问数据库。
+- Service 负责业务规则、权限、数据范围、状态流转和事务边界。
+- 数据库访问统一通过 Repository。
+- 第三方能力统一放入 Integration，由其负责第三方协议和外部能力封装。
 
 ## 会话
 
