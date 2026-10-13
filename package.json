@@ -8,7 +8,8 @@
   "scripts": {
     "api:lint": "redocly lint docs/api/openapi/openapi.yaml",
     "api:bundle": "redocly bundle docs/api/openapi/openapi.yaml --output build/openapi/openapi.bundled.json",
-    "api:contract": "uv run --project services/backend python scripts/check_api_contract.py",
+    "api:generate-errors": "pnpm api:bundle && uv run --project services/backend python -m scripts.build_error_catalog",
+    "api:contract": "uv run --project services/backend python -m scripts.check_api_contract",
     "api:check": "pnpm api:lint && pnpm api:bundle && pnpm api:contract",
     "format:check": "prettier --check .",
     "format": "prettier --write ."

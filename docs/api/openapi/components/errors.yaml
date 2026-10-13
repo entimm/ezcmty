@@ -1,0 +1,90 @@
+ProblemDetails:
+  type: object
+  description: RFC 9457 Problem Details；错误码和类型关系由本 Schema 的扩展元数据定义。
+  required:
+    - type
+    - title
+    - status
+    - detail
+    - instance
+    - code
+    - request_id
+  properties:
+    type:
+      type: string
+      format: uri
+      description: 由 x-error-type-prefix 与 code 拼接生成。
+    title:
+      type: string
+    status:
+      type: integer
+      minimum: 400
+      maximum: 599
+    detail:
+      type: string
+    instance:
+      type: string
+      format: uri
+      description: urn:request:<request_id>，不包含请求 URL 或查询串。
+    code:
+      type: string
+      description: 全局唯一的稳定错误码；客户端应容忍后续新增错误码。
+    request_id:
+      $ref: './schemas.yaml#/RequestId'
+    errors:
+      type: array
+      items:
+        $ref: '#/ValidationIssue'
+  x-error-type-prefix: 'urn:problem:'
+  x-error-catalog:
+    request:
+      VALIDATION_ERROR:
+        status: 422
+        title: 请求参数校验失败
+      request.bad_request:
+        status: 400
+        title: 请求无效
+      request.method_not_allowed:
+        status: 405
+        title: 请求方法不允许
+    auth:
+      auth.unauthenticated:
+        status: 401
+        title: 需要身份认证
+      auth.forbidden:
+        status: 403
+        title: 没有操作权限
+    resource:
+      resource.not_found:
+        status: 404
+        title: 资源不存在
+      resource.conflict:
+        status: 409
+        title: 资源状态冲突
+    system:
+      INTERNAL_ERROR:
+        status: 500
+        title: 服务内部错误
+      system.dependency_unavailable:
+        status: 503
+        title: 服务暂不可用
+    http:
+      HTTP_ERROR:
+        status: null
+        title: HTTP 请求失败
+        description: 未明确分类的 HTTP 错误回退；仅接受原始 400–599 状态。
+
+ValidationIssue:
+  type: object
+  required:
+    - location
+    - type
+  properties:
+    location:
+      type: array
+      items:
+        anyOf:
+          - type: string
+          - type: integer
+    type:
+      type: string

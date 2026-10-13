@@ -1,3 +1,7 @@
+RequestId:
+  type: string
+  pattern: '^[A-Za-z0-9_-]{1,64}$'
+
 HealthResponse:
   type: object
   required:
@@ -27,20 +31,3 @@ ReadinessResponse:
       additionalProperties:
         type: string
         enum: [ok, unavailable]
-
-ErrorResponse:
-  type: object
-  required:
-    - code
-    - message
-    - request_id
-  properties:
-    code:
-      type: string
-    message:
-      type: string
-    request_id:
-      type: string
-    details:
-      type: object
-      additionalProperties: true

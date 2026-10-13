@@ -4,6 +4,8 @@ from typing import Literal
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from backend_app.core.error_catalog import CONTRACT_VERSION
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -16,7 +18,7 @@ class Settings(BaseSettings):
 
     name: str = "Community Property Platform"
     env: Literal["local", "test", "staging", "production"] = "local"
-    version: str = "0.1.0"
+    version: str = CONTRACT_VERSION
     database_url: SecretStr = SecretStr("")
     redis_url: SecretStr = SecretStr("")
     session_ttl_seconds: int = Field(default=86_400, ge=60)
@@ -24,6 +26,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_service_urls(self) -> "Settings":
+        if self.version != CONTRACT_VERSION:
+            raise ValueError("APP_VERSION must match the generated API contract revision")
         if not self.database_url.get_secret_value():
             raise ValueError("APP_DATABASE_URL is required")
         if not self.redis_url.get_secret_value():

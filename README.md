@@ -53,10 +53,12 @@ pnpm api:check
 
 ```bash
 cd services/backend
-uv run ruff check src tests
-uv run ruff format --check src tests
+uv run ruff check --config pyproject.toml src tests ../../scripts
+uv run ruff format --config pyproject.toml --check src tests ../../scripts
 uv run mypy
 uv run pytest
 ```
+
+契约测试会调用现有 `pnpm api:bundle`，确保使用最新 OpenAPI 文件。API 设计与错误处理约定见 [API 规范](docs/api/conventions.md)。
 
 执行要求及专题文档入口见 [AGENTS.md](AGENTS.md)。

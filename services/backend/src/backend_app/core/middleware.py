@@ -3,11 +3,12 @@ import re
 from time import perf_counter
 from uuid import uuid4
 
-from starlette.responses import JSONResponse
+from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from backend_app.core.logging import request_id_context
-from backend_app.schemas.system import ErrorResponse
+from backend_app.core.error_catalog import REQUEST_ID_PATTERN
+from backend_app.core.exception_handlers import handle_system_error
+from backend_app.core.logging import log_exception, request_id_context
 
 
 class RequestIdMiddleware:
@@ -24,7 +25,7 @@ class RequestIdMiddleware:
         )
         request_id = (
             supplied_id.decode("ascii")
-            if re.fullmatch(rb"[A-Za-z0-9_-]{1,64}", supplied_id)
+            if re.fullmatch(REQUEST_ID_PATTERN.encode(), supplied_id)
             else uuid4().hex
         )
         scope.setdefault("state", {})["request_id"] = request_id
@@ -38,7 +39,11 @@ class RequestIdMiddleware:
             if message["type"] == "http.response.start":
                 response_started = True
                 status_code = message["status"]
-                headers = list(message.get("headers", []))
+                headers = [
+                    (key, value)
+                    for key, value in message.get("headers", [])
+                    if key.lower() != b"x-request-id"
+                ]
                 headers.append((b"x-request-id", request_id.encode()))
                 message["headers"] = headers
             await send(message)
@@ -47,16 +52,11 @@ class RequestIdMiddleware:
         try:
             await self.app(scope, receive, send_with_request_id)
         except Exception as exc:
-            # Exception text and tracebacks may contain credentials or request data.
-            logger.error("request_failed error_type=%s", type(exc).__name__)
             if response_started:
-                raise
-            payload = ErrorResponse(
-                code="INTERNAL_ERROR", message="服务内部错误", request_id=request_id
-            )
-            await JSONResponse(payload.model_dump(), status_code=500)(
-                scope, receive, send_with_request_id
-            )
+                log_exception(exc, code="INTERNAL_ERROR")
+                raise RuntimeError(f"Response aborted; request_id={request_id}") from None
+            response = await handle_system_error(Request(scope, receive), exc)
+            await response(scope, receive, send_with_request_id)
         finally:
             route = scope.get("route")
             logger.info(

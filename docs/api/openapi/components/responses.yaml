@@ -1,6 +1,91 @@
 InternalError:
-  description: 服务内部错误；响应及日志不包含原始异常或敏感输入。
+  description: 服务内部错误；响应不包含原始异常或敏感输入。
+  headers:
+    X-Request-ID:
+      $ref: './headers.yaml#/RequestId'
   content:
-    application/json:
+    application/problem+json:
       schema:
-        $ref: './schemas.yaml#/ErrorResponse'
+        $ref: './errors.yaml#/ProblemDetails'
+
+ValidationError:
+  description: 请求参数校验失败；只返回位置与校验类别。
+  headers:
+    X-Request-ID:
+      $ref: './headers.yaml#/RequestId'
+  content:
+    application/problem+json:
+      schema:
+        $ref: './errors.yaml#/ProblemDetails'
+
+Unauthorized:
+  description: 缺少或无效的身份凭证。
+  headers:
+    X-Request-ID:
+      $ref: './headers.yaml#/RequestId'
+    WWW-Authenticate:
+      description: 适用时返回所需的身份认证方案。
+      schema:
+        type: string
+  content:
+    application/problem+json:
+      schema:
+        $ref: './errors.yaml#/ProblemDetails'
+
+Forbidden:
+  description: 已识别身份但没有所需权限。
+  headers:
+    X-Request-ID:
+      $ref: './headers.yaml#/RequestId'
+  content:
+    application/problem+json:
+      schema:
+        $ref: './errors.yaml#/ProblemDetails'
+
+NotFound:
+  description: 资源或路由不存在。
+  headers:
+    X-Request-ID:
+      $ref: './headers.yaml#/RequestId'
+  content:
+    application/problem+json:
+      schema:
+        $ref: './errors.yaml#/ProblemDetails'
+
+MethodNotAllowed:
+  description: 资源不允许使用该 HTTP 方法。
+  headers:
+    X-Request-ID:
+      $ref: './headers.yaml#/RequestId'
+    Allow:
+      description: 资源允许使用的方法。
+      schema:
+        type: string
+  content:
+    application/problem+json:
+      schema:
+        $ref: './errors.yaml#/ProblemDetails'
+
+Conflict:
+  description: 已知的业务状态或并发冲突；客户端应先重新获取状态。
+  headers:
+    X-Request-ID:
+      $ref: './headers.yaml#/RequestId'
+  content:
+    application/problem+json:
+      schema:
+        $ref: './errors.yaml#/ProblemDetails'
+
+ServiceUnavailable:
+  description: 已知依赖不可用；不保证写入操作可安全重试。
+  headers:
+    X-Request-ID:
+      $ref: './headers.yaml#/RequestId'
+    Retry-After:
+      description: 仅在能承诺等待时间时返回秒数或 HTTP 日期。
+      schema:
+        type: string
+  content:
+    application/problem+json:
+      schema:
+        $ref: './errors.yaml#/ProblemDetails'

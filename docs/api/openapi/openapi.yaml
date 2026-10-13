@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Community Property Platform API
-  version: 0.1.0
+  version: 0.2.0
   description: 社区物业消费返利与物业费抵扣平台 API 契约。
 servers:
   - url: /
@@ -15,15 +15,36 @@ paths:
     $ref: './modules/system.yaml#/readiness'
 components:
   schemas:
+    RequestId:
+      $ref: './components/schemas.yaml#/RequestId'
     HealthResponse:
       $ref: './components/schemas.yaml#/HealthResponse'
     ReadinessResponse:
       $ref: './components/schemas.yaml#/ReadinessResponse'
-    ErrorResponse:
-      $ref: './components/schemas.yaml#/ErrorResponse'
+    ProblemDetails:
+      $ref: './components/errors.yaml#/ProblemDetails'
+    ValidationIssue:
+      $ref: './components/errors.yaml#/ValidationIssue'
   responses:
     InternalError:
       $ref: './components/responses.yaml#/InternalError'
+    ValidationError:
+      $ref: './components/responses.yaml#/ValidationError'
+    Unauthorized:
+      $ref: './components/responses.yaml#/Unauthorized'
+    Forbidden:
+      $ref: './components/responses.yaml#/Forbidden'
+    NotFound:
+      $ref: './components/responses.yaml#/NotFound'
+    MethodNotAllowed:
+      $ref: './components/responses.yaml#/MethodNotAllowed'
+    Conflict:
+      $ref: './components/responses.yaml#/Conflict'
+    ServiceUnavailable:
+      $ref: './components/responses.yaml#/ServiceUnavailable'
+  headers:
+    RequestId:
+      $ref: './components/headers.yaml#/RequestId'
   securitySchemes:
     AdminSession:
       $ref: './components/security-schemes.yaml#/AdminSession'

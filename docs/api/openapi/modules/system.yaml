@@ -1,6 +1,7 @@
 health:
   get:
     operationId: getHealth
+    x-runtimes: [platform_admin_api, property_admin_api, resident_api, webhook]
     tags: [system]
     summary: 检查进程存活状态
     description: 公开接口，只检查进程存活，不检查外部依赖。
@@ -8,6 +9,9 @@ health:
     responses:
       '200':
         description: 进程正常
+        headers:
+          X-Request-ID:
+            $ref: '../components/headers.yaml#/RequestId'
         content:
           application/json:
             schema:
@@ -18,6 +22,7 @@ health:
 readiness:
   get:
     operationId: getReadiness
+    x-runtimes: [platform_admin_api, property_admin_api, resident_api, webhook]
     tags: [system]
     summary: 检查依赖是否就绪
     description: 公开运维接口，返回 MySQL 和 Redis 的连接状态，不返回连接地址或异常详情。
@@ -25,12 +30,18 @@ readiness:
     responses:
       '200':
         description: 依赖正常
+        headers:
+          X-Request-ID:
+            $ref: '../components/headers.yaml#/RequestId'
         content:
           application/json:
             schema:
               $ref: '../components/schemas.yaml#/ReadinessResponse'
       '503':
         description: 依赖未就绪
+        headers:
+          X-Request-ID:
+            $ref: '../components/headers.yaml#/RequestId'
         content:
           application/json:
             schema:
