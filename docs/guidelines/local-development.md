@@ -15,10 +15,12 @@
 
 ```bash
 make install
-cp deploy/env/.env.example services/backend/.env
+cp services/backend/.env.example services/backend/.env
 ```
 
-后端支持 Python 3.12、3.13，Node.js 要求 22+；`make install` 按现有锁文件安装后端开发依赖与整个 pnpm 工作区依赖。配置文件只在首次初始化时复制，已有文件直接编辑。
+后端支持 Python 3.12、3.13，Node.js 要求 22+；`make install` 按现有锁文件安装后端开发依赖与整个 pnpm 工作区依赖。
+
+[services/backend/.env.example](../../services/backend/.env.example) 是本地后端配置模板，仅包含 `APP_*`，默认连接本机 MySQL 和 Redis。实际 `.env` 文件只在首次初始化时从对应模板复制，已有文件直接编辑。
 
 启动前，使用你本机已有的管理方式启动 MySQL 和 Redis，并确认已有数据库、账号及访问权限满足应用配置。开发入口只做连接、`SELECT 1` 和 Redis `PING` 检查，不启停系统服务、不建库或创建账号、不执行迁移、不修改已有数据。
 
@@ -30,17 +32,11 @@ APP_REDIS_URL=redis://127.0.0.1:6379/0
 APP_LOG_LEVEL=INFO
 ```
 
-URL 中的账号、密码须按 URL 规则编码。若 Redis 需要认证，配置对应凭据。示例文件中的账号和密码仅为模板，不会自动创建；其中 `MYSQL_*`、`COMPOSE_PROJECT_NAME` 只供可选 Compose 配置使用，开发入口依据 `APP_*` 配置连接。
+URL 中的账号、密码须按 URL 规则编码。若 Redis 需要认证，配置对应凭据。模板中的数据库名和凭据仅为示例，需按本机已有实例填写。
 
 后端依赖检查及所有后端进程的工作目录固定为 `services/backend/`，沿用现有 Settings 读取该处 `.env`；**已有环境变量优先于 `.env`**。仓库根目录的 `.env` 不作为后端配置来源。包含 Worker 的启动批次需要 `APP_LOG_LEVEL=INFO` 或 `DEBUG`，以观察现有启动标记。配置及运行日志均不提交 Git。
 
 管理后台沿用 Vite 配置机制，可按需参考 `apps/admin-web/.env.example` 配置该目录的本地环境文件。单独启动管理后台无需 MySQL、Redis 或后端配置。
-
-Docker Compose 是可选的依赖运行方式，使用时需提供模板要求的环境变量，并避免与本机实例争用端口：
-
-```bash
-docker compose --env-file services/backend/.env -f deploy/compose/docker-compose.yml up -d mysql redis
-```
 
 ## 开发命令
 

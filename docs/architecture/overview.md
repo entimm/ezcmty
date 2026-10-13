@@ -67,4 +67,4 @@ backend_app/api/webhook/
 
 ## 项目命名
 
-`xlife2` 仅是当前临时仓库目录名。代码、Python 包、前端包、容器服务、镜像、环境变量和 OpenAPI 标识不得依赖该名称。
+`xlife2` 仅是当前临时仓库目录名。代码、Python 包、前端包、运行服务、环境变量和 OpenAPI 标识不得依赖该名称。

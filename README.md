@@ -8,7 +8,6 @@
 - `apps/miniapp/`：居民微信小程序。
 - `services/backend/`：共享 Python 后端包和独立运行进程。
 - `docs/`：按主题组织的项目文档。
-- `deploy/`：本地和服务器部署模板。
 
 后端包、API 模块、进程职责及项目命名见 [系统架构](docs/architecture/overview.md)。
 
