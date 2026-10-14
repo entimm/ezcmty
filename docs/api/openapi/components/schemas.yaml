@@ -2,6 +2,14 @@ RequestId:
   type: string
   pattern: '^[A-Za-z0-9_-]{1,64}$'
 
+UUIDIdentifier:
+  type: string
+  format: uuid
+  minLength: 36
+  maxLength: 36
+  pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[47][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$'
+  description: 带连字符的 UUIDv4 或 UUIDv7；响应统一使用小写标准形式。
+
 HealthResponse:
   type: object
   required:

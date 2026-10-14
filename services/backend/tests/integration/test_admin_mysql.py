@@ -7,24 +7,29 @@ import shutil
 import socket
 import subprocess
 import time
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from pathlib import Path
 from threading import Barrier
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
+from alembic.autogenerate import compare_metadata
 from alembic.config import Config
+from alembic.migration import MigrationContext
 from pytest import MonkeyPatch, TempPathFactory
 from redis import Redis
-from sqlalchemy import create_engine, select, text
+from sqlalchemy import create_engine, inspect, select, text
+from sqlalchemy.dialects.mysql import BINARY
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.config import get_settings
 from backend_app.core.errors import AppError
-from backend_app.models.admin import AdminAccount, AdminRole
+from backend_app.db.base import Base
+from backend_app.models.admin import AdminAccount, AdminAuditLog, AdminRole, AdminRolePermission
 from backend_app.schemas import admin as schema
 from backend_app.services.admin import AdminService
 
@@ -248,3 +253,92 @@ def test_real_redis_revocation_and_scope_separation(
     with pytest.raises(AppError) as caught:
         store.limit_login("platform_admin", "other-" + source, source)
     assert caught.value.code == "auth.rate_limited"
+
+
+def test_uuid_binary_storage_and_fresh_migration_schema(
+    real_admin: tuple[sessionmaker[Session], AdminSessionStore],
+) -> None:
+    factory, _ = real_admin
+    legacy_id = str(uuid4())
+    with factory() as db:
+        service = AdminService(db, "platform_admin")
+        service.initialize_super_admin("admin", "Admin", PASSWORD)
+        account = db.scalar(select(AdminAccount))
+        assert account is not None and UUID(account.id).version == 7
+        account_id = account.id
+        role = AdminRole(scope="platform_admin", code="uuid_reader", name="Reader")
+        db.add(role)
+        db.add(
+            AdminAccount(
+                id=legacy_id,
+                scope="platform_admin",
+                login_name="legacy",
+                display_name="Legacy",
+                password_hash=account.password_hash,
+            )
+        )
+        db.flush()
+        db.add(
+            AdminRolePermission(
+                scope="platform_admin", role_id=role.id, permission="admin.account.read"
+            )
+        )
+        db.add(
+            AdminAuditLog(
+                scope="platform_admin",
+                actor_id=legacy_id,
+                action="uuid.test",
+                target_type="account",
+                target_id=account_id,
+                result="success",
+                request_id="uuid-test",
+            )
+        )
+        db.add(
+            AdminAuditLog(
+                scope="platform_admin",
+                action="uuid.null-test",
+                target_type="account",
+                result="failure",
+                request_id="uuid-null-test",
+            )
+        )
+        db.commit()
+        connection = db.connection()
+        assert compare_metadata(MigrationContext.configure(connection), Base.metadata) == []
+        inspector = inspect(connection)
+        uuid_columns = {"id", "account_id", "role_id", "actor_id", "target_id"}
+        for table in Base.metadata.sorted_tables:
+            columns = {column["name"]: column for column in inspector.get_columns(table.name)}
+            assert columns["created_at"]["nullable"] is False
+            for name in uuid_columns & columns.keys():
+                uuid_type = columns[name]["type"]
+                assert isinstance(uuid_type, BINARY)
+                assert uuid_type.length == 16
+            values: Sequence[datetime] = (
+                connection.execute(text(f"SELECT created_at FROM `{table.name}`")).scalars().all()
+            )
+            assert values and all(value is not None for value in values)
+        for identifier in (account_id, legacy_id):
+            row = (
+                connection.execute(
+                    text(
+                        "SELECT id, BIN_TO_UUID(id) AS text_id FROM admin_accounts "
+                        "WHERE id = UUID_TO_BIN(:identifier)"
+                    ),
+                    {"identifier": identifier},
+                )
+                .mappings()
+                .one()
+            )
+            assert row["id"] == UUID(identifier).bytes and row["text_id"] == identifier
+            entity = db.get(AdminAccount, identifier)
+            assert entity is not None and entity.id == identifier
+        references = connection.execute(
+            text("SELECT actor_id, target_id FROM admin_audit_logs WHERE action = 'uuid.test'")
+        ).one()
+        assert references == (UUID(legacy_id).bytes, UUID(account_id).bytes)
+        nullable = connection.execute(
+            text("SELECT actor_id, target_id FROM admin_audit_logs WHERE action = 'uuid.null-test'")
+        ).one()
+        assert nullable == (None, None)

@@ -1,11 +1,17 @@
 from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
+
+from backend_app.core.identifiers import UUID_PATTERN, normalize_uuid
 
 AdminScope = Literal["platform_admin", "property_admin"]
 Name = Annotated[str, Field(min_length=1, max_length=80)]
-Identifier = Annotated[str, Field(min_length=1, max_length=36)]
+Identifier = Annotated[
+    str,
+    Field(min_length=36, max_length=36, pattern=UUID_PATTERN, json_schema_extra={"format": "uuid"}),
+    AfterValidator(normalize_uuid),
+]
 Password = Annotated[str, Field(min_length=12, max_length=128)]
 
 
@@ -67,7 +73,7 @@ class PermissionSet(AdminSchema):
 
 class AdminSession(AdminSchema):
     scope: AdminScope
-    subject_id: str
+    subject_id: Identifier
     login_name: str
     display_name: str
     permissions: list[str]
@@ -76,14 +82,14 @@ class AdminSession(AdminSchema):
 
 
 class AdminProfile(AdminSchema):
-    id: str
+    id: Identifier
     scope: AdminScope
     login_name: str
     display_name: str
 
 
 class RoleSummary(AdminSchema):
-    id: str
+    id: Identifier
     code: str
     name: str
     enabled: bool
@@ -91,7 +97,7 @@ class RoleSummary(AdminSchema):
 
 
 class AdminAccount(AdminSchema):
-    id: str
+    id: Identifier
     scope: AdminScope
     login_name: str
     display_name: str
@@ -118,12 +124,12 @@ class AdminPermission(AdminSchema):
 
 
 class AuditEntry(AdminSchema):
-    id: str
-    actor_id: str | None
+    id: Identifier
+    actor_id: Identifier | None
     actor_name: str | None
     action: str
     target_type: str
-    target_id: str | None
+    target_id: Identifier | None
     result: Literal["success", "failure"]
     request_id: str
     created_at: datetime

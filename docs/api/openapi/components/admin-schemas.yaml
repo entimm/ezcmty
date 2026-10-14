@@ -69,9 +69,7 @@ AccountCreate:
     role_ids:
       type: array
       items:
-        type: string
-        minLength: 1
-        maxLength: 36
+        $ref: './schemas.yaml#/UUIDIdentifier'
   required:
     - login_name
     - display_name
@@ -97,9 +95,7 @@ RoleSet:
     role_ids:
       type: array
       items:
-        type: string
-        minLength: 1
-        maxLength: 36
+        $ref: './schemas.yaml#/UUIDIdentifier'
   required:
     - role_ids
 RoleCreate:
@@ -154,7 +150,7 @@ AdminSession:
         - platform_admin
         - property_admin
     subject_id:
-      type: string
+      $ref: './schemas.yaml#/UUIDIdentifier'
     login_name:
       type: string
     display_name:
@@ -180,7 +176,7 @@ AdminProfile:
   additionalProperties: false
   properties:
     id:
-      type: string
+      $ref: './schemas.yaml#/UUIDIdentifier'
     scope:
       type: string
       enum:
@@ -200,7 +196,7 @@ RoleSummary:
   additionalProperties: false
   properties:
     id:
-      type: string
+      $ref: './schemas.yaml#/UUIDIdentifier'
     code:
       type: string
     name:
@@ -220,7 +216,7 @@ AdminAccount:
   additionalProperties: false
   properties:
     id:
-      type: string
+      $ref: './schemas.yaml#/UUIDIdentifier'
     scope:
       type: string
       enum:
@@ -255,7 +251,7 @@ AdminRole:
   additionalProperties: false
   properties:
     id:
-      type: string
+      $ref: './schemas.yaml#/UUIDIdentifier'
     code:
       type: string
     name:
@@ -297,10 +293,10 @@ AuditEntry:
   additionalProperties: false
   properties:
     id:
-      type: string
+      $ref: './schemas.yaml#/UUIDIdentifier'
     actor_id:
       anyOf:
-        - type: string
+        - $ref: './schemas.yaml#/UUIDIdentifier'
         - type: 'null'
     actor_name:
       anyOf:
@@ -312,7 +308,7 @@ AuditEntry:
       type: string
     target_id:
       anyOf:
-        - type: string
+        - $ref: './schemas.yaml#/UUIDIdentifier'
         - type: 'null'
     result:
       type: string

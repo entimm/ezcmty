@@ -6,11 +6,12 @@ from hashlib import sha256
 from time import time
 from typing import cast
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 from redis import Redis
 
 from backend_app.core.config import Settings
 from backend_app.core.errors import AppError
+from backend_app.core.identifiers import normalize_uuid
 from backend_app.core.session_store import RedisSessionStore
 from backend_app.schemas.admin import AdminScope
 
@@ -37,7 +38,7 @@ class AdminSessionStore:
         )
         token = self.store.create_session(
             scope,
-            account_id,
+            normalize_uuid(account_id),
             data=data.model_dump(),
             ttl_seconds=self.settings.admin_session_idle_seconds,
         )
@@ -48,13 +49,14 @@ class AdminSessionStore:
             session = self.store.get_session(scope, token)
             if session is None:
                 return None
+            account_id = normalize_uuid(session.subject_id)
             data = StoredAdminSession.model_validate(session.data)
-        except ValidationError:
+        except ValueError:
             return None
         if data.absolute_expires_at <= time():
             self.delete(scope, token)
             return None
-        return session.subject_id, data
+        return account_id, data
 
     def touch(self, scope: AdminScope, token: str, data: StoredAdminSession) -> None:
         remaining = int(data.absolute_expires_at - time())

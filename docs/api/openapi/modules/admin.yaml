@@ -469,7 +469,7 @@ account:
         in: path
         required: true
         schema:
-          type: string
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
   patch:
     operationId: updateAdminAccount
     x-runtimes:
@@ -511,7 +511,7 @@ account:
         in: path
         required: true
         schema:
-          type: string
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
       - name: Origin
         in: header
         required: false
@@ -570,7 +570,7 @@ passwordReset:
         in: path
         required: true
         schema:
-          type: string
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
       - name: Origin
         in: header
         required: false
@@ -633,7 +633,7 @@ accountRoles:
         in: path
         required: true
         schema:
-          type: string
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
       - name: Origin
         in: header
         required: false
@@ -832,7 +832,7 @@ role:
         in: path
         required: true
         schema:
-          type: string
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
   patch:
     operationId: updateAdminRole
     x-runtimes:
@@ -874,7 +874,7 @@ role:
         in: path
         required: true
         schema:
-          type: string
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
       - name: Origin
         in: header
         required: false
@@ -937,7 +937,7 @@ rolePermissions:
         in: path
         required: true
         schema:
-          type: string
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
       - name: Origin
         in: header
         required: false

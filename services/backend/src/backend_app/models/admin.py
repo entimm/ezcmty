@@ -1,6 +1,5 @@
 from datetime import UTC, datetime
 from typing import Any
-from uuid import uuid4
 
 from sqlalchemy import (
     JSON,
@@ -15,11 +14,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from backend_app.core.identifiers import new_id
 from backend_app.db.base import Base
-
-
-def new_id() -> str:
-    return str(uuid4())
+from backend_app.db.types import UUIDBinary
 
 
 def utc_now() -> datetime:
@@ -36,7 +33,7 @@ class AdminAccount(Base):
         ),
         {"mysql_engine": "InnoDB", "mysql_charset": "utf8mb4"},
     )
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    id: Mapped[str] = mapped_column(UUIDBinary(), primary_key=True, default=new_id)
     scope: Mapped[str] = mapped_column(String(32), nullable=False)
     login_name: Mapped[str] = mapped_column(
         String(64, collation="utf8mb4_bin").with_variant(String(64), "sqlite"), nullable=False
@@ -59,12 +56,13 @@ class AdminRole(Base):
         ),
         {"mysql_engine": "InnoDB", "mysql_charset": "utf8mb4"},
     )
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    id: Mapped[str] = mapped_column(UUIDBinary(), primary_key=True, default=new_id)
     scope: Mapped[str] = mapped_column(String(32), nullable=False)
     code: Mapped[str] = mapped_column(String(64), nullable=False)
     name: Mapped[str] = mapped_column(String(80), nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
 
 
 class AdminAccountRole(Base):
@@ -81,8 +79,9 @@ class AdminAccountRole(Base):
         {"mysql_engine": "InnoDB", "mysql_charset": "utf8mb4"},
     )
     scope: Mapped[str] = mapped_column(String(32), primary_key=True)
-    account_id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    role_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    account_id: Mapped[str] = mapped_column(UUIDBinary(), primary_key=True)
+    role_id: Mapped[str] = mapped_column(UUIDBinary(), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
 
 
 class AdminRolePermission(Base):
@@ -96,8 +95,9 @@ class AdminRolePermission(Base):
         {"mysql_engine": "InnoDB", "mysql_charset": "utf8mb4"},
     )
     scope: Mapped[str] = mapped_column(String(32), primary_key=True)
-    role_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    role_id: Mapped[str] = mapped_column(UUIDBinary(), primary_key=True)
     permission: Mapped[str] = mapped_column(String(100), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
 
 
 class AdminAuditLog(Base):
@@ -107,13 +107,13 @@ class AdminAuditLog(Base):
         Index("ix_admin_audit_request", "scope", "request_id"),
         {"mysql_engine": "InnoDB", "mysql_charset": "utf8mb4"},
     )
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    id: Mapped[str] = mapped_column(UUIDBinary(), primary_key=True, default=new_id)
     scope: Mapped[str] = mapped_column(String(32), nullable=False)
-    actor_id: Mapped[str | None] = mapped_column(String(36))
+    actor_id: Mapped[str | None] = mapped_column(UUIDBinary())
     actor_name: Mapped[str | None] = mapped_column(String(80))
     action: Mapped[str] = mapped_column(String(64), nullable=False)
     target_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    target_id: Mapped[str | None] = mapped_column(String(36))
+    target_id: Mapped[str | None] = mapped_column(UUIDBinary())
     result: Mapped[str] = mapped_column(String(16), nullable=False)
     request_id: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)

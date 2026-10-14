@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Community Property Platform API
-  version: 0.3.0
+  version: 0.3.1
   description: 社区物业消费返利与物业费抵扣平台 API 契约。
 servers:
   - url: '/'
@@ -46,6 +46,8 @@ components:
   schemas:
     RequestId:
       '$ref': './components/schemas.yaml#/RequestId'
+    UUIDIdentifier:
+      '$ref': './components/schemas.yaml#/UUIDIdentifier'
     HealthResponse:
       '$ref': './components/schemas.yaml#/HealthResponse'
     ReadinessResponse:

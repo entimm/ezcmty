@@ -223,7 +223,7 @@ def create_admin_router(scope: schema.AdminScope) -> APIRouter:
         dependencies=[permission("admin.account.read")],
         responses={**common_errors, 200: {"headers": get_request_id_headers()}},
     )
-    def get_account(account_id: str, svc: Service) -> schema.AdminAccount:
+    def get_account(account_id: schema.Identifier, svc: Service) -> schema.AdminAccount:
         return svc.account_view(svc._account(account_id))
 
     @router.patch(
@@ -234,7 +234,7 @@ def create_admin_router(scope: schema.AdminScope) -> APIRouter:
         responses={**common_errors, 200: {"headers": get_request_id_headers()}},
     )
     def update_account(
-        account_id: str,
+        account_id: schema.Identifier,
         data: schema.AccountUpdate,
         request: Request,
         svc: Service,
@@ -250,7 +250,7 @@ def create_admin_router(scope: schema.AdminScope) -> APIRouter:
         responses={**common_errors, 204: {"headers": get_request_id_headers()}},
     )
     def reset_password(
-        account_id: str,
+        account_id: schema.Identifier,
         data: schema.PasswordReset,
         request: Request,
         svc: Service,
@@ -266,7 +266,7 @@ def create_admin_router(scope: schema.AdminScope) -> APIRouter:
         responses={**common_errors, 200: {"headers": get_request_id_headers()}},
     )
     def set_account_roles(
-        account_id: str,
+        account_id: schema.Identifier,
         data: schema.RoleSet,
         request: Request,
         svc: Service,
@@ -314,7 +314,7 @@ def create_admin_router(scope: schema.AdminScope) -> APIRouter:
         dependencies=[permission("admin.role.read")],
         responses={**common_errors, 200: {"headers": get_request_id_headers()}},
     )
-    def get_role(role_id: str, svc: Service) -> schema.AdminRole:
+    def get_role(role_id: schema.Identifier, svc: Service) -> schema.AdminRole:
         return svc.role_view(svc._role(role_id))
 
     @router.patch(
@@ -325,7 +325,7 @@ def create_admin_router(scope: schema.AdminScope) -> APIRouter:
         responses={**common_errors, 200: {"headers": get_request_id_headers()}},
     )
     def update_role(
-        role_id: str,
+        role_id: schema.Identifier,
         data: schema.RoleUpdate,
         request: Request,
         svc: Service,
@@ -341,7 +341,7 @@ def create_admin_router(scope: schema.AdminScope) -> APIRouter:
         responses={**common_errors, 200: {"headers": get_request_id_headers()}},
     )
     def set_permissions(
-        role_id: str,
+        role_id: schema.Identifier,
         data: schema.PermissionSet,
         request: Request,
         svc: Service,
