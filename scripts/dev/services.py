@@ -152,7 +152,7 @@ def http_probe(service: Service, timeout: float) -> dict[str, Any]:
             return {"ok": ready, "reason": "API 及依赖已就绪" if ready else "/readyz 依赖未就绪"}
     except urllib.error.HTTPError as exc:
         return {"ok": False, "reason": f"{path} 返回 HTTP {exc.code}"}
-    except (OSError, ValueError, urllib.error.URLError):
+    except OSError, ValueError, urllib.error.URLError:
         return {"ok": False, "reason": f"{path} 暂不可访问或响应无效"}
 
 

@@ -4,7 +4,7 @@
 
 ## 开发环境
 
-- Python 3.12+
+- Python 3.14.x（默认版本见 [.python-version](../../.python-version)，版本范围由 [后端项目配置](../../services/backend/pyproject.toml) 的 `requires-python` 声明）
 - `uv`
 - Node.js（默认使用 [.node-version](../../.node-version) 指定的 24.x，具体版本须满足 [package.json](../../package.json) 的 `engines.node`）
 - `pnpm`
@@ -20,7 +20,7 @@ make install
 cp services/backend/.env.example services/backend/.env
 ```
 
-后端支持 Python 3.12、3.13；`make install` 按现有锁文件安装后端开发依赖与整个 pnpm 工作区依赖。
+`make install` 按现有锁文件安装后端开发依赖与整个 pnpm 工作区依赖。
 
 [services/backend/.env.example](../../services/backend/.env.example) 是本地后端配置模板，仅包含 `APP_*`，默认连接本机 MySQL 和 Redis。实际 `.env` 文件只在首次初始化时从对应模板复制，已有文件直接编辑。
 

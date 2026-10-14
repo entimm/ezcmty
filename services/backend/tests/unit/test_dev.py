@@ -189,7 +189,7 @@ class Harness:
 
 
 @pytest.fixture
-def harness(tmp_path: Path, monkeypatch: MonkeyPatch) -> Generator[Harness, None, None]:
+def harness(tmp_path: Path, monkeypatch: MonkeyPatch) -> Generator[Harness]:
     monkeypatch.syspath_prepend(str(ROOT))
     from scripts.dev.processes import Registry
     from scripts.dev.runtime import stop_all

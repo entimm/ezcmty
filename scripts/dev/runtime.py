@@ -95,7 +95,7 @@ class Probe:
             if result.get("finished", self.deadline) > self.deadline:
                 return {"ok": False, "reason": "单次就绪探测超时"}
             return result
-        except (ValueError, IndexError, AttributeError):
+        except ValueError, IndexError, AttributeError:
             return {"ok": False, "reason": f"就绪探测进程退出（{self.process.returncode}）"}
 
 

@@ -121,7 +121,7 @@ def harness(tmp_path: Path, monkeypatch: MonkeyPatch) -> Iterator[Harness]:
     store = AdminSessionStore(cast("Redis[str]", redis), settings)
     app = create_app("platform-admin-api")
 
-    def database() -> Generator[Session, None, None]:
+    def database() -> Generator[Session]:
         with factory() as db:
             try:
                 yield db

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "backend-app"
 version = "0.1.0"
 description = "Community property platform backend"
-requires-python = ">=3.12,<3.14"
+requires-python = ">=3.14,<3.15"
 dependencies = [
   "alembic>=1.14,<2.0",
   "argon2-cffi>=23.1,<26.0",
@@ -32,7 +32,7 @@ where = ["src"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py314"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
@@ -47,6 +47,6 @@ addopts = "-q"
 markers = ["integration: isolated MySQL/Redis checks enabled by APP_RUN_MYSQL_TESTS=1"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 strict = true
 files = ["src", "tests", "../../scripts"]

@@ -21,7 +21,7 @@ def dummy_password_hash() -> str:
 def verify_password(encoded: str, password: str) -> bool:
     try:
         return _hasher.verify(encoded, password)
-    except (VerificationError, InvalidHashError):
+    except VerificationError, InvalidHashError:
         return False
 
 

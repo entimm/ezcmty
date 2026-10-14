@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
     @model_validator(mode="after")
-    def validate_service_urls(self) -> "Settings":
+    def validate_service_urls(self) -> Settings:
         if self.version != CONTRACT_VERSION:
             raise ValueError("APP_VERSION must match the generated API contract revision")
         if not self.database_url.get_secret_value():

@@ -57,7 +57,7 @@ class ObservedReload(WatchFilesReload):
             acknowledgement = json.loads(self.event_file.with_suffix(".ack.json").read_text())
             if acknowledgement["generation"] == self.generation:
                 self.reload_started = None
-        except (OSError, ValueError, KeyError, TypeError):
+        except OSError, ValueError, KeyError, TypeError:
             pass
 
     def startup(self) -> None:

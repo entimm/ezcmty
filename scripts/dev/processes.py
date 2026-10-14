@@ -112,7 +112,7 @@ def identity(pid: int, *, include_zombies: bool = False) -> Identity | None:
             if fields[0] == "Z" and not include_zombies:
                 return None
             return Identity(pid, int(fields[2]), int(fields[19]))
-        except (OSError, ValueError, IndexError):
+        except OSError, ValueError, IndexError:
             return None
     raise DevError("开发进程管理支持 macOS 和 Linux；当前系统不支持安全的进程身份验证。")
 
@@ -182,7 +182,7 @@ class Registry:
         return self.directory / batch_id
 
     @contextmanager
-    def locked(self) -> Generator[dict[str, Any], None, None]:
+    def locked(self) -> Generator[dict[str, Any]]:
         with (self.directory / "lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             path = self.directory / "state.json"

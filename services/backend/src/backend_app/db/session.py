@@ -25,7 +25,7 @@ def get_session_factory() -> sessionmaker[Session]:
     return sessionmaker(bind=get_engine(), autoflush=False, autocommit=False)
 
 
-def get_database_session() -> Generator[Session, None, None]:
+def get_database_session() -> Generator[Session]:
     session = get_session_factory()()
     try:
         try:
