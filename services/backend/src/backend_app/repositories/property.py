@@ -43,8 +43,16 @@ class PropertyRepository:
         )
         return list(self.db.scalars(query.offset((page - 1) * page_size).limit(page_size))), total
 
-    def community(self, community_id: str, *, lock: bool = False) -> Community | None:
+    def community(
+        self,
+        community_id: str,
+        *,
+        lock: bool = False,
+        company_scope_id: str | None = None,
+    ) -> Community | None:
         query = select(Community).where(Community.id == community_id)
+        if company_scope_id is not None:
+            query = query.where(Community.property_company_id == company_scope_id)
         if lock:
             query = query.with_for_update().execution_options(populate_existing=True)
         return self.db.scalar(query)
@@ -62,6 +70,7 @@ class PropertyRepository:
         property_company_id: str | None,
         enabled: bool | None,
         sort: str,
+        company_scope_id: str | None = None,
     ) -> tuple[list[tuple[Community, str]], int]:
         query = select(Community, PropertyCompany.name).join(
             PropertyCompany, Community.property_company_id == PropertyCompany.id
@@ -71,6 +80,8 @@ class PropertyRepository:
                 query = query.where(column.contains(value, autoescape=True))
         if property_company_id is not None:
             query = query.where(Community.property_company_id == property_company_id)
+        if company_scope_id is not None:
+            query = query.where(Community.property_company_id == company_scope_id)
         if enabled is not None:
             query = query.where(Community.enabled == enabled)
         total = self.db.scalar(select(func.count()).select_from(query.subquery())) or 0

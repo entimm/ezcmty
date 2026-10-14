@@ -254,7 +254,7 @@ def test_multi_sessions_logout_and_cross_scope_isolation(harness: Harness) -> No
     )
     assert harness.store.read("platform_admin", second) is None
     assert harness.store.read("platform_admin", first) is not None
-    assert "/v1/admin-sessions" not in create_app("property-admin-api").openapi()["paths"]
+    assert "/v1/admin-sessions" in create_app("property-admin-api").openapi()["paths"]
 
 
 def test_role_write_rules_revocation_and_account_creation(harness: Harness) -> None:

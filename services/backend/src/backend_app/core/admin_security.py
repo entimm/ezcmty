@@ -26,9 +26,14 @@ def verify_password(encoded: str, password: str) -> bool:
 
 
 def permission_catalog(scope: AdminScope) -> list[AdminPermission]:
-    # Property enablement requires its organization/data-scope implementation first.
-    if scope != "platform_admin":
-        return []
+    if scope == "property_admin":
+        return [
+            AdminPermission(code=c, name=n, group=g, assignable=True)
+            for c, n, g in (
+                ("property.company.read", "查看本公司资料", "物业公司"),
+                ("property.community.read", "查看本公司小区", "小区"),
+            )
+        ]
     definitions = [
         ("admin.account.read", "查看管理员", "管理员", True),
         ("admin.account.create", "创建管理员", "管理员", False),

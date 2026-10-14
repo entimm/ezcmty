@@ -1,4 +1,4 @@
-import { platformRoutes } from '../src/app/admin-routes';
+import { platformRoutes, propertyRoutes } from '../src/app/admin-routes';
 
 export default [
   { path: '/', component: '@/app/App' },
@@ -14,7 +14,7 @@ export default [
     path: '/property',
     component: '@/app/property/PropertyApp',
     routes: [
-      { path: '/property', component: '@/app/property/HomePage' },
+      ...propertyRoutes.map(({ path, component }) => ({ path, component })),
       { path: '/property/*', component: '@/components/NotFoundPage' },
     ],
   },

@@ -57,6 +57,8 @@ export function createPropertyApi(request: AdminRequest) {
       body: JSON.stringify(data),
     });
   return {
+    currentCompany: () =>
+      request<PropertyCompany>('/v1/property-companies/current'),
     companies: (filters: Filters) =>
       request<Page<PropertyCompany>>(
         `/v1/property-companies?${queryString(filters)}`,

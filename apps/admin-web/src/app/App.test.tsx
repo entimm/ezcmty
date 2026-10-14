@@ -26,6 +26,7 @@ import AuditPage from '../features/admin/audit/AuditPage';
 import CompaniesPage from '../features/admin/property/CompaniesPage';
 import CompanyDetailPage from '../features/admin/property/CompanyDetailPage';
 import CommunitiesPage from '../features/admin/property/CommunitiesPage';
+import WorkspaceCommunitiesPage from '../features/admin/property/WorkspaceCommunitiesPage';
 import type { SessionResponse } from '../shared/admin-api';
 import { safeReturnTarget } from './admin-routes';
 
@@ -45,6 +46,8 @@ const pages = {
   '@/features/admin/property/CompaniesPage': CompaniesPage,
   '@/features/admin/property/CompanyDetailPage': CompanyDetailPage,
   '@/features/admin/property/CommunitiesPage': CommunitiesPage,
+  '@/features/admin/property/WorkspaceCommunitiesPage':
+    WorkspaceCommunitiesPage,
 };
 const session: SessionResponse = {
   scope: 'platform_admin',
@@ -123,21 +126,38 @@ const propertyAdmin = {
   property_company_id: companyId,
   display_name: '公司管理人员',
 };
-function mockApi(identity: SessionResponse | null = session) {
+const propertySession: SessionResponse = {
+  ...session,
+  scope: 'property_admin',
+  subject_id: propertyAdmin.id,
+  login_name: 'property_root',
+  display_name: propertyAdmin.display_name,
+  permissions: ['property.company.read', 'property.community.read'],
+};
+function mockApi(
+  identity: SessionResponse | null = session,
+  propertyIdentity: SessionResponse | null = propertySession,
+) {
   const fetcher = vi.fn<typeof fetch>(async (url, init) => {
     const path = new URL(String(url), window.location.origin).pathname;
+    const isProperty = path.startsWith('/api/property/');
+    const currentIdentity = isProperty ? propertyIdentity : identity;
     if (path.endsWith('/admin-sessions/current'))
-      return identity
-        ? Response.json(identity)
+      return currentIdentity
+        ? Response.json(currentIdentity)
         : new Response(null, { status: 401 });
     if (path.endsWith('/admin-sessions') && init?.method === 'POST')
-      return Response.json(session, { status: 201 });
+      return Response.json(isProperty ? propertySession : session, {
+        status: 201,
+      });
+    if (path.endsWith('/property-companies/current'))
+      return Response.json({ ...company, enabled: true });
     if (path.endsWith('/admin-accounts/me'))
       return Response.json({
-        id: 'root',
-        scope: 'platform_admin',
-        login_name: 'root',
-        display_name: '测试管理员',
+        id: currentIdentity?.subject_id,
+        scope: currentIdentity?.scope,
+        login_name: currentIdentity?.login_name,
+        display_name: currentIdentity?.display_name,
       });
     if (path.endsWith('/admin-accounts/member')) return Response.json(account);
     if (path.endsWith('/admin-roles/reader')) return Response.json(role);
@@ -240,7 +260,7 @@ describe('admin navigation and identity', () => {
     expect(await screen.findByText('平台管理首页')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: '返回入口' }));
     fireEvent.click(screen.getByRole('link', { name: '进入物业管理端' }));
-    expect(await screen.findByText('物业管理首页')).toBeInTheDocument();
+    expect(await screen.findByText('物业工作台')).toBeInTheDocument();
     expect(screen.queryByText('平台管理首页')).not.toBeInTheDocument();
   });
   it('returns to a protected deep link after login', async () => {

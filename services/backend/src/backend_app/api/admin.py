@@ -24,7 +24,7 @@ def get_admin_session_store() -> AdminSessionStore:
     return AdminSessionStore(get_redis(), get_settings())
 
 
-def create_admin_router(scope: schema.AdminScope) -> APIRouter:
+def create_admin_router(scope: schema.AdminScope, *, include_management: bool = True) -> APIRouter:
     router = APIRouter(tags=["admin"])
     common_errors = get_problem_responses(401, 403, 404, 409, 422, 500, 503)
     session_headers = {**get_request_id_headers(), "Cache-Control": {"schema": {"type": "string"}}}
@@ -180,6 +180,16 @@ def create_admin_router(scope: schema.AdminScope) -> APIRouter:
         svc.change_password(ctx, data, request.state.request_id)
         store.delete(scope, ctx.token)
         clear_cookie(response)
+
+    if not include_management:
+        if scope == "property_admin":
+            from backend_app.api.property_admin.workspace import create_property_workspace_router
+
+            property_router = APIRouter()
+            property_router.include_router(router)
+            property_router.include_router(create_property_workspace_router(permission))
+            return property_router
+        return router
 
     @router.get(
         "/v1/admin-accounts",

@@ -19,6 +19,8 @@ ProComponents 沿用该正式模板锁定的预发布版本，支持 Ant Design 
 
 平台后台的功能范围、页面与交互见 [管理后台基础框架设计](../design/admin/foundation.md)。
 
+物业后台的登录与基础工作台见 [物业管理端登录与基础工作台设计](../design/property/workbench.md)。
+
 ## 前端模块与复用边界
 
 模块位置相对 `apps/admin-web/src/`，沿用 `app/`、`auth/`、`shared/` 和 `components/`，管理页面按实际功能组织在 `features/admin/` 下。

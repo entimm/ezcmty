@@ -1,4 +1,4 @@
-"""Add audit company ownership without changing existing audit records."""
+"""Audit log company ownership."""
 
 import sqlalchemy as sa
 from alembic import op

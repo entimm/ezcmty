@@ -3,11 +3,12 @@ sessions:
     operationId: createAdminSession
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 登录并创建后台会话
     description:
-      登录失败不区分账号不存在、密码错误和停用。按账号与来源 IP 限流；密码不得自动重试。成功设置本端 Host-only、HttpOnly
+      登录失败不区分账号不存在、密码错误、账号停用和公司停用；物业公司从服务端账号归属解析。按账号与来源 IP 限流；密码不得自动重试。成功设置本端 Host-only、HttpOnly
       会话 Cookie，受限会话只允许当前会话、本人改密和退出。响应禁止缓存。
     security: []
     responses:
@@ -57,6 +58,7 @@ currentSession:
     operationId: getCurrentAdminSession
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 恢复当前后台身份
@@ -94,6 +96,7 @@ currentSession:
     operationId: deleteCurrentAdminSession
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 撤销当前后台会话
@@ -146,6 +149,7 @@ me:
     operationId: getOwnProfile
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 读取本人资料
@@ -180,6 +184,7 @@ me:
     operationId: updateOwnProfile
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 修改本人资料
@@ -236,6 +241,7 @@ passwordChange:
     operationId: changeOwnPassword
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 校验旧密码并修改本人密码

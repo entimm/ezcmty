@@ -84,6 +84,15 @@ class AdminService:
         company = PropertyRepository(self.db).company(account.property_company_id)
         return company is not None and company.enabled
 
+    def _lock_company(self) -> None:
+        if self.scope == "property_admin":
+            company_id = self.repo.property_company_id
+            if company_id is None:
+                raise AppError("auth.forbidden")
+            company = PropertyRepository(self.db).company(company_id, lock=True)
+            if company is None or not company.enabled:
+                raise AppError("auth.unauthenticated")
+
     def effective_permissions(self, account_id: str) -> list[str]:
         roles = [role for role in self.repo.account_roles(account_id) if role.enabled]
         catalog = permission_catalog(self.scope)
@@ -140,15 +149,23 @@ class AdminService:
     ) -> tuple[str, schema.AdminSession]:
         store.limit_login(self.scope, data.login_name, source_ip)
         account = self.repo.identity_by_login(data.login_name)
+        organization_enabled = False
+        if account is not None:
+            if self.scope == "property_admin" and account.property_company_id is not None:
+                # Match platform company/account mutations and refresh the password
+                # after waiting for a concurrent reset or status change.
+                company = PropertyRepository(self.db).company(
+                    account.property_company_id, lock=True
+                )
+                self.repo.property_company_id = account.property_company_id
+                account = self.repo.account(account.id, lock=True)
+                organization_enabled = company is not None and company.enabled
+            else:
+                organization_enabled = self._organization_enabled(account)
         valid = verify_password(
             account.password_hash if account else dummy_password_hash(), data.password
         )
-        if (
-            account is None
-            or not valid
-            or not account.enabled
-            or not self._organization_enabled(account)
-        ):
+        if account is None or not valid or not account.enabled or not organization_enabled:
             self._audit(
                 actor=account,
                 action="session.login",
@@ -190,16 +207,18 @@ class AdminService:
             or context.property_company_id != self.repo.property_company_id
         ):
             raise AppError("auth.forbidden")
+        self._lock_company()
         actor = self._account(context.account_id, lock=True)
         if (
             not actor.enabled
             or actor.session_version != context.version
-            or not self._organization_enabled(actor)
+            or (self.scope == "platform_admin" and not self._organization_enabled(actor))
         ):
             raise AppError("auth.unauthenticated")
         return actor
 
     def _writer(self, context: AdminContext) -> tuple[AdminAccount, AdminRole]:
+        self._lock_company()
         # Serialize all authorization changes on one stable row per scope.
         system_role = self.repo.role_by_code("super_admin", lock=True)
         if system_role is None:

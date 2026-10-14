@@ -46,7 +46,11 @@ export function AdminLayout({
     .filter((item) => item.menu === '系统管理')
     .map((item) => ({ path: item.path, name: item.title }));
   const menu: MenuDataItem[] = [
-    { path, name: '首页', icon: <HomeOutlined /> },
+    {
+      path,
+      name: pages.find((page) => page.path === path)?.title ?? '首页',
+      icon: <HomeOutlined />,
+    },
     ...(['物业管理'] as const).flatMap((group) => {
       const children = pages
         .filter((item) => item.menu === group)

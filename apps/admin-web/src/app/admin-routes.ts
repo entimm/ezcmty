@@ -92,8 +92,43 @@ export const platformRoutes: AdminRoute[] = [
     states: ['authenticated'],
   },
 ];
+export const propertyRoutes: AdminRoute[] = [
+  {
+    path: '/property',
+    component: '@/app/property/HomePage',
+    title: '工作台',
+    menu: '首页',
+    states: ['authenticated'],
+  },
+  {
+    path: '/property/login',
+    component: '@/features/admin/auth/LoginPage',
+    title: '登录',
+    states: ['anonymous'],
+  },
+  {
+    path: '/property/change-password',
+    component: '@/features/admin/auth/ChangePasswordPage',
+    title: '强制改密',
+    states: ['password_change'],
+  },
+  {
+    path: '/property/profile',
+    component: '@/features/admin/profile/ProfilePage',
+    title: '个人中心',
+    states: ['authenticated'],
+  },
+  {
+    path: '/property/communities',
+    component: '@/features/admin/property/WorkspaceCommunitiesPage',
+    title: '小区查询',
+    menu: '物业管理',
+    permission: 'property.community.read',
+    states: ['authenticated'],
+  },
+];
 export function routesForScope(scope: AdminScope) {
-  return scope === 'platform_admin' ? platformRoutes : [];
+  return scope === 'platform_admin' ? platformRoutes : propertyRoutes;
 }
 export function findAdminRoute(scope: AdminScope, pathname: string) {
   const identifier =

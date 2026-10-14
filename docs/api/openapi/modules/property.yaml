@@ -150,6 +150,43 @@ companies:
         application/json:
           schema:
             $ref: ../components/property-schemas.yaml#/CompanyCreate
+currentCompany:
+  get:
+    operationId: getCurrentPropertyCompany
+    x-runtimes:
+      - property_admin_api
+    tags:
+      - property
+    summary: 读取当前物业公司
+    description: 要求物业完整会话及公司读取权限。公司由服务端认证上下文确定，不接受客户端指定公司。公司或账号停用、会话版本失效时返回 401；受限会话返回需要改密的 403。读取可安全重试。
+    x-permissions:
+      - property.company.read
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/PropertyCompany
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
 company:
   get:
     operationId: getPropertyCompany
@@ -247,10 +284,11 @@ communities:
     operationId: listCommunities
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - property
     summary: 查询小区
-    description: 所有操作要求平台完整会话及声明的权限；越界资源返回 404。写请求校验 Origin 与 CSRF，不自动重试。
+    description: 要求所属后台完整会话及小区读取权限。物业端的数据和总数始终限定认证上下文中的公司，筛选条件不能扩大范围；筛选其他公司时返回空列表和零总数。停用小区仍可读取。读取可安全重试。
     x-permissions:
       - property.community.read
     security:
@@ -345,10 +383,11 @@ community:
     operationId: getCommunity
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - property
     summary: 查看小区
-    description: 所有操作要求平台完整会话及声明的权限；越界资源返回 404。写请求校验 Origin 与 CSRF，不自动重试。
+    description: 要求所属后台完整会话及小区读取权限。物业端同时按当前公司和小区 ID 解析资源，越界资源返回 404。停用小区仍可读取。读取可安全重试。
     x-permissions:
       - property.community.read
     security:

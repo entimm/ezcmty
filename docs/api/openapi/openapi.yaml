@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Community Property Platform API
-  version: 0.4.0
+  version: 0.5.0
   description: 社区物业消费返利与物业费抵扣平台 API 契约。
 servers:
   - url: '/'
@@ -12,7 +12,7 @@ tags:
   - name: admin
     description: 后台认证、账号、角色与审计
   - name: property
-    description: 平台物业公司、小区与公司管理员接入管理
+    description: 物业公司、小区与公司管理员接入管理
 paths:
   '/healthz':
     '$ref': './modules/system.yaml#/health'
@@ -46,6 +46,8 @@ paths:
     '$ref': './modules/admin.yaml#/audit'
   '/v1/property-companies':
     '$ref': './modules/property.yaml#/companies'
+  '/v1/property-companies/current':
+    '$ref': './modules/property.yaml#/currentCompany'
   '/v1/property-companies/{company_id}':
     '$ref': './modules/property.yaml#/company'
   '/v1/communities':

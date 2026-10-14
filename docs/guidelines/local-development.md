@@ -58,7 +58,7 @@ uv run python -m backend_app.cli init-platform-admin --login-name your-admin --d
 
 两端 Cookie 路径分别由 `APP_PLATFORM_ADMIN_COOKIE_PATH`、`APP_PROPERTY_ADMIN_COOKIE_PATH` 配置，必须与浏览器访问的 API 前缀一致且互不包含。登录尝试限制由 `APP_ADMIN_LOGIN_LIMIT` 和 `APP_ADMIN_LOGIN_WINDOW_SECONDS` 配置，按账号和来源 IP 分别执行。
 
-平台后台访问 `/platform`，未登录时进入登录页面。物业登录启用前提见 [管理后台基础框架设计](../design/admin/foundation.md#范围与职责)。
+平台后台访问 `/platform`，物业后台访问 `/property`，未登录时进入各端登录页面。物业使用平台开通的公司管理员账号，公司和账号均须启用；首次登录要求改密，流程见 [物业管理端登录与基础工作台设计](../design/property/workbench.md)。
 
 ### 服务命令
 
