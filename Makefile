@@ -3,7 +3,7 @@
 DEV := uv run --project services/backend --no-sync python -m scripts.dev
 BACKEND := cd services/backend && uv run --no-sync
 
-.PHONY: install dev dev-bg stop platform property resident webhook worker admin miniapp-build check check-backend check-frontend check-api help
+.PHONY: install migrate dev dev-bg stop platform property resident webhook worker admin miniapp-build check check-backend check-frontend check-api help
 
 install: ## 安装前后端开发依赖
 	@printf '\n[安装] 后端开发依赖\n'
@@ -11,6 +11,10 @@ install: ## 安装前后端开发依赖
 	@printf '\n[安装] 前端工作区依赖\n'
 	pnpm install --frozen-lockfile
 	@printf '\n[完成] 依赖已安装；配置方式见 docs/guidelines/local-development.md\n'
+
+migrate: ## 执行数据库迁移到最新版本（Alembic head）
+	@printf '\n[迁移] 升级数据库到最新版本\n'
+	$(BACKEND) alembic upgrade head
 
 dev: ## 前台启动四个 API、Worker 和管理后台
 	@$(DEV) start all

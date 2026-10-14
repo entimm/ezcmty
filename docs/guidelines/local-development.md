@@ -44,10 +44,11 @@ URL 中的账号、密码须按 URL 规则编码。若 Redis 需要认证，配�
 
 ### 平台后台初始化
 
-配置好已有 MySQL 和 Redis 后，在 `services/backend/` 下执行数据库迁移和受控初始化：
+配置好已有 MySQL 和 Redis 后，在仓库根目录执行数据库迁移，再进入后端目录执行受控初始化：
 
 ```bash
-uv run alembic upgrade head
+make migrate
+cd services/backend
 uv run python -m backend_app.cli init-platform-admin --login-name your-admin --display-name 平台管理员
 ```
 
@@ -66,6 +67,7 @@ uv run python -m backend_app.cli init-platform-admin --login-name your-admin --d
 | 命令                  | 用途                                                                  |
 | --------------------- | --------------------------------------------------------------------- |
 | `make install`        | 安装后端及前端工作区开发依赖                                          |
+| `make migrate`        | 执行 Alembic 数据库迁移，升级到 `head`                                |
 | `make dev`            | 前台同时启动四个 API、Worker 和管理后台                               |
 | `make dev-bg`         | 后台同时启动同样六个服务，全部就绪后返回                              |
 | `make stop`           | 停止本仓库所有开发入口登记的批次                                      |
