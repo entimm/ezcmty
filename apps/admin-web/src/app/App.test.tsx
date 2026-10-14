@@ -13,41 +13,40 @@ import App from './App';
 import configuredRoutes from '../../config/routes';
 import { patchClientRoutes, rootContainer } from '../app';
 import PlatformApp from './platform/PlatformApp';
-import PlatformHome from './platform/HomePage';
+import PlatformHome from '../features/platform/HomePage';
 import PropertyApp from './property/PropertyApp';
-import PropertyHome from './property/HomePage';
+import PropertyHome from '../features/property/HomePage';
 import NotFoundPage from '../components/NotFoundPage';
-import LoginPage from '../features/admin/auth/LoginPage';
-import ChangePasswordPage from '../features/admin/auth/ChangePasswordPage';
-import ProfilePage from '../features/admin/profile/ProfilePage';
-import AccountsPage from '../features/admin/accounts/AccountsPage';
-import RolesPage from '../features/admin/roles/RolesPage';
-import AuditPage from '../features/admin/audit/AuditPage';
-import CompaniesPage from '../features/admin/property/CompaniesPage';
-import CompanyDetailPage from '../features/admin/property/CompanyDetailPage';
-import CommunitiesPage from '../features/admin/property/CommunitiesPage';
-import WorkspaceCommunitiesPage from '../features/admin/property/WorkspaceCommunitiesPage';
-import type { SessionResponse } from '../shared/admin-api';
+import LoginPage from '../features/auth/LoginPage';
+import ChangePasswordPage from '../features/auth/ChangePasswordPage';
+import ProfilePage from '../features/profile/ProfilePage';
+import AccountsPage from '../features/platform/accounts/AccountsPage';
+import RolesPage from '../features/platform/roles/RolesPage';
+import AuditPage from '../features/platform/audit/AuditPage';
+import CompaniesPage from '../features/platform/property/CompaniesPage';
+import CompanyDetailPage from '../features/platform/property/CompanyDetailPage';
+import CommunitiesPage from '../features/platform/property/CommunitiesPage';
+import WorkspaceCommunitiesPage from '../features/property/CommunitiesPage';
+import type { SessionResponse } from '../shared/api/admin';
 import { safeReturnTarget } from './admin-routes';
 
 const pages = {
   '@/app/App': App,
   '@/app/platform/PlatformApp': PlatformApp,
-  '@/app/platform/HomePage': PlatformHome,
+  '@/features/platform/HomePage': PlatformHome,
   '@/app/property/PropertyApp': PropertyApp,
-  '@/app/property/HomePage': PropertyHome,
+  '@/features/property/HomePage': PropertyHome,
   '@/components/NotFoundPage': NotFoundPage,
-  '@/features/admin/auth/LoginPage': LoginPage,
-  '@/features/admin/auth/ChangePasswordPage': ChangePasswordPage,
-  '@/features/admin/profile/ProfilePage': ProfilePage,
-  '@/features/admin/accounts/AccountsPage': AccountsPage,
-  '@/features/admin/roles/RolesPage': RolesPage,
-  '@/features/admin/audit/AuditPage': AuditPage,
-  '@/features/admin/property/CompaniesPage': CompaniesPage,
-  '@/features/admin/property/CompanyDetailPage': CompanyDetailPage,
-  '@/features/admin/property/CommunitiesPage': CommunitiesPage,
-  '@/features/admin/property/WorkspaceCommunitiesPage':
-    WorkspaceCommunitiesPage,
+  '@/features/auth/LoginPage': LoginPage,
+  '@/features/auth/ChangePasswordPage': ChangePasswordPage,
+  '@/features/profile/ProfilePage': ProfilePage,
+  '@/features/platform/accounts/AccountsPage': AccountsPage,
+  '@/features/platform/roles/RolesPage': RolesPage,
+  '@/features/platform/audit/AuditPage': AuditPage,
+  '@/features/platform/property/CompaniesPage': CompaniesPage,
+  '@/features/platform/property/CompanyDetailPage': CompanyDetailPage,
+  '@/features/platform/property/CommunitiesPage': CommunitiesPage,
+  '@/features/property/CommunitiesPage': WorkspaceCommunitiesPage,
 };
 const session: SessionResponse = {
   scope: 'platform_admin',

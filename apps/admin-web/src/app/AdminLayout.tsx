@@ -4,31 +4,23 @@ import { Link, Outlet, useLocation } from '@umijs/max';
 import { App, Dropdown } from 'antd';
 import type { ReactNode } from 'react';
 
-import type { AdminScope } from '../auth/session-context';
+import { useAdminApp } from '../shared/admin-app-context';
 import { useAdminSession } from '../auth/use-admin-session';
 import { appName } from '../shared/config';
-import {
-  adminPath,
-  adminRoot,
-  adminRoots,
-  adminTitles,
-  findAdminRoute,
-  routesForScope,
-} from './admin-routes';
 
-export function AdminLayout({
-  scope,
-  children,
-}: {
-  scope: AdminScope;
-  children?: ReactNode;
-}) {
+export function AdminLayout({ children }: { children?: ReactNode }) {
   const location = useLocation();
   const { session, hasPermission, logout } = useAdminSession();
+  const {
+    title,
+    theme,
+    homePath: path,
+    profilePath,
+    routes,
+    menuGroups,
+    findRoute,
+  } = useAdminApp();
   const { message } = App.useApp();
-  const title = adminTitles[scope],
-    path = adminRoot(scope);
-  const profilePath = adminPath(scope, `${adminRoots[scope]}/profile`);
 
   function filterMenu(items: MenuDataItem[]): MenuDataItem[] {
     return items
@@ -42,36 +34,26 @@ export function AdminLayout({
       }))
       .filter((item) => !item.children || item.children.length > 0);
   }
-  const pages = routesForScope(scope).filter(
+  const pages = routes.filter(
     (item) => item.menu && (!item.permission || hasPermission(item.permission)),
   );
-  const system = pages
-    .filter((item) => item.menu === '系统管理')
-    .map((item) => ({ path: item.path, name: item.title }));
   const menu: MenuDataItem[] = [
     {
       path,
       name: pages.find((page) => page.path === path)?.title ?? '首页',
       icon: <HomeOutlined />,
     },
-    ...(['物业管理'] as const).flatMap((group) => {
+    ...menuGroups.flatMap((group) => {
       const children = pages
-        .filter((item) => item.menu === group)
+        .filter((item) => item.menu === group.id)
         .map((item) => ({ path: item.path, name: item.title }));
-      return children.length ? [{ name: group, children }] : [];
+      return children.length
+        ? [{ path: group.path, name: group.title, children }]
+        : [];
     }),
-    ...(system.length
-      ? [
-          {
-            path: adminPath(scope, `${adminRoots[scope]}/system`),
-            name: '系统管理',
-            children: system,
-          },
-        ]
-      : []),
   ];
-  const activeRoute = findAdminRoute(scope, location.pathname);
-  const hiddenPages: MenuDataItem[] = routesForScope(scope)
+  const activeRoute = findRoute(location.pathname);
+  const hiddenPages: MenuDataItem[] = routes
     .filter((item) => !item.menu && item.states.includes('authenticated'))
     .map((item) => ({
       path: item.path === activeRoute?.path ? location.pathname : item.path,
@@ -85,7 +67,7 @@ export function AdminLayout({
       title={title}
       logo={false}
       layout="side"
-      navTheme={scope === 'platform_admin' ? 'realDark' : 'light'}
+      navTheme={theme}
       location={location}
       route={{
         path,

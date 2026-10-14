@@ -1,11 +1,11 @@
 import { defineConfig } from '@umijs/max';
 
 import routes from './routes';
+import { platformApp } from '../src/app/platform/config';
+import { propertyApp } from '../src/app/property/config';
 
-const platformApiBase =
-  process.env.UMI_APP_PLATFORM_API_BASE || '/api/platform';
-const propertyApiBase =
-  process.env.UMI_APP_PROPERTY_API_BASE || '/api/property';
+const platformApiBase = platformApp.apiBase;
+const propertyApiBase = propertyApp.apiBase;
 
 export default defineConfig({
   npmClient: 'pnpm',

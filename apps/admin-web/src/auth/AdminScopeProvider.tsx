@@ -8,19 +8,19 @@ import {
   type ReactNode,
 } from 'react';
 
-import { adminApiBases } from '../shared/config';
 import { ApiError, createAdminRequestClient } from '../shared/request-client';
-import { toSession, type SessionResponse } from '../shared/admin-api';
-import {
-  AdminSessionContext,
-  type AdminScope,
-  type AdminSession,
-  type AuthStatus,
-} from './session-context';
+import type {
+  AdminScope,
+  AdminSession,
+  AuthStatus,
+} from '../shared/admin-types';
+import { createAdminAuthApi } from './api';
+import { AdminSessionContext } from './session-context';
 
 interface ProviderProps {
   children: ReactNode;
   scope: AdminScope;
+  apiBase: string;
   authenticationEnabled?: boolean;
 }
 interface State {
@@ -33,6 +33,7 @@ interface State {
 function ScopedState({
   children,
   scope,
+  apiBase,
   authenticationEnabled = false,
 }: ProviderProps) {
   const [state, setState] = useState<State>({
@@ -54,7 +55,7 @@ function ScopedState({
   const [requestClient] = useState(() =>
     createAdminRequestClient({
       scope,
-      basePath: adminApiBases[scope],
+      basePath: apiBase,
       onUnauthorized: () => setSession(null),
       getCsrfToken: () => sessionRef.current?.csrfToken,
       onPasswordChangeRequired: () => {
@@ -63,6 +64,8 @@ function ScopedState({
       },
     }),
   );
+
+  const [api] = useState(() => createAdminAuthApi(requestClient.request));
 
   function setSession(value: AdminSession | null) {
     if (value && value.scope !== scope)
@@ -85,12 +88,7 @@ function ScopedState({
 
   const refreshSession = useCallback(async () => {
     try {
-      const value = toSession(
-        await requestClient.request<SessionResponse>(
-          '/v1/admin-sessions/current',
-          { ignoreUnauthorized: true, cache: 'no-store' },
-        ),
-      );
+      const value = await api.currentSession();
       if (value.scope !== scope) throw new Error('后台身份不匹配');
       if (
         sessionRef.current?.subjectId !== value.subjectId ||
@@ -144,7 +142,7 @@ function ScopedState({
       }
       return null;
     }
-  }, [scope, requestClient, queryClient]);
+  }, [scope, api, requestClient, queryClient]);
 
   useEffect(() => {
     const timer = authenticationEnabled
@@ -170,32 +168,16 @@ function ScopedState({
           state.session?.permissions.includes(permission) ?? false,
         request: requestClient.request,
         login: async (login_name, password) => {
-          const value = toSession(
-            await requestClient.request<SessionResponse>('/v1/admin-sessions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ login_name, password }),
-              ignoreUnauthorized: true,
-            }),
-          );
+          const value = await api.login(login_name, password);
           setSession(value);
           return value;
         },
         logout: async () => {
-          await requestClient.request('/v1/admin-sessions/current', {
-            method: 'DELETE',
-          });
+          await api.logout();
           setSession(null);
         },
         changePassword: async (current_password, new_password) => {
-          await requestClient.request(
-            '/v1/admin-accounts/me/password-changes',
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ current_password, new_password }),
-            },
-          );
+          await api.changePassword(current_password, new_password);
           setSession(null);
         },
         updateDisplayName: (displayName) => {
@@ -216,5 +198,5 @@ function ScopedState({
 }
 
 export function AdminScopeProvider(props: ProviderProps) {
-  return <ScopedState key={props.scope} {...props} />;
+  return <ScopedState key={`${props.scope}:${props.apiBase}`} {...props} />;
 }

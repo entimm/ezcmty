@@ -33,8 +33,8 @@ const companyId = '11111111-1111-4111-8111-111111111111';
 
 describe('domain routes', () => {
   it.each([
-    ['platform.xlife.test', 'platform_admin', '@/app/platform/HomePage'],
-    ['property.xlife.test', 'property_admin', '@/app/property/HomePage'],
+    ['platform.xlife.test', 'platform_admin', '@/features/platform/HomePage'],
+    ['property.xlife.test', 'property_admin', '@/features/property/HomePage'],
   ] as const)(
     'selects only the %s application at the root',
     (host, scope, page) => {
@@ -42,7 +42,7 @@ describe('domain routes', () => {
       patchAdminClientRoutes(routes, host);
       expect(matchRoutes(routes, '/')?.at(-1)?.route.element).toBe(page);
       expect(matchRoutes(routes, '/login')?.at(-1)?.route.element).toBe(
-        '@/features/admin/auth/LoginPage',
+        '@/features/auth/LoginPage',
       );
       expect(routesForScope(scope, host).map((route) => route.path)).toContain(
         '/profile',
@@ -64,14 +64,14 @@ describe('domain routes', () => {
     patchAdminClientRoutes(platform, 'platform.xlife.test');
     patchAdminClientRoutes(property, 'property.xlife.test');
     expect(matchRoutes(platform, '/communities')?.at(-1)?.route.element).toBe(
-      '@/features/admin/property/CommunitiesPage',
+      '@/features/platform/property/CommunitiesPage',
     );
     expect(matchRoutes(property, '/communities')?.at(-1)?.route.element).toBe(
-      '@/features/admin/property/WorkspaceCommunitiesPage',
+      '@/features/property/CommunitiesPage',
     );
     expect(
       matchRoutes(platform, `/companies/${companyId}`)?.at(-1)?.route.element,
-    ).toBe('@/features/admin/property/CompanyDetailPage');
+    ).toBe('@/features/platform/property/CompanyDetailPage');
     for (const path of ['/companies', '/system/accounts']) {
       expect(matchRoutes(property, path)?.at(-1)?.route.element).toBe(
         '@/components/NotFoundPage',

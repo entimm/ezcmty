@@ -1,4 +1,4 @@
-import type { AdminScope } from '../auth/session-context';
+import type { AdminScope } from './admin-types';
 
 export interface ProblemDetails {
   type: string;

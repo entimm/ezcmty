@@ -1,10 +1,11 @@
-import { AdminScopeProvider } from '../../auth/AdminScopeProvider';
-import { AdminRouter } from '../../auth/AdminRouter';
+import { AdminAppProvider } from '../AdminAppProvider';
+import { AdminRouter } from '../AdminRouter';
+import { propertyApp } from './config';
 
 export default function PropertyApp() {
   return (
-    <AdminScopeProvider scope="property_admin" authenticationEnabled>
+    <AdminAppProvider app={propertyApp}>
       <AdminRouter />
-    </AdminScopeProvider>
+    </AdminAppProvider>
   );
 }

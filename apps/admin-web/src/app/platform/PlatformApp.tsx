@@ -1,10 +1,11 @@
-import { AdminScopeProvider } from '../../auth/AdminScopeProvider';
-import { AdminRouter } from '../../auth/AdminRouter';
+import { AdminAppProvider } from '../AdminAppProvider';
+import { AdminRouter } from '../AdminRouter';
+import { platformApp } from './config';
 
 export default function PlatformApp() {
   return (
-    <AdminScopeProvider scope="platform_admin" authenticationEnabled>
+    <AdminAppProvider app={platformApp}>
       <AdminRouter />
-    </AdminScopeProvider>
+    </AdminAppProvider>
   );
 }

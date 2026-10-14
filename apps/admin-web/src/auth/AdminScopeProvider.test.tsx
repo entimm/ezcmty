@@ -6,7 +6,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PermissionGuard } from '../components/PermissionGuard';
 import { AdminScopeProvider } from './AdminScopeProvider';
-import type { AdminScope, AdminSessionContextValue } from './session-context';
+import type { AdminScope } from '../shared/admin-types';
+import type { AdminSessionContextValue } from './session-context';
 import { useAdminSession } from './use-admin-session';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -47,10 +48,10 @@ function renderScopes(withOptions = false) {
 
   const view = render(
     <>
-      <AdminScopeProvider scope="platform_admin">
+      <AdminScopeProvider scope="platform_admin" apiBase="/api/platform">
         <Probe />
       </AdminScopeProvider>
-      <AdminScopeProvider scope="property_admin">
+      <AdminScopeProvider scope="property_admin" apiBase="/api/property">
         <Probe />
       </AdminScopeProvider>
     </>,

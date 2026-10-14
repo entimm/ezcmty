@@ -2,20 +2,11 @@ import { createContext } from 'react';
 
 import type { AdminRequest } from '../shared/request-client';
 
-export type AdminScope = 'platform_admin' | 'property_admin';
-
-export interface AdminSession {
-  scope: AdminScope;
-  subjectId: string;
-  permissions: string[];
-  loginName: string;
-  displayName: string;
-  mustChangePassword: boolean;
-  csrfToken: string;
-}
-
-export type AuthStatus =
-  'loading' | 'anonymous' | 'password_change' | 'authenticated' | 'error';
+import type {
+  AdminScope,
+  AdminSession,
+  AuthStatus,
+} from '../shared/admin-types';
 
 export interface AdminSessionContextValue {
   scope: AdminScope;

@@ -5,13 +5,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import configuredRoutes from '../../../config/routes';
 import { rootContainer } from '../../app';
 import NotFoundPage from '../../components/NotFoundPage';
-import LoginPage from '../../features/admin/auth/LoginPage';
-import ChangePasswordPage from '../../features/admin/auth/ChangePasswordPage';
-import ProfilePage from '../../features/admin/profile/ProfilePage';
-import WorkspaceCommunitiesPage from '../../features/admin/property/WorkspaceCommunitiesPage';
-import type { SessionResponse } from '../../shared/admin-api';
+import LoginPage from '../../features/auth/LoginPage';
+import ChangePasswordPage from '../../features/auth/ChangePasswordPage';
+import ProfilePage from '../../features/profile/ProfilePage';
+import WorkspaceCommunitiesPage from '../../features/property/CommunitiesPage';
+import type { SessionResponse } from '../../shared/api/admin';
 import { safeReturnTarget } from '../admin-routes';
-import HomePage from './HomePage';
+import HomePage from '../../features/property/HomePage';
 import PropertyApp from './PropertyApp';
 
 const session: SessionResponse = {
@@ -118,12 +118,11 @@ function mockPropertyApi(initial: SessionResponse | null = session) {
 }
 
 const pages = {
-  '@/app/property/HomePage': HomePage,
-  '@/features/admin/auth/LoginPage': LoginPage,
-  '@/features/admin/auth/ChangePasswordPage': ChangePasswordPage,
-  '@/features/admin/profile/ProfilePage': ProfilePage,
-  '@/features/admin/property/WorkspaceCommunitiesPage':
-    WorkspaceCommunitiesPage,
+  '@/features/property/HomePage': HomePage,
+  '@/features/auth/LoginPage': LoginPage,
+  '@/features/auth/ChangePasswordPage': ChangePasswordPage,
+  '@/features/profile/ProfilePage': ProfilePage,
+  '@/features/property/CommunitiesPage': WorkspaceCommunitiesPage,
   '@/components/NotFoundPage': NotFoundPage,
 };
 

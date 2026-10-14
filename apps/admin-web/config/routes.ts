@@ -1,22 +1,25 @@
-import { platformRoutes, propertyRoutes } from '../src/app/admin-routes';
+import { adminApps } from '../src/app/admin-routes';
 
-export default [
+interface ConfiguredRoute {
+  path: string;
+  component: string;
+  routes?: ConfiguredRoute[];
+}
+
+const routes: ConfiguredRoute[] = [
   { path: '/', component: '@/app/App' },
-  {
-    path: '/platform',
-    component: '@/app/platform/PlatformApp',
+  ...[
+    { app: adminApps.platform_admin, component: '@/app/platform/PlatformApp' },
+    { app: adminApps.property_admin, component: '@/app/property/PropertyApp' },
+  ].map(({ app, component }) => ({
+    path: app.root,
+    component,
     routes: [
-      ...platformRoutes.map(({ path, component }) => ({ path, component })),
-      { path: '/platform/*', component: '@/components/NotFoundPage' },
+      ...app.routes.map(({ path, component }) => ({ path, component })),
+      { path: app.root + '/*', component: '@/components/NotFoundPage' },
     ],
-  },
-  {
-    path: '/property',
-    component: '@/app/property/PropertyApp',
-    routes: [
-      ...propertyRoutes.map(({ path, component }) => ({ path, component })),
-      { path: '/property/*', component: '@/components/NotFoundPage' },
-    ],
-  },
+  })),
   { path: '*', component: '@/components/NotFoundPage' },
 ];
+
+export default routes;
