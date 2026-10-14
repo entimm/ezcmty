@@ -51,6 +51,8 @@ pnpm api:check
 - 标准 REST 无法表达的操作使用 `Resource + Action`。
 - 错误响应、权限、幂等性和状态码必须在契约中明确。
 
+实体标识的主键规则与对外格式见 [数据库规范的主键设计](../database/conventions.md#主键设计)。
+
 ## 路径、方法与状态
 
 业务接口使用后端路径 `/v1/<resources>`，经现有端入口访问时为 `/api/<audience>/v1/<resources>`。运维接口 `/healthz`、`/readyz` 保持原路径；外部 Webhook 路径服从对接协议。
