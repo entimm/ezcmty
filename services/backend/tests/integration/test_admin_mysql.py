@@ -30,6 +30,7 @@ from backend_app.core.config import get_settings
 from backend_app.core.errors import AppError
 from backend_app.db.base import Base
 from backend_app.models.admin import AdminAccount, AdminAuditLog, AdminRole, AdminRolePermission
+from backend_app.models.property import Community, PropertyCompany
 from backend_app.schemas import admin as schema
 from backend_app.services.admin import AdminService
 
@@ -266,6 +267,17 @@ def test_uuid_binary_storage_and_fresh_migration_schema(
         account = db.scalar(select(AdminAccount))
         assert account is not None and UUID(account.id).version == 7
         account_id = account.id
+        company = PropertyCompany(code="uuid_company", name="UUID company")
+        db.add(company)
+        db.flush()
+        db.add(
+            Community(
+                property_company_id=company.id,
+                code="uuid_community",
+                name="UUID community",
+                address="Address",
+            )
+        )
         role = AdminRole(scope="platform_admin", code="uuid_reader", name="Reader")
         db.add(role)
         db.add(

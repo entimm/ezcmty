@@ -15,13 +15,31 @@ from backend_app.schemas.admin import AdminScope
 
 
 class AdminRepository:
-    def __init__(self, db: Session, scope: AdminScope):
+    def __init__(self, db: Session, scope: AdminScope, property_company_id: str | None = None):
         self.db = db
         self.scope = scope
+        self.property_company_id = property_company_id
+
+    def identity(self, account_id: str) -> AdminAccount | None:
+        """Resolve an identity for authentication before its trusted company is known."""
+        return self.db.scalar(
+            select(AdminAccount).where(
+                AdminAccount.scope == self.scope, AdminAccount.id == account_id
+            )
+        )
+
+    def identity_by_login(self, login_name: str) -> AdminAccount | None:
+        return self.db.scalar(
+            select(AdminAccount).where(
+                AdminAccount.scope == self.scope, AdminAccount.login_name == login_name
+            )
+        )
 
     def account(self, account_id: str, *, lock: bool = False) -> AdminAccount | None:
         query = select(AdminAccount).where(
-            AdminAccount.scope == self.scope, AdminAccount.id == account_id
+            AdminAccount.scope == self.scope,
+            AdminAccount.id == account_id,
+            AdminAccount.property_company_id == self.property_company_id,
         )
         if lock:
             query = query.with_for_update().execution_options(populate_existing=True)
@@ -30,18 +48,28 @@ class AdminRepository:
     def account_by_login(self, login_name: str) -> AdminAccount | None:
         return self.db.scalar(
             select(AdminAccount).where(
-                AdminAccount.scope == self.scope, AdminAccount.login_name == login_name
+                AdminAccount.scope == self.scope,
+                AdminAccount.login_name == login_name,
+                AdminAccount.property_company_id == self.property_company_id,
             )
         )
 
     def role(self, role_id: str, *, lock: bool = False) -> AdminRole | None:
-        query = select(AdminRole).where(AdminRole.scope == self.scope, AdminRole.id == role_id)
+        query = select(AdminRole).where(
+            AdminRole.scope == self.scope,
+            AdminRole.id == role_id,
+            AdminRole.property_company_id == self.property_company_id,
+        )
         if lock:
             query = query.with_for_update().execution_options(populate_existing=True)
         return self.db.scalar(query)
 
     def role_by_code(self, code: str, *, lock: bool = False) -> AdminRole | None:
-        query = select(AdminRole).where(AdminRole.scope == self.scope, AdminRole.code == code)
+        query = select(AdminRole).where(
+            AdminRole.scope == self.scope,
+            AdminRole.code == code,
+            AdminRole.property_company_id == self.property_company_id,
+        )
         if lock:
             query = query.with_for_update().execution_options(populate_existing=True)
         return self.db.scalar(query)
@@ -54,7 +82,12 @@ class AdminRepository:
                 (AdminAccountRole.scope == AdminRole.scope)
                 & (AdminAccountRole.role_id == AdminRole.id),
             )
-            .where(AdminRole.scope == self.scope, AdminAccountRole.account_id == account_id)
+            .where(
+                AdminRole.scope == self.scope,
+                AdminAccountRole.account_id == account_id,
+                AdminRole.property_company_id == self.property_company_id,
+                AdminAccountRole.property_company_id == self.property_company_id,
+            )
             .order_by(AdminRole.code)
         )
         if lock:
@@ -64,9 +97,11 @@ class AdminRepository:
     def permissions(self, role_id: str, *, lock: bool = False) -> list[str]:
         query = (
             select(AdminRolePermission.permission)
+            .join(AdminRole, AdminRole.id == AdminRolePermission.role_id)
             .where(
                 AdminRolePermission.scope == self.scope,
                 AdminRolePermission.role_id == role_id,
+                AdminRole.property_company_id == self.property_company_id,
             )
             .order_by(AdminRolePermission.permission)
         )
@@ -82,7 +117,12 @@ class AdminRepository:
         )
         self.db.add_all(
             [
-                AdminAccountRole(scope=self.scope, account_id=account_id, role_id=rid)
+                AdminAccountRole(
+                    scope=self.scope,
+                    account_id=account_id,
+                    role_id=rid,
+                    property_company_id=self.property_company_id,
+                )
                 for rid in sorted(role_ids)
             ]
         )
@@ -114,6 +154,7 @@ class AdminRepository:
             .where(
                 AdminAccount.scope == self.scope,
                 AdminAccount.enabled.is_(True),
+                AdminAccount.property_company_id == self.property_company_id,
                 AdminAccountRole.role_id == role_id,
             )
             .with_for_update()
@@ -127,14 +168,21 @@ class AdminRepository:
         )
         self.db.execute(
             update(AdminAccount)
-            .where(AdminAccount.scope == self.scope, AdminAccount.id.in_(ids))
+            .where(
+                AdminAccount.scope == self.scope,
+                AdminAccount.id.in_(ids),
+                AdminAccount.property_company_id == self.property_company_id,
+            )
             .values(session_version=AdminAccount.session_version + 1)
         )
 
     def accounts(
         self, *, page: int, page_size: int, login_name: str | None, enabled: bool | None, sort: str
     ) -> tuple[list[AdminAccount], int]:
-        query = select(AdminAccount).where(AdminAccount.scope == self.scope)
+        query = select(AdminAccount).where(
+            AdminAccount.scope == self.scope,
+            AdminAccount.property_company_id == self.property_company_id,
+        )
         if login_name:
             query = query.where(AdminAccount.login_name.contains(login_name, autoescape=True))
         if enabled is not None:
@@ -151,7 +199,10 @@ class AdminRepository:
     def roles(
         self, *, page: int, page_size: int, name: str | None, enabled: bool | None, sort: str
     ) -> tuple[list[AdminRole], int]:
-        query = select(AdminRole).where(AdminRole.scope == self.scope)
+        query = select(AdminRole).where(
+            AdminRole.scope == self.scope,
+            AdminRole.property_company_id == self.property_company_id,
+        )
         if name:
             query = query.where(AdminRole.name.contains(name, autoescape=True))
         if enabled is not None:
@@ -175,7 +226,7 @@ class AdminRepository:
         metadata: dict[str, Any] | None = None,
     ) -> None:
         # Only these non-secret fields may enter the audit JSON.
-        allowed = {"changed_fields", "role_ids", "permissions"}
+        allowed = {"changed_fields", "role_ids", "permissions", "property_company_id"}
         safe = {key: value for key, value in (metadata or {}).items() if key in allowed}
         self.db.add(
             AdminAuditLog(

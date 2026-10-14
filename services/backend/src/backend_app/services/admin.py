@@ -14,6 +14,7 @@ from backend_app.core.admin_sessions import AdminSessionStore, StoredAdminSessio
 from backend_app.core.errors import AppError
 from backend_app.models.admin import AdminAccount, AdminRole
 from backend_app.repositories.admin import AdminRepository
+from backend_app.repositories.property import PropertyRepository
 from backend_app.schemas import admin as schema
 
 
@@ -25,13 +26,25 @@ class AdminContext:
     must_change_password: bool
     token: str
     stored: StoredAdminSession
+    scope: schema.AdminScope
+    property_company_id: str | None
 
 
 class AdminService:
-    def __init__(self, db: Session, scope: schema.AdminScope):
+    def __init__(
+        self, db: Session, scope: schema.AdminScope, property_company_id: str | None = None
+    ):
         self.db = db
         self.scope = scope
-        self.repo = AdminRepository(db, scope)
+        self.repo = AdminRepository(db, scope, property_company_id)
+
+    def _organization_enabled(self, account: AdminAccount) -> bool:
+        if self.scope == "platform_admin":
+            return account.property_company_id is None
+        if not account.property_company_id:
+            return False
+        company = PropertyRepository(self.db).company(account.property_company_id)
+        return company is not None and company.enabled
 
     def effective_permissions(self, account_id: str) -> list[str]:
         roles = [role for role in self.repo.account_roles(account_id) if role.enabled]
@@ -63,13 +76,15 @@ class AdminService:
         if record is None:
             raise AppError("auth.unauthenticated")
         account_id, stored = record
-        account = self.repo.account(account_id)
+        account = self.repo.identity(account_id)
         if (
             account is None
             or not account.enabled
             or account.session_version != stored.session_version
+            or not self._organization_enabled(account)
         ):
             raise AppError("auth.unauthenticated")
+        self.repo.property_company_id = account.property_company_id
         store.touch(self.scope, token, stored)
         return AdminContext(
             account_id=account.id,
@@ -78,17 +93,24 @@ class AdminService:
             must_change_password=account.must_change_password,
             token=token,
             stored=stored,
+            scope=self.scope,
+            property_company_id=account.property_company_id,
         )
 
     def login(
         self, data: schema.AdminLogin, store: AdminSessionStore, source_ip: str, request_id: str
     ) -> tuple[str, schema.AdminSession]:
         store.limit_login(self.scope, data.login_name, source_ip)
-        account = self.repo.account_by_login(data.login_name)
+        account = self.repo.identity_by_login(data.login_name)
         valid = verify_password(
             account.password_hash if account else dummy_password_hash(), data.password
         )
-        if account is None or not valid or not account.enabled:
+        if (
+            account is None
+            or not valid
+            or not account.enabled
+            or not self._organization_enabled(account)
+        ):
             self.repo.audit(
                 actor=account,
                 action="session.login",
@@ -99,6 +121,7 @@ class AdminService:
             )
             self.db.commit()
             raise AppError("auth.invalid_credentials")
+        self.repo.property_company_id = account.property_company_id
         token, stored = store.create(self.scope, account.id, account.session_version)
         view = self.session_view(account, stored)
         self.repo.audit(
@@ -124,8 +147,17 @@ class AdminService:
         return role
 
     def _actor(self, context: AdminContext) -> AdminAccount:
+        if (
+            context.scope != self.scope
+            or context.property_company_id != self.repo.property_company_id
+        ):
+            raise AppError("auth.forbidden")
         actor = self._account(context.account_id, lock=True)
-        if not actor.enabled or actor.session_version != context.version:
+        if (
+            not actor.enabled
+            or actor.session_version != context.version
+            or not self._organization_enabled(actor)
+        ):
             raise AppError("auth.unauthenticated")
         return actor
 
@@ -222,11 +254,12 @@ class AdminService:
         self, context: AdminContext, data: schema.AccountCreate, request_id: str
     ) -> schema.AdminAccount:
         actor, _ = self._writer(context)
-        if self.repo.account_by_login(data.login_name):
+        if self.repo.identity_by_login(data.login_name):
             raise AppError("admin.duplicate_login")
         ids = self._validated_roles(data.role_ids)
         account = AdminAccount(
             scope=self.scope,
+            property_company_id=self.repo.property_company_id,
             login_name=data.login_name,
             display_name=data.display_name,
             password_hash=hash_password(data.password),
@@ -236,7 +269,7 @@ class AdminService:
             self.db.flush()
         except IntegrityError as exc:
             self.db.rollback()
-            if self.repo.account_by_login(data.login_name):
+            if self.repo.identity_by_login(data.login_name):
                 raise AppError("admin.duplicate_login") from exc
             raise
         self.repo.replace_roles(account.id, ids)
@@ -333,7 +366,12 @@ class AdminService:
         actor, _ = self._writer(context)
         if self.repo.role_by_code(data.code):
             raise AppError("admin.duplicate_role")
-        role = AdminRole(scope=self.scope, code=data.code, name=data.name)
+        role = AdminRole(
+            scope=self.scope,
+            property_company_id=self.repo.property_company_id,
+            code=data.code,
+            name=data.name,
+        )
         self.db.add(role)
         self.db.flush()
         self.repo.audit(

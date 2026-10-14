@@ -1,0 +1,273 @@
+CompanyCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    code: &id002
+      type: string
+      minLength: 1
+      maxLength: 64
+      pattern: ^[A-Za-z0-9][A-Za-z0-9_-]*$
+    name:
+      type: string
+      minLength: 1
+      maxLength: 160
+    contact_name:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 80
+        - type: 'null'
+    contact_phone:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 32
+        - type: 'null'
+  required:
+    - code
+    - name
+CompanyUpdate:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 160
+        - type: 'null'
+    contact_name:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 80
+        - type: 'null'
+    contact_phone:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 32
+        - type: 'null'
+    enabled:
+      anyOf:
+        - type: boolean
+        - type: 'null'
+PropertyCompany:
+  type: object
+  additionalProperties: false
+  properties:
+    id: &id001
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    code:
+      type: string
+    name:
+      type: string
+    contact_name:
+      anyOf:
+        - type: string
+        - type: 'null'
+    contact_phone:
+      anyOf:
+        - type: string
+        - type: 'null'
+    enabled:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+  required:
+    - id
+    - code
+    - name
+    - contact_name
+    - contact_phone
+    - enabled
+    - created_at
+    - updated_at
+CommunityCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    property_company_id: *id001
+    code: *id002
+    name:
+      type: string
+      minLength: 1
+      maxLength: 160
+    address:
+      type: string
+      minLength: 1
+      maxLength: 255
+  required:
+    - property_company_id
+    - code
+    - name
+    - address
+CommunityUpdate:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 160
+        - type: 'null'
+    address:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 255
+        - type: 'null'
+    enabled:
+      anyOf:
+        - type: boolean
+        - type: 'null'
+Community:
+  type: object
+  additionalProperties: false
+  properties:
+    id: *id001
+    property_company_id: *id001
+    property_company_name:
+      type: string
+    code:
+      type: string
+    name:
+      type: string
+    address:
+      type: string
+    enabled:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+  required:
+    - id
+    - property_company_id
+    - property_company_name
+    - code
+    - name
+    - address
+    - enabled
+    - created_at
+    - updated_at
+PropertyAdminCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    login_name:
+      type: string
+      minLength: 1
+      maxLength: 64
+      pattern: ^[A-Za-z0-9][A-Za-z0-9_.@-]*$
+    display_name:
+      type: string
+      minLength: 1
+      maxLength: 80
+    password:
+      type: string
+      minLength: 12
+      maxLength: 128
+  required:
+    - login_name
+    - display_name
+    - password
+PropertyAdminAccount:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    scope:
+      type: string
+      const: property_admin
+    login_name:
+      type: string
+    display_name:
+      type: string
+    enabled:
+      type: boolean
+    must_change_password:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+    roles:
+      type: array
+      items:
+        $ref: ./admin-schemas.yaml#/RoleSummary
+    property_company_id: *id001
+  required:
+    - id
+    - scope
+    - login_name
+    - display_name
+    - enabled
+    - must_change_password
+    - created_at
+    - roles
+    - property_company_id
+CompanyPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/PropertyCompany'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+CommunityPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Community'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+PropertyAdminPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/PropertyAdminAccount'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size

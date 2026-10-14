@@ -1,0 +1,673 @@
+companies:
+  get:
+    operationId: listPropertyCompanies
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - property
+    summary: 查询物业公司
+    description: 所有操作要求平台完整会话及声明的权限；越界资源返回 404。写请求校验 Origin 与 CSRF，不自动重试。
+    x-permissions:
+      - property.company.read
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/CompanyPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - &id004
+        name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - &id005
+        name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - &id006
+        name: name
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 160
+            - type: 'null'
+      - &id007
+        name: code
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 64
+            - type: 'null'
+      - &id008
+        name: enabled
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+      - &id009
+        name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - created_at
+            - -created_at
+          default: -created_at
+  post:
+    operationId: createPropertyCompany
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - property
+    summary: 创建物业公司
+    description:
+      新公司默认停用，公司编码全平台唯一且固定；重复编码返回 property.duplicate_company_code。所有操作要求平台完整会话及声明的权限；越界资源返回
+      404。写请求校验 Origin 与 CSRF，不自动重试。
+    x-permissions:
+      - property.company.create
+    security:
+      - AdminSession: []
+    responses:
+      '201':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/PropertyCompany
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - &id002
+        name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - &id003
+        name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/property-schemas.yaml#/CompanyCreate
+company:
+  get:
+    operationId: getPropertyCompany
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - property
+    summary: 查看物业公司
+    description: 所有操作要求平台完整会话及声明的权限；越界资源返回 404。写请求校验 Origin 与 CSRF，不自动重试。
+    x-permissions:
+      - property.company.read
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/PropertyCompany
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - &id001
+        name: company_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+  patch:
+    operationId: updatePropertyCompany
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - property
+    summary: 修改物业公司
+    description:
+      启用需要至少一名账号及公司系统角色均启用的超级管理员，否则返回 property.company_admin_required。停用在同一事务递增该公司所有物业账号会话版本；保留账号和小区自身状态。contact_name/contact_phone
+      显式 null 表示清空，其余 null 表示不修改。所有操作要求平台完整会话及声明的权限；越界资源返回 404。写请求校验 Origin 与 CSRF，不自动重试。
+    x-permissions:
+      - property.company.update
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/PropertyCompany
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - *id001
+      - *id002
+      - *id003
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/property-schemas.yaml#/CompanyUpdate
+communities:
+  get:
+    operationId: listCommunities
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - property
+    summary: 查询小区
+    description: 所有操作要求平台完整会话及声明的权限；越界资源返回 404。写请求校验 Origin 与 CSRF，不自动重试。
+    x-permissions:
+      - property.community.read
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/CommunityPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      - *id009
+      - name: property_company_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - $ref: ../components/schemas.yaml#/UUIDIdentifier
+            - type: 'null'
+  post:
+    operationId: createCommunity
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - property
+    summary: 创建小区
+    description:
+      小区默认启用；允许在公司停用期间创建，编码全平台唯一且固定，重复编码返回 property.duplicate_community_code。所属公司固定。所有操作要求平台完整会话及声明的权限；越界资源返回
+      404。写请求校验 Origin 与 CSRF，不自动重试。
+    x-permissions:
+      - property.community.create
+    security:
+      - AdminSession: []
+    responses:
+      '201':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/Community
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - *id002
+      - *id003
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/property-schemas.yaml#/CommunityCreate
+community:
+  get:
+    operationId: getCommunity
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - property
+    summary: 查看小区
+    description: 所有操作要求平台完整会话及声明的权限；越界资源返回 404。写请求校验 Origin 与 CSRF，不自动重试。
+    x-permissions:
+      - property.community.read
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/Community
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - &id010
+        name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+  patch:
+    operationId: updateCommunity
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - property
+    summary: 修改小区
+    description:
+      停用小区保留历史读取，阻止该小区新增业务；不影响其他小区。null 表示不修改。所有操作要求平台完整会话及声明的权限；越界资源返回
+      404。写请求校验 Origin 与 CSRF，不自动重试。
+    x-permissions:
+      - property.community.update
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/Community
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - *id010
+      - *id002
+      - *id003
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/property-schemas.yaml#/CommunityUpdate
+companyAdmins:
+  get:
+    operationId: listPropertyAdminAccounts
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - property
+    summary: 查询公司管理员
+    description: 所有操作要求平台完整会话及声明的权限；越界资源返回 404。写请求校验 Origin 与 CSRF，不自动重试。
+    x-permissions:
+      - property.admin.read
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/PropertyAdminPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - *id001
+      - *id004
+      - *id005
+      - name: login_name
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 64
+            - type: 'null'
+      - *id008
+      - *id009
+  post:
+    operationId: createPropertyAdminAccount
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - property
+    summary: 开通公司管理员
+    description:
+      仅平台超级管理员可写入。服务端固定 property_admin 后台、路径公司和该公司的 super_admin 角色，不接受角色或小区参数；初始密码强制改密。公司角色、账号、关联与平台审计原子提交；登录名在整个物业后台唯一。公司停用期间仍可开通。所有操作要求平台完整会话及声明的权限；越界资源返回
+      404。写请求校验 Origin 与 CSRF，不自动重试。
+    x-permissions:
+      - property.admin.create
+    security:
+      - AdminSession: []
+    responses:
+      '201':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/PropertyAdminAccount
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - *id001
+      - *id002
+      - *id003
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/property-schemas.yaml#/PropertyAdminCreate
+companyAdmin:
+  get:
+    operationId: getPropertyAdminAccount
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - property
+    summary: 查看公司管理员
+    description: 所有操作要求平台完整会话及声明的权限；越界资源返回 404。写请求校验 Origin 与 CSRF，不自动重试。
+    x-permissions:
+      - property.admin.read
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/PropertyAdminAccount
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - *id001
+      - &id011
+        name: account_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+  patch:
+    operationId: updatePropertyAdminAccount
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - property
+    summary: 修改公司管理员
+    description:
+      仅平台超级管理员可写入。登录名和公司固定；账号启停递增会话版本；同公司最后一名有效超级管理员不能停用，返回 admin.last_super_admin，公司停用期间仍执行保护。所有操作要求平台完整会话及声明的权限；越界资源返回
+      404。写请求校验 Origin 与 CSRF，不自动重试。
+    x-permissions:
+      - property.admin.update
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/PropertyAdminAccount
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - *id001
+      - *id011
+      - *id002
+      - *id003
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/admin-schemas.yaml#/AccountUpdate
+companyAdminPasswordReset:
+  post:
+    operationId: resetPropertyAdminPassword
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - property
+    summary: 重置公司管理员密码
+    description:
+      仅平台超级管理员可写入。重置密码递增会话版本并要求首次登录改密，密码不进入审计。所有操作要求平台完整会话及声明的权限；越界资源返回
+      404。写请求校验 Origin 与 CSRF，不自动重试。
+    x-permissions:
+      - property.admin.reset_password
+    security:
+      - AdminSession: []
+    responses:
+      '204':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - *id001
+      - *id011
+      - *id002
+      - *id003
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/admin-schemas.yaml#/PasswordReset

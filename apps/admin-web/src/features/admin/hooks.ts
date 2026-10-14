@@ -10,8 +10,15 @@ export function useAdminApi() {
   const { request } = useAdminSession();
   return useMemo(() => createAdminApi(request), [request]);
 }
-export function useListState() {
-  const [params, setParams] = useSearchParams();
+export function useListState(prefix = '') {
+  const [urlParams, setParams] = useSearchParams();
+  const params = prefix
+    ? new URLSearchParams(
+        [...urlParams]
+          .filter(([key]) => key.startsWith(prefix))
+          .map(([key, value]) => [key.slice(prefix.length), value]),
+      )
+    : urlParams;
   const number = (key: string, fallback: number, max: number) => {
     const value = Number(params.get(key));
     return Number.isInteger(value) && value >= 1 && value <= max
@@ -22,10 +29,10 @@ export function useListState() {
     pageSize = number('page_size', 20, 100);
   const update = (values: Record<string, string | number | undefined>) =>
     (() => {
-      const next = new URLSearchParams(params);
+      const next = new URLSearchParams(urlParams);
       for (const [key, value] of Object.entries(values))
-        if (value === undefined || value === '') next.delete(key);
-        else next.set(key, String(value));
+        if (value === undefined || value === '') next.delete(`${prefix}${key}`);
+        else next.set(`${prefix}${key}`, String(value));
       setParams(next);
     })();
   return {
@@ -45,7 +52,7 @@ export function useListState() {
     },
   };
 }
-export function useAdminOperation() {
+export function useAdminOperation(resources = ['accounts', 'roles', 'audit']) {
   const { refreshSession } = useAdminSession();
   const client = useQueryClient();
   return useMutation({
@@ -59,18 +66,16 @@ export function useAdminOperation() {
       const value = await run();
       if (security) await refreshSession();
       await Promise.all(
-        ['accounts', 'roles', 'audit'].map((key) =>
-          client.invalidateQueries({ queryKey: [key] }),
-        ),
+        resources.map((key) => client.invalidateQueries({ queryKey: [key] })),
       );
       return value;
     },
     onError: (error) => {
       if (error instanceof ApiError && error.status === 409)
         void Promise.all(
-          ['accounts', 'roles'].map((key) =>
-            client.invalidateQueries({ queryKey: [key] }),
-          ),
+          resources
+            .filter((key) => key !== 'audit')
+            .map((key) => client.invalidateQueries({ queryKey: [key] })),
         );
     },
     retry: false,

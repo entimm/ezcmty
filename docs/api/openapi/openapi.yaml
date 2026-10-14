@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Community Property Platform API
-  version: 0.3.1
+  version: 0.4.0
   description: 社区物业消费返利与物业费抵扣平台 API 契约。
 servers:
   - url: '/'
@@ -11,6 +11,8 @@ tags:
     description: 运行状态接口
   - name: admin
     description: 后台认证、账号、角色与审计
+  - name: property
+    description: 平台物业公司、小区与公司管理员接入管理
 paths:
   '/healthz':
     '$ref': './modules/system.yaml#/health'
@@ -42,6 +44,20 @@ paths:
     '$ref': './modules/admin.yaml#/permissions'
   '/v1/admin-audit-logs':
     '$ref': './modules/admin.yaml#/audit'
+  '/v1/property-companies':
+    '$ref': './modules/property.yaml#/companies'
+  '/v1/property-companies/{company_id}':
+    '$ref': './modules/property.yaml#/company'
+  '/v1/communities':
+    '$ref': './modules/property.yaml#/communities'
+  '/v1/communities/{community_id}':
+    '$ref': './modules/property.yaml#/community'
+  '/v1/property-companies/{company_id}/admin-accounts':
+    '$ref': './modules/property.yaml#/companyAdmins'
+  '/v1/property-companies/{company_id}/admin-accounts/{account_id}':
+    '$ref': './modules/property.yaml#/companyAdmin'
+  '/v1/property-companies/{company_id}/admin-accounts/{account_id}/password-resets':
+    '$ref': './modules/property.yaml#/companyAdminPasswordReset'
 components:
   schemas:
     RequestId:
@@ -96,6 +112,28 @@ components:
       '$ref': './components/admin-schemas.yaml#/RolePage'
     AuditPage:
       '$ref': './components/admin-schemas.yaml#/AuditPage'
+    CompanyCreate:
+      '$ref': './components/property-schemas.yaml#/CompanyCreate'
+    CompanyUpdate:
+      '$ref': './components/property-schemas.yaml#/CompanyUpdate'
+    PropertyCompany:
+      '$ref': './components/property-schemas.yaml#/PropertyCompany'
+    CommunityCreate:
+      '$ref': './components/property-schemas.yaml#/CommunityCreate'
+    CommunityUpdate:
+      '$ref': './components/property-schemas.yaml#/CommunityUpdate'
+    Community:
+      '$ref': './components/property-schemas.yaml#/Community'
+    PropertyAdminCreate:
+      '$ref': './components/property-schemas.yaml#/PropertyAdminCreate'
+    PropertyAdminAccount:
+      '$ref': './components/property-schemas.yaml#/PropertyAdminAccount'
+    CompanyPage:
+      '$ref': './components/property-schemas.yaml#/CompanyPage'
+    CommunityPage:
+      '$ref': './components/property-schemas.yaml#/CommunityPage'
+    PropertyAdminPage:
+      '$ref': './components/property-schemas.yaml#/PropertyAdminPage'
   responses:
     InternalError:
       '$ref': './components/responses.yaml#/InternalError'

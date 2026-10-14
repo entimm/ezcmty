@@ -1,0 +1,114 @@
+from datetime import UTC, datetime
+from typing import Annotated, Literal
+
+from pydantic import Field, StringConstraints, field_validator
+
+from backend_app.schemas.admin import AdminAccount, AdminSchema, Identifier, Name, Password
+
+Code = Annotated[str, Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]*$")]
+CompanyName = Annotated[
+    str, StringConstraints(strip_whitespace=True), Field(min_length=1, max_length=160)
+]
+ContactName = Annotated[
+    str, StringConstraints(strip_whitespace=True), Field(min_length=1, max_length=80)
+]
+ContactPhone = Annotated[
+    str, StringConstraints(strip_whitespace=True), Field(min_length=1, max_length=32)
+]
+Address = Annotated[
+    str, StringConstraints(strip_whitespace=True), Field(min_length=1, max_length=255)
+]
+
+
+class CompanyCreate(AdminSchema):
+    code: Code
+    name: CompanyName
+    contact_name: ContactName | None = None
+    contact_phone: ContactPhone | None = None
+
+
+class CompanyUpdate(AdminSchema):
+    name: CompanyName | None = None
+    contact_name: ContactName | None = None
+    contact_phone: ContactPhone | None = None
+    enabled: bool | None = None
+
+
+class PropertyCompany(AdminSchema):
+    id: Identifier
+    code: str
+    name: str
+    contact_name: str | None
+    contact_phone: str | None
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+
+    @field_validator("created_at", "updated_at")
+    @classmethod
+    def normalize_time(cls, value: datetime) -> datetime:
+        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+class CommunityCreate(AdminSchema):
+    property_company_id: Identifier
+    code: Code
+    name: CompanyName
+    address: Address
+
+
+class CommunityUpdate(AdminSchema):
+    name: CompanyName | None = None
+    address: Address | None = None
+    enabled: bool | None = None
+
+
+class Community(AdminSchema):
+    id: Identifier
+    property_company_id: Identifier
+    property_company_name: str
+    code: str
+    name: str
+    address: str
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+
+    @field_validator("created_at", "updated_at")
+    @classmethod
+    def normalize_time(cls, value: datetime) -> datetime:
+        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+class PropertyAdminCreate(AdminSchema):
+    login_name: Annotated[
+        str, Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.@-]*$")
+    ]
+    display_name: Name
+    password: Password
+
+
+class PropertyAdminAccount(AdminAccount):
+    scope: Literal["property_admin"]
+    property_company_id: Identifier
+
+
+class CompanyPage(AdminSchema):
+    items: list[PropertyCompany]
+    total: int
+    page: int
+    page_size: int
+
+
+class CommunityPage(AdminSchema):
+    items: list[Community]
+    total: int
+    page: int
+    page_size: int
+
+
+class PropertyAdminPage(AdminSchema):
+    items: list[PropertyAdminAccount]
+    total: int
+    page: int
+    page_size: int

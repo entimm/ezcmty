@@ -111,6 +111,16 @@ ProblemDetails:
       admin.invalid_permission:
         status: 409
         title: 权限不可分配，请刷新后重试
+    property:
+      property.duplicate_company_code:
+        status: 409
+        title: 公司编码已存在
+      property.duplicate_community_code:
+        status: 409
+        title: 小区编码已存在
+      property.company_admin_required:
+        status: 409
+        title: 启用公司需要至少一名有效超级管理员
 ValidationIssue:
   type: object
   required:

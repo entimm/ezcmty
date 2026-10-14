@@ -397,4 +397,11 @@ def create_admin_router(scope: schema.AdminScope) -> APIRouter:
             sort=sort,
         )
 
+    if scope == "platform_admin":
+        from backend_app.api.platform_admin.property import create_property_router
+
+        platform = APIRouter()
+        platform.include_router(router)
+        platform.include_router(create_property_router(permission, check_write))
+        return platform
     return router

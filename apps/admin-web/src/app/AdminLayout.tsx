@@ -7,7 +7,12 @@ import type { ReactNode } from 'react';
 import type { AdminScope } from '../auth/session-context';
 import { useAdminSession } from '../auth/use-admin-session';
 import { appName } from '../shared/config';
-import { adminRoots, adminTitles, routesForScope } from './admin-routes';
+import {
+  adminRoots,
+  adminTitles,
+  findAdminRoute,
+  routesForScope,
+} from './admin-routes';
 
 export function AdminLayout({
   scope,
@@ -42,14 +47,23 @@ export function AdminLayout({
     .map((item) => ({ path: item.path, name: item.title }));
   const menu: MenuDataItem[] = [
     { path, name: '首页', icon: <HomeOutlined /> },
+    ...(['物业管理'] as const).flatMap((group) => {
+      const children = pages
+        .filter((item) => item.menu === group)
+        .map((item) => ({ path: item.path, name: item.title }));
+      return children.length
+        ? [{ path: `${path}/property`, name: group, children }]
+        : [];
+    }),
     ...(system.length
       ? [{ path: `${path}/system`, name: '系统管理', children: system }]
       : []),
   ];
+  const activeRoute = findAdminRoute(scope, location.pathname);
   const hiddenPages: MenuDataItem[] = routesForScope(scope)
     .filter((item) => !item.menu && item.states.includes('authenticated'))
     .map((item) => ({
-      path: item.path,
+      path: item === activeRoute ? location.pathname : item.path,
       name: item.title,
       permission: item.permission,
       hideInMenu: true,
@@ -67,7 +81,9 @@ export function AdminLayout({
         routes: [...menu, ...hiddenPages],
       }}
       menuDataRender={filterMenu}
-      menuProps={{ selectedKeys: [location.pathname] }}
+      menuProps={{
+        selectedKeys: [activeRoute?.menuParent ?? location.pathname],
+      }}
       menuItemRender={(item, dom) =>
         item.path && !item.children?.length ? (
           <Link to={item.path}>{dom}</Link>

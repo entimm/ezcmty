@@ -23,6 +23,9 @@ import ProfilePage from '../features/admin/profile/ProfilePage';
 import AccountsPage from '../features/admin/accounts/AccountsPage';
 import RolesPage from '../features/admin/roles/RolesPage';
 import AuditPage from '../features/admin/audit/AuditPage';
+import CompaniesPage from '../features/admin/property/CompaniesPage';
+import CompanyDetailPage from '../features/admin/property/CompanyDetailPage';
+import CommunitiesPage from '../features/admin/property/CommunitiesPage';
 import type { SessionResponse } from '../shared/admin-api';
 import { safeReturnTarget } from './admin-routes';
 
@@ -39,6 +42,9 @@ const pages = {
   '@/features/admin/accounts/AccountsPage': AccountsPage,
   '@/features/admin/roles/RolesPage': RolesPage,
   '@/features/admin/audit/AuditPage': AuditPage,
+  '@/features/admin/property/CompaniesPage': CompaniesPage,
+  '@/features/admin/property/CompanyDetailPage': CompanyDetailPage,
+  '@/features/admin/property/CommunitiesPage': CommunitiesPage,
 };
 const session: SessionResponse = {
   scope: 'platform_admin',
@@ -58,6 +64,16 @@ const session: SessionResponse = {
     'admin.role.update',
     'admin.role.assign_permissions',
     'admin.audit.read',
+    'property.company.read',
+    'property.company.create',
+    'property.company.update',
+    'property.community.read',
+    'property.community.create',
+    'property.community.update',
+    'property.admin.read',
+    'property.admin.create',
+    'property.admin.update',
+    'property.admin.reset_password',
   ],
 };
 const account = {
@@ -77,6 +93,35 @@ const role = {
   enabled: true,
   is_system: false,
   permissions: ['admin.account.read'],
+};
+const companyId = '019a0000-0000-7000-8000-000000000001';
+const company = {
+  id: companyId,
+  code: 'TEST',
+  name: '测试物业公司',
+  contact_name: '联系人',
+  contact_phone: null,
+  enabled: false,
+  created_at: '2026-10-14T00:00:00Z',
+  updated_at: '2026-10-14T00:00:00Z',
+};
+const community = {
+  id: '019a0000-0000-7000-8000-000000000002',
+  property_company_id: companyId,
+  property_company_name: company.name,
+  code: 'COMMUNITY',
+  name: '测试小区',
+  address: '测试地址',
+  enabled: true,
+  created_at: company.created_at,
+  updated_at: company.updated_at,
+};
+const propertyAdmin = {
+  ...account,
+  id: '019a0000-0000-7000-8000-000000000003',
+  scope: 'property_admin',
+  property_company_id: companyId,
+  display_name: '公司管理人员',
 };
 function mockApi(identity: SessionResponse | null = session) {
   const fetcher = vi.fn<typeof fetch>(async (url, init) => {
@@ -105,6 +150,44 @@ function mockApi(identity: SessionResponse | null = session) {
           assignable: true,
         },
       ]);
+    if (
+      path.endsWith(
+        `/property-companies/${companyId}/admin-accounts/${propertyAdmin.id}/password-resets`,
+      )
+    )
+      return new Response(null, { status: 204 });
+    if (
+      path.endsWith(
+        `/property-companies/${companyId}/admin-accounts/${propertyAdmin.id}`,
+      )
+    )
+      return Response.json(propertyAdmin);
+    if (path.endsWith(`/property-companies/${companyId}/admin-accounts`))
+      return init?.method === 'POST'
+        ? Response.json(propertyAdmin, { status: 201 })
+        : Response.json({
+            items: [propertyAdmin],
+            total: 1,
+            page: 1,
+            page_size: 20,
+          });
+    if (path.endsWith(`/property-companies/${companyId}`))
+      return Response.json(company);
+    if (path.endsWith('/property-companies'))
+      return init?.method === 'POST'
+        ? Response.json(company, { status: 201 })
+        : Response.json({ items: [company], total: 1, page: 1, page_size: 20 });
+    if (path.endsWith(`/communities/${community.id}`))
+      return Response.json(community);
+    if (path.endsWith('/communities'))
+      return init?.method === 'POST'
+        ? Response.json(community, { status: 201 })
+        : Response.json({
+            items: [community],
+            total: 1,
+            page: 1,
+            page_size: 20,
+          });
     if (path.endsWith('/admin-accounts')) {
       if (init?.method === 'POST')
         return Response.json(account, { status: 201 });
@@ -293,6 +376,178 @@ describe('admin navigation and identity', () => {
       );
     },
   );
+  it('guards company detail and only loads independently permitted sections', async () => {
+    const fetcher = mockApi({
+      ...session,
+      permissions: ['property.company.read'],
+    });
+    renderRoutes(`/platform/property/companies/${companyId}`);
+    expect((await screen.findAllByText('联系人')).length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('button', { name: '开通公司管理员' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '创建小区' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '编辑' }),
+    ).not.toBeInTheDocument();
+    expect(
+      fetcher.mock.calls.some(
+        ([url]) =>
+          String(url).includes('/communities?') ||
+          String(url).includes(`/${companyId}/admin-accounts`),
+      ),
+    ).toBe(false);
+  });
+  it('does not load property data for a forbidden company detail route', async () => {
+    const fetcher = mockApi({
+      ...session,
+      permissions: ['property.community.read'],
+    });
+    renderRoutes(`/platform/property/companies/${companyId}`);
+    expect(await screen.findByText('无权访问此页面')).toBeInTheDocument();
+    expect(
+      fetcher.mock.calls.some(([url]) =>
+        String(url).includes('/property-companies'),
+      ),
+    ).toBe(false);
+  });
+  it('treats an invalid dynamic company identifier as an unknown route', async () => {
+    const fetcher = mockApi();
+    renderRoutes('/platform/property/companies/not-a-uuid');
+    await waitFor(() =>
+      expect(screen.getByText('页面不存在')).toBeInTheDocument(),
+    );
+    expect(
+      fetcher.mock.calls.some(([url]) =>
+        String(url).includes('/property-companies'),
+      ),
+    ).toBe(false);
+    expect(
+      safeReturnTarget(
+        'platform_admin',
+        `/platform/property/companies/${companyId}?admins_page=2`,
+      ),
+    ).toBe(`/platform/property/companies/${companyId}?admins_page=2`);
+    expect(
+      safeReturnTarget(
+        'platform_admin',
+        '/platform/property/companies/not-a-uuid',
+      ),
+    ).toBe('/platform');
+  });
+  it('provisions a company administrator with CSRF and only the onboarding fields', async () => {
+    const fetcher = mockApi();
+    renderRoutes(`/platform/property/companies/${companyId}`);
+    fireEvent.click(
+      await screen.findByRole('button', { name: '开通公司管理员' }),
+    );
+    const drawer = within(await screen.findByRole('dialog'));
+    fireEvent.change(drawer.getByLabelText('登录名'), {
+      target: { value: 'new-company-admin' },
+    });
+    fireEvent.change(drawer.getByLabelText('显示名称'), {
+      target: { value: '新公司管理员' },
+    });
+    fireEvent.change(drawer.getByLabelText('初始密码'), {
+      target: { value: 'test-company-password' },
+    });
+    fireEvent.change(drawer.getByLabelText('确认密码'), {
+      target: { value: 'test-company-password' },
+    });
+    fireEvent.click(drawer.getByRole('button', { name: '保 存' }));
+    await waitFor(() =>
+      expect(
+        fetcher.mock.calls.some(
+          ([url, init]) =>
+            String(url).endsWith(`/${companyId}/admin-accounts`) &&
+            init?.method === 'POST',
+        ),
+      ).toBe(true),
+    );
+    const call = fetcher.mock.calls.find(
+      ([url, init]) =>
+        String(url).endsWith(`/${companyId}/admin-accounts`) &&
+        init?.method === 'POST',
+    )!;
+    expect(new Headers(call[1]?.headers).get('X-CSRF-Token')).toBe(
+      'csrf-token',
+    );
+    expect(JSON.parse(String(call[1]?.body))).toEqual({
+      login_name: 'new-company-admin',
+      display_name: '新公司管理员',
+      password: 'test-company-password',
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(
+      fetcher.mock.calls.filter(
+        ([url, init]) =>
+          String(url).includes(`/${companyId}/admin-accounts?`) &&
+          !init?.method,
+      ).length,
+    ).toBeGreaterThanOrEqual(2);
+  });
+  it('creates a community from company detail with the fixed company and refreshes its list', async () => {
+    const fetcher = mockApi();
+    renderRoutes(`/platform/property/companies/${companyId}`);
+    fireEvent.click(await screen.findByRole('button', { name: '创建小区' }));
+    const drawer = within(await screen.findByRole('dialog'));
+    fireEvent.change(drawer.getByLabelText('小区编码'), {
+      target: { value: 'NEW' },
+    });
+    fireEvent.change(drawer.getByLabelText('小区名称'), {
+      target: { value: '新小区' },
+    });
+    fireEvent.change(drawer.getByLabelText('地址'), {
+      target: { value: '新街道 1 号' },
+    });
+    fireEvent.click(drawer.getByRole('button', { name: '保 存' }));
+    await waitFor(() =>
+      expect(
+        fetcher.mock.calls.some(
+          ([url, init]) =>
+            String(url).endsWith('/communities') && init?.method === 'POST',
+        ),
+      ).toBe(true),
+    );
+    const call = fetcher.mock.calls.find(
+      ([url, init]) =>
+        String(url).endsWith('/communities') && init?.method === 'POST',
+    )!;
+    expect(JSON.parse(String(call[1]?.body))).toEqual({
+      property_company_id: companyId,
+      code: 'NEW',
+      name: '新小区',
+      address: '新街道 1 号',
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+  });
+  it('restores independent URL filters and pagination for company sections', async () => {
+    const fetcher = mockApi();
+    renderRoutes(
+      `/platform/property/companies/${companyId}?communities_page=2&communities_page_size=10&communities_name=社区&admins_page=3&admins_login_name=manager`,
+    );
+    await screen.findByText('公司管理人员');
+    const urls = fetcher.mock.calls.map(([url]) => new URL(String(url)));
+    const communityQuery = urls.find((url) =>
+      url.pathname.endsWith('/communities'),
+    )!;
+    const adminQuery = urls.find((url) =>
+      url.pathname.endsWith(`/${companyId}/admin-accounts`),
+    )!;
+    expect(communityQuery.searchParams.get('page')).toBe('2');
+    expect(communityQuery.searchParams.get('name')).toBe('社区');
+    expect(communityQuery.searchParams.get('property_company_id')).toBe(
+      companyId,
+    );
+    expect(adminQuery.searchParams.get('page')).toBe('3');
+    expect(adminQuery.searchParams.get('login_name')).toBe('manager');
+  });
   it.each([
     'https://evil.test/a',
     '//evil.test/a',

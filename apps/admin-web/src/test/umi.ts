@@ -6,6 +6,7 @@ export {
   useLocation,
   useNavigate,
   useSearchParams,
+  useParams,
 } from 'react-router-dom';
 export const history = {
   block: (callback: unknown) => {

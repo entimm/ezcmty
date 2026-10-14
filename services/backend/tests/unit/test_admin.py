@@ -32,6 +32,7 @@ from backend_app.models.admin import (
     AdminRole,
     AdminRolePermission,
 )
+from backend_app.models.property import PropertyCompany
 from backend_app.schemas import admin as schema
 from backend_app.services.admin import AdminService
 
@@ -120,6 +121,8 @@ def harness(tmp_path: Path, monkeypatch: MonkeyPatch) -> Iterator[Harness]:
         "admin_account_roles",
         "admin_role_permissions",
         "admin_audit_logs",
+        "property_companies",
+        "communities",
     }
     factory = sessionmaker(bind=engine, autoflush=False)
     with factory() as db:
@@ -449,8 +452,12 @@ def test_scope_foreign_keys_and_hidden_resources(harness: Harness) -> None:
 
     harness.login()
     with harness.factory() as db:
+        company = PropertyCompany(code="scope_test", name="物业公司")
+        db.add(company)
+        db.flush()
         property_account = AdminAccount(
             scope="property_admin",
+            property_company_id=company.id,
             login_name="root",
             display_name="物业",
             password_hash=hash_password(TEST_PASSWORD),
@@ -462,7 +469,10 @@ def test_scope_foreign_keys_and_hidden_resources(harness: Harness) -> None:
         assert platform_role
         db.add(
             AdminAccountRole(
-                scope="property_admin", account_id=property_id, role_id=platform_role.id
+                scope="property_admin",
+                property_company_id=company.id,
+                account_id=property_id,
+                role_id=platform_role.id,
             )
         )
         with pytest.raises(IntegrityError):

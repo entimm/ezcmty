@@ -3,10 +3,11 @@ import { Button, Result, Spin } from 'antd';
 import { useEffect } from 'react';
 
 import { AdminLayout } from '../app/AdminLayout';
+import NotFoundPage from '../components/NotFoundPage';
 import {
   adminRoots,
   adminTitles,
-  routesForScope,
+  findAdminRoute,
   safeReturnTarget,
 } from '../app/admin-routes';
 import { useAdminSession } from './use-admin-session';
@@ -16,13 +17,11 @@ export function AdminRouter() {
     useAdminSession();
   const location = useLocation();
   const root = adminRoots[scope];
-  const route = routesForScope(scope).find(
-    (item) => item.path === location.pathname,
-  );
+  const route = findAdminRoute(scope, location.pathname);
   useEffect(() => {
     document.title = `${route?.title ?? '页面不存在'} - ${adminTitles[scope]}`;
   }, [route, scope]);
-  if (!route) return <Outlet />;
+  if (!route) return <NotFoundPage />;
   if (status === 'loading')
     return (
       <div
