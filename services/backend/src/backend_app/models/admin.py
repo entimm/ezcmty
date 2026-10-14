@@ -150,10 +150,15 @@ class AdminAuditLog(Base):
     __table_args__ = (
         Index("ix_admin_audit_scope_time", "scope", "created_at", "id"),
         Index("ix_admin_audit_request", "scope", "request_id"),
+        Index("ix_admin_audit_company_time", "scope", "property_company_id", "created_at", "id"),
+        ForeignKeyConstraint(
+            ["property_company_id"], ["property_companies.id"], name="fk_admin_audit_company"
+        ),
         {"mysql_engine": "InnoDB", "mysql_charset": "utf8mb4"},
     )
     id: Mapped[str] = mapped_column(UUIDBinary(), primary_key=True, default=new_id)
     scope: Mapped[str] = mapped_column(String(32), nullable=False)
+    property_company_id: Mapped[str | None] = mapped_column(UUIDBinary())
     actor_id: Mapped[str | None] = mapped_column(UUIDBinary())
     actor_name: Mapped[str | None] = mapped_column(String(80))
     action: Mapped[str] = mapped_column(String(64), nullable=False)

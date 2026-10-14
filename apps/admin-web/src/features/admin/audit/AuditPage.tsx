@@ -200,6 +200,11 @@ export default function AuditPage() {
                 label: '操作者',
                 children: selected.actor_name || '系统 / 匿名',
               },
+              {
+                key: 'company',
+                label: '关联公司',
+                children: selected.property_company_id || '—',
+              },
               { key: 'action', label: '操作', children: selected.action },
               {
                 key: 'target',

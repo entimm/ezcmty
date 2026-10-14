@@ -53,6 +53,7 @@ export interface Permission {
 }
 export interface Audit {
   id: string;
+  property_company_id: string | null;
   actor_id: string | null;
   actor_name: string | null;
   action: string;

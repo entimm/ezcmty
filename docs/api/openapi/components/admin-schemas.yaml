@@ -294,6 +294,11 @@ AuditEntry:
   properties:
     id:
       $ref: './schemas.yaml#/UUIDIdentifier'
+    property_company_id:
+      anyOf:
+        - $ref: './schemas.yaml#/UUIDIdentifier'
+        - type: 'null'
+      description: 关联物业公司标识；无明确公司归属时为空。
     actor_id:
       anyOf:
         - $ref: './schemas.yaml#/UUIDIdentifier'
@@ -323,8 +328,10 @@ AuditEntry:
     metadata:
       type: object
       additionalProperties: true
+      description: 白名单操作信息，按实际存储内容返回。
   required:
     - id
+    - property_company_id
     - actor_id
     - actor_name
     - action

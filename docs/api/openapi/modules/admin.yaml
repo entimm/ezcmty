@@ -1005,7 +1005,7 @@ audit:
     tags:
       - admin
     summary: 分页查询审计日志
-    description: 分页查询审计日志。所有资源在当前后台内解析；写入不自动重试。
+    description: 分页查询当前后台的审计日志。按 created_at 和 id 同方向稳定排序，默认降序。
     security:
       - AdminSession: []
     responses:

@@ -271,9 +271,16 @@ def test_last_company_admin_and_password_reset_while_company_disabled(harness: H
             db.scalars(select(AdminAuditLog).where(AdminAuditLog.action.like("property.%")))
         )
         assert audits and all(row.scope == "platform_admin" for row in audits)
-        assert all(row.safe_metadata["property_company_id"] == c["id"] for row in audits)
+        assert all(row.property_company_id == c["id"] for row in audits)
+        assert all("property_company_id" not in row.safe_metadata for row in audits)
         assert TEST_PASSWORD not in json.dumps([row.safe_metadata for row in audits])
         assert NEW_PASSWORD not in json.dumps([row.safe_metadata for row in audits])
+    public_audits = harness.client.get("/v1/admin-audit-logs").json()["items"]
+    assert all(
+        row["property_company_id"] == c["id"] and "property_company_id" not in row["metadata"]
+        for row in public_audits
+        if row["action"].startswith("property.")
+    )
 
 
 def test_operator_business_permissions_do_not_grant_company_admin_writes(harness: Harness) -> None:

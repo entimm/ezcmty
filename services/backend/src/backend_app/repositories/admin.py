@@ -223,14 +223,16 @@ class AdminRepository:
         target_id: str | None,
         request_id: str,
         result: str = "success",
+        property_company_id: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
         # Only these non-secret fields may enter the audit JSON.
-        allowed = {"changed_fields", "role_ids", "permissions", "property_company_id"}
+        allowed = {"changed_fields", "role_ids", "permissions"}
         safe = {key: value for key, value in (metadata or {}).items() if key in allowed}
         self.db.add(
             AdminAuditLog(
                 scope=self.scope,
+                property_company_id=property_company_id,
                 actor_id=actor.id if actor else None,
                 actor_name=actor.display_name if actor else None,
                 action=action,
@@ -255,6 +257,10 @@ class AdminRepository:
         sort: str,
     ) -> tuple[list[AdminAuditLog], int]:
         query = select(AdminAuditLog).where(AdminAuditLog.scope == self.scope)
+        if self.scope == "property_admin":
+            if self.property_company_id is None:
+                raise ValueError("Property audit queries require a company context")
+            query = query.where(AdminAuditLog.property_company_id == self.property_company_id)
         for column, value in (
             (AdminAuditLog.action, action),
             (AdminAuditLog.result, result),
@@ -271,6 +277,6 @@ class AdminRepository:
             AdminAuditLog.created_at.desc()
             if sort.startswith("-")
             else AdminAuditLog.created_at.asc(),
-            AdminAuditLog.id,
+            AdminAuditLog.id.desc() if sort.startswith("-") else AdminAuditLog.id.asc(),
         )
         return list(self.db.scalars(query.offset((page - 1) * page_size).limit(page_size))), total

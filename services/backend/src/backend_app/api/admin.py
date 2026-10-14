@@ -363,7 +363,6 @@ def create_admin_router(scope: schema.AdminScope) -> APIRouter:
         "/v1/admin-audit-logs",
         response_model=schema.AuditPage,
         operation_id="listAdminAuditLogs",
-        dependencies=[permission("admin.audit.read")],
         responses={
             **common_errors,
             **get_problem_responses(400),
@@ -372,6 +371,7 @@ def create_admin_router(scope: schema.AdminScope) -> APIRouter:
     )
     def list_audit(
         svc: Service,
+        ctx: Annotated[AdminContext, permission("admin.audit.read")],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         from_time: datetime | None = None,
@@ -387,6 +387,7 @@ def create_admin_router(scope: schema.AdminScope) -> APIRouter:
         if from_time and to_time and from_time > to_time:
             raise AppError("request.bad_request", public_detail="时间范围无效")
         return svc.list_audit(
+            ctx,
             page=page,
             page_size=page_size,
             from_time=from_time.astimezone(UTC).replace(tzinfo=None) if from_time else None,

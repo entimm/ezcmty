@@ -38,6 +38,44 @@ class AdminService:
         self.scope = scope
         self.repo = AdminRepository(db, scope, property_company_id)
 
+    def _audit(
+        self,
+        *,
+        actor: AdminAccount | None,
+        action: str,
+        target_type: str,
+        target_id: str | None,
+        request_id: str,
+        result: str = "success",
+        property_company_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        company_id = property_company_id
+        if self.scope == "property_admin":
+            if action == "session.login":
+                company_id = actor.property_company_id if actor else None
+            else:
+                company_id = self.repo.property_company_id
+            unknown_login = action == "session.login" and result == "failure" and actor is None
+            if company_id is None and not unknown_login:
+                raise AppError("auth.forbidden")
+            if actor is not None and (
+                actor.scope != self.scope or actor.property_company_id != company_id
+            ):
+                raise AppError("auth.forbidden")
+            if property_company_id is not None and property_company_id != company_id:
+                raise AppError("auth.forbidden")
+        self.repo.audit(
+            actor=actor,
+            action=action,
+            target_type=target_type,
+            target_id=target_id,
+            request_id=request_id,
+            result=result,
+            property_company_id=company_id,
+            metadata=metadata,
+        )
+
     def _organization_enabled(self, account: AdminAccount) -> bool:
         if self.scope == "platform_admin":
             return account.property_company_id is None
@@ -111,7 +149,7 @@ class AdminService:
             or not account.enabled
             or not self._organization_enabled(account)
         ):
-            self.repo.audit(
+            self._audit(
                 actor=account,
                 action="session.login",
                 target_type="account",
@@ -124,7 +162,7 @@ class AdminService:
         self.repo.property_company_id = account.property_company_id
         token, stored = store.create(self.scope, account.id, account.session_version)
         view = self.session_view(account, stored)
-        self.repo.audit(
+        self._audit(
             actor=account,
             action="session.login",
             target_type="account",
@@ -211,7 +249,7 @@ class AdminService:
     ) -> schema.AdminProfile:
         actor = self._actor(context)
         actor.display_name = data.display_name
-        self.repo.audit(
+        self._audit(
             actor=actor,
             action="account.profile_update",
             target_type="account",
@@ -233,7 +271,7 @@ class AdminService:
         actor.password_hash = hash_password(data.new_password)
         actor.must_change_password = False
         actor.session_version += 1
-        self.repo.audit(
+        self._audit(
             actor=actor,
             action="account.password_change",
             target_type="account",
@@ -273,7 +311,7 @@ class AdminService:
                 raise AppError("admin.duplicate_login") from exc
             raise
         self.repo.replace_roles(account.id, ids)
-        self.repo.audit(
+        self._audit(
             actor=actor,
             action="account.create",
             target_type="account",
@@ -303,7 +341,7 @@ class AdminService:
         if data.display_name is not None and data.display_name != account.display_name:
             account.display_name = data.display_name
             changes.append("display_name")
-        self.repo.audit(
+        self._audit(
             actor=actor,
             action="account.update",
             target_type="account",
@@ -330,7 +368,7 @@ class AdminService:
         if ids != current:
             self.repo.replace_roles(account.id, ids)
             account.session_version += 1
-        self.repo.audit(
+        self._audit(
             actor=actor,
             action="account.assign_roles",
             target_type="account",
@@ -351,7 +389,7 @@ class AdminService:
         account.password_hash = hash_password(data.password)
         account.must_change_password = True
         account.session_version += 1
-        self.repo.audit(
+        self._audit(
             actor=actor,
             action="account.password_reset",
             target_type="account",
@@ -374,7 +412,7 @@ class AdminService:
         )
         self.db.add(role)
         self.db.flush()
-        self.repo.audit(
+        self._audit(
             actor=actor,
             action="role.create",
             target_type="role",
@@ -399,7 +437,7 @@ class AdminService:
             role.enabled = data.enabled
             self.repo.invalidate_role_accounts(role.id)
             changes.append("enabled")
-        self.repo.audit(
+        self._audit(
             actor=actor,
             action="role.update",
             target_type="role",
@@ -424,7 +462,7 @@ class AdminService:
         if codes != set(self.repo.permissions(role.id, lock=True)):
             self.repo.replace_permissions(role.id, codes)
             self.repo.invalidate_role_accounts(role.id)
-        self.repo.audit(
+        self._audit(
             actor=actor,
             action="role.assign_permissions",
             target_type="role",
@@ -453,12 +491,23 @@ class AdminService:
             page_size=filters["page_size"],
         )
 
-    def list_audit(self, **filters: Any) -> schema.AuditPage:
+    def list_audit(self, context: AdminContext, **filters: Any) -> schema.AuditPage:
+        if (
+            context.scope != self.scope
+            or context.property_company_id != self.repo.property_company_id
+            or (self.scope == "property_admin" and context.property_company_id is None)
+        ):
+            raise AppError("auth.forbidden")
+        if context.must_change_password:
+            raise AppError("auth.password_change_required")
+        if "admin.audit.read" not in context.permissions:
+            raise AppError("auth.forbidden")
         items, total = self.repo.audit_logs(**filters)
         return schema.AuditPage(
             items=[
                 schema.AuditEntry(
                     id=item.id,
+                    property_company_id=item.property_company_id,
                     actor_id=item.actor_id,
                     actor_name=item.actor_name,
                     action=item.action,
@@ -504,7 +553,7 @@ class AdminService:
         self.db.add(account)
         self.db.flush()
         self.repo.replace_roles(account.id, {role.id})
-        self.repo.audit(
+        self._audit(
             actor=None,
             action="account.initialize",
             target_type="account",

@@ -319,7 +319,14 @@ def test_uuid_binary_storage_and_fresh_migration_schema(
         connection = db.connection()
         assert compare_metadata(MigrationContext.configure(connection), Base.metadata) == []
         inspector = inspect(connection)
-        uuid_columns = {"id", "account_id", "role_id", "actor_id", "target_id"}
+        uuid_columns = {
+            "id",
+            "account_id",
+            "role_id",
+            "actor_id",
+            "target_id",
+            "property_company_id",
+        }
         for table in Base.metadata.sorted_tables:
             columns = {column["name"]: column for column in inspector.get_columns(table.name)}
             assert columns["created_at"]["nullable"] is False

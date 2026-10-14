@@ -125,6 +125,7 @@ class AdminPermission(AdminSchema):
 
 class AuditEntry(AdminSchema):
     id: Identifier
+    property_company_id: Identifier | None
     actor_id: Identifier | None
     actor_name: str | None
     action: str

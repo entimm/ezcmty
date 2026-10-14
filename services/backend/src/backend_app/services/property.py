@@ -52,13 +52,14 @@ class PropertyOnboardingService:
         request_id: str,
         changed_fields: list[str] | None = None,
     ) -> None:
-        self.admin.repo.audit(
+        self.admin._audit(
             actor=actor,
             action=action,
             target_type=target_type,
             target_id=target_id,
             request_id=request_id,
-            metadata={"property_company_id": company_id, "changed_fields": changed_fields or []},
+            property_company_id=company_id,
+            metadata={"changed_fields": changed_fields or []},
         )
 
     def get_company(self, company_id: str) -> schema.PropertyCompany:
