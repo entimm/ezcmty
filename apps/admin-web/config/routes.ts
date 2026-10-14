@@ -1,10 +1,12 @@
+import { platformRoutes } from '../src/app/admin-routes';
+
 export default [
   { path: '/', component: '@/app/App' },
   {
     path: '/platform',
     component: '@/app/platform/PlatformApp',
     routes: [
-      { path: '/platform', component: '@/app/platform/HomePage' },
+      ...platformRoutes.map(({ path, component }) => ({ path, component })),
       { path: '/platform/*', component: '@/components/NotFoundPage' },
     ],
   },

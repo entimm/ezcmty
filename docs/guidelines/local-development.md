@@ -42,6 +42,25 @@ URL 中的账号、密码须按 URL 规则编码。若 Redis 需要认证，配�
 
 ## 开发命令
 
+### 平台后台初始化
+
+配置好已有 MySQL 和 Redis 后，在 `services/backend/` 下执行数据库迁移和受控初始化：
+
+```bash
+uv run alembic upgrade head
+uv run python -m backend_app.cli init-platform-admin --login-name your-admin --display-name 平台管理员
+```
+
+初始化命令交互输入并确认密码，密码长度为 12–128 字符。已有有效超级管理员或同名账号时拒绝初始化，不能覆盖现有密码或授权。首次登录必须修改密码。
+
+管理员会话空闲和绝对有效期分别由 `APP_ADMIN_SESSION_IDLE_SECONDS`、`APP_ADMIN_SESSION_ABSOLUTE_SECONDS` 配置；绝对有效期不能短于空闲有效期。`APP_ADMIN_TRUSTED_ORIGINS` 使用 JSON 数组，列出管理页面的完整 Origin；写请求必须来自其中之一。生产环境配置实际 HTTPS Origin，Cookie 会开启 Secure。
+
+两端 Cookie 路径分别由 `APP_PLATFORM_ADMIN_COOKIE_PATH`、`APP_PROPERTY_ADMIN_COOKIE_PATH` 配置，必须与浏览器访问的 API 前缀一致且互不包含。登录尝试限制由 `APP_ADMIN_LOGIN_LIMIT` 和 `APP_ADMIN_LOGIN_WINDOW_SECONDS` 配置，按账号和来源 IP 分别执行。
+
+平台后台访问 `/platform`，未登录时进入登录页面。物业登录启用前提见 [管理后台基础框架设计](../design/admin/foundation.md#范围与职责)。
+
+### 服务命令
+
 全部命令在仓库根目录执行；`make` 默认显示帮助。
 
 | 命令                  | 用途                                                                  |
@@ -118,6 +137,14 @@ make stop
 ```bash
 make check
 ```
+
+管理员接口回归使用临时 SQLite 数据库验证迁移、事务和接口行为。MySQL 行锁与真实 Redis 的集成检查在 `services/backend/` 下执行：
+
+```bash
+APP_RUN_MYSQL_TESTS=1 uv run pytest tests/integration
+```
+
+该检查需要本机可用的 `mysqld` 和 `redis-server`，会创建独立的临时实例、随机端口和测试数据库，完成后关闭并清理测试资源。
 
 任一检查失败返回非零。也可使用上表中的单项检查或构建命令。
 

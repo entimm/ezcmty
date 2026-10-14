@@ -20,5 +20,9 @@ def create_app(service_name: str) -> FastAPI:
     app.add_middleware(RequestIdMiddleware)
     register_exception_handlers(app)
     app.include_router(create_system_router(service_name))
+    if service_name.replace("-", "_") == "platform_admin_api":
+        from backend_app.api.admin import create_admin_router
+
+        app.include_router(create_admin_router("platform_admin"))
     configure_openapi(app)
     return app

@@ -11,7 +11,12 @@ export interface ProblemDetails {
   errors?: unknown;
 }
 
-export type AdminRequestOptions = Omit<RequestInit, 'credentials' | 'redirect'>;
+export type AdminRequestOptions = Omit<
+  RequestInit,
+  'credentials' | 'redirect'
+> & {
+  ignoreUnauthorized?: boolean;
+};
 
 export type AdminRequest = <T>(
   path: string,
@@ -24,6 +29,7 @@ export class ApiError extends Error {
     readonly status: number,
     readonly problem?: ProblemDetails,
     readonly requestId?: string,
+    readonly retryAfter?: string,
   ) {
     super(problem?.detail || problem?.title || `请求失败（${status}）`);
     this.name = 'ApiError';
@@ -49,10 +55,14 @@ export function createAdminRequestClient({
   scope,
   basePath,
   onUnauthorized,
+  getCsrfToken,
+  onPasswordChangeRequired,
 }: {
   scope: AdminScope;
   basePath: string;
   onUnauthorized: () => void;
+  getCsrfToken?: () => string | undefined;
+  onPasswordChangeRequired?: () => void;
 }) {
   if (!basePath.startsWith('/') || basePath.startsWith('//')) {
     throw new Error('管理后台 API 前缀必须为同源绝对路径');
@@ -108,10 +118,20 @@ export function createAdminRequestClient({
 
     try {
       assertCurrent();
-      const headers = new Headers(options.headers);
+      const { ignoreUnauthorized, ...fetchOptions } = options;
+      const headers = new Headers(fetchOptions.headers);
       if (!headers.has('Accept')) headers.set('Accept', 'application/json');
+      const csrf = getCsrfToken?.();
+      if (
+        csrf &&
+        !['GET', 'HEAD', 'OPTIONS'].includes(
+          (fetchOptions.method || 'GET').toUpperCase(),
+        )
+      ) {
+        headers.set('X-CSRF-Token', csrf);
+      }
       const response = await fetch(url.toString(), {
-        ...options,
+        ...fetchOptions,
         headers,
         credentials: 'same-origin',
         redirect: 'error',
@@ -143,8 +163,11 @@ export function createAdminRequestClient({
           problem?.request_id ||
             response.headers.get('X-Request-ID') ||
             undefined,
+          response.headers.get('Retry-After') || undefined,
         );
-        if (response.status === 401) onUnauthorized();
+        if (response.status === 401 && !ignoreUnauthorized) onUnauthorized();
+        if (problem?.code === 'auth.password_change_required')
+          onPasswordChangeRequired?.();
         throw error;
       }
 

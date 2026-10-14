@@ -1,0 +1,397 @@
+AdminLogin:
+  type: object
+  additionalProperties: false
+  properties:
+    login_name:
+      type: string
+      minLength: 1
+      maxLength: 64
+      pattern: ^[A-Za-z0-9][A-Za-z0-9_.@-]*$
+    password:
+      type: string
+      minLength: 1
+      maxLength: 128
+  required:
+    - login_name
+    - password
+PasswordChange:
+  type: object
+  additionalProperties: false
+  properties:
+    current_password:
+      type: string
+      minLength: 1
+      maxLength: 128
+    new_password:
+      type: string
+      minLength: 12
+      maxLength: 128
+  required:
+    - current_password
+    - new_password
+PasswordReset:
+  type: object
+  additionalProperties: false
+  properties:
+    password:
+      type: string
+      minLength: 12
+      maxLength: 128
+  required:
+    - password
+ProfileUpdate:
+  type: object
+  additionalProperties: false
+  properties:
+    display_name:
+      type: string
+      minLength: 1
+      maxLength: 80
+  required:
+    - display_name
+AccountCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    login_name:
+      type: string
+      minLength: 1
+      maxLength: 64
+      pattern: ^[A-Za-z0-9][A-Za-z0-9_.@-]*$
+    display_name:
+      type: string
+      minLength: 1
+      maxLength: 80
+    password:
+      type: string
+      minLength: 12
+      maxLength: 128
+    role_ids:
+      type: array
+      items:
+        type: string
+        minLength: 1
+        maxLength: 36
+  required:
+    - login_name
+    - display_name
+    - password
+AccountUpdate:
+  type: object
+  additionalProperties: false
+  properties:
+    display_name:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 80
+        - type: 'null'
+    enabled:
+      anyOf:
+        - type: boolean
+        - type: 'null'
+RoleSet:
+  type: object
+  additionalProperties: false
+  properties:
+    role_ids:
+      type: array
+      items:
+        type: string
+        minLength: 1
+        maxLength: 36
+  required:
+    - role_ids
+RoleCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    code:
+      type: string
+      minLength: 1
+      maxLength: 64
+      pattern: ^[a-z][a-z0-9_]*$
+    name:
+      type: string
+      minLength: 1
+      maxLength: 80
+  required:
+    - code
+    - name
+RoleUpdate:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 80
+        - type: 'null'
+    enabled:
+      anyOf:
+        - type: boolean
+        - type: 'null'
+PermissionSet:
+  type: object
+  additionalProperties: false
+  properties:
+    permissions:
+      type: array
+      items:
+        type: string
+        minLength: 1
+        maxLength: 100
+  required:
+    - permissions
+AdminSession:
+  type: object
+  additionalProperties: false
+  properties:
+    scope:
+      type: string
+      enum:
+        - platform_admin
+        - property_admin
+    subject_id:
+      type: string
+    login_name:
+      type: string
+    display_name:
+      type: string
+    permissions:
+      type: array
+      items:
+        type: string
+    must_change_password:
+      type: boolean
+    csrf_token:
+      type: string
+  required:
+    - scope
+    - subject_id
+    - login_name
+    - display_name
+    - permissions
+    - must_change_password
+    - csrf_token
+AdminProfile:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+    scope:
+      type: string
+      enum:
+        - platform_admin
+        - property_admin
+    login_name:
+      type: string
+    display_name:
+      type: string
+  required:
+    - id
+    - scope
+    - login_name
+    - display_name
+RoleSummary:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+    code:
+      type: string
+    name:
+      type: string
+    enabled:
+      type: boolean
+    is_system:
+      type: boolean
+  required:
+    - id
+    - code
+    - name
+    - enabled
+    - is_system
+AdminAccount:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+    scope:
+      type: string
+      enum:
+        - platform_admin
+        - property_admin
+    login_name:
+      type: string
+    display_name:
+      type: string
+    enabled:
+      type: boolean
+    must_change_password:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+    roles:
+      type: array
+      items:
+        $ref: '#/RoleSummary'
+  required:
+    - id
+    - scope
+    - login_name
+    - display_name
+    - enabled
+    - must_change_password
+    - created_at
+    - roles
+AdminRole:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+    code:
+      type: string
+    name:
+      type: string
+    enabled:
+      type: boolean
+    is_system:
+      type: boolean
+    permissions:
+      type: array
+      items:
+        type: string
+  required:
+    - id
+    - code
+    - name
+    - enabled
+    - is_system
+    - permissions
+AdminPermission:
+  type: object
+  additionalProperties: false
+  properties:
+    code:
+      type: string
+    name:
+      type: string
+    group:
+      type: string
+    assignable:
+      type: boolean
+  required:
+    - code
+    - name
+    - group
+    - assignable
+AuditEntry:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+    actor_id:
+      anyOf:
+        - type: string
+        - type: 'null'
+    actor_name:
+      anyOf:
+        - type: string
+        - type: 'null'
+    action:
+      type: string
+    target_type:
+      type: string
+    target_id:
+      anyOf:
+        - type: string
+        - type: 'null'
+    result:
+      type: string
+      enum:
+        - success
+        - failure
+    request_id:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    metadata:
+      type: object
+      additionalProperties: true
+  required:
+    - id
+    - actor_id
+    - actor_name
+    - action
+    - target_type
+    - target_id
+    - result
+    - request_id
+    - created_at
+    - metadata
+AccountPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/AdminAccount'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+RolePage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/AdminRole'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+AuditPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/AuditEntry'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size

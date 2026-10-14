@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     database_url: SecretStr = SecretStr("")
     redis_url: SecretStr = SecretStr("")
     session_ttl_seconds: int = Field(default=86_400, ge=60)
+    admin_session_idle_seconds: int = Field(default=1800, ge=60)
+    admin_session_absolute_seconds: int = Field(default=43_200, ge=60)
+    admin_trusted_origins: list[str] = ["http://127.0.0.1:5173", "http://localhost:5173"]
+    platform_admin_cookie_path: str = "/api/platform"
+    property_admin_cookie_path: str = "/api/property"
+    admin_login_limit: int = Field(default=5, ge=1)
+    admin_login_window_seconds: int = Field(default=900, ge=60)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
     @model_validator(mode="after")
@@ -32,6 +39,34 @@ class Settings(BaseSettings):
             raise ValueError("APP_DATABASE_URL is required")
         if not self.redis_url.get_secret_value():
             raise ValueError("APP_REDIS_URL is required")
+        if self.admin_session_absolute_seconds < self.admin_session_idle_seconds:
+            raise ValueError("Admin absolute lifetime must cover the idle timeout")
+        from urllib.parse import urlsplit
+
+        for origin in self.admin_trusted_origins:
+            parsed = urlsplit(origin)
+            if (
+                parsed.scheme not in {"http", "https"}
+                or not parsed.netloc
+                or parsed.path
+                or parsed.query
+                or parsed.fragment
+                or parsed.username
+            ):
+                raise ValueError("Admin trusted origins must be exact HTTP origins")
+            if self.env == "production" and parsed.scheme != "https":
+                raise ValueError("Production admin origins must use HTTPS")
+        for path in (self.platform_admin_cookie_path, self.property_admin_cookie_path):
+            if not path.startswith("/") or path.startswith("//") or any(c in path for c in "?;#"):
+                raise ValueError("Admin cookie paths must be absolute URL paths")
+        platform_path = self.platform_admin_cookie_path.rstrip("/")
+        property_path = self.property_admin_cookie_path.rstrip("/")
+        if platform_path == property_path:
+            raise ValueError("Admin cookie paths must be isolated")
+        if platform_path.startswith(property_path + "/") or property_path.startswith(
+            platform_path + "/"
+        ):
+            raise ValueError("Admin cookie paths must not overlap")
         return self
 
 

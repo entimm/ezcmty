@@ -1,0 +1,1105 @@
+sessions:
+  post:
+    operationId: createAdminSession
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 登录并创建后台会话
+    description:
+      登录失败不区分账号不存在、密码错误和停用。按账号与来源 IP 限流；密码不得自动重试。成功设置本端 Host-only、HttpOnly
+      会话 Cookie，受限会话只允许当前会话、本人改密和退出。响应禁止缓存。
+    security: []
+    responses:
+      '201':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+          Set-Cookie:
+            schema:
+              type: string
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/AdminSession
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '429':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/admin-schemas.yaml#/AdminLogin
+currentSession:
+  get:
+    operationId: getCurrentAdminSession
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 恢复当前后台身份
+    description: 恢复当前后台身份。所有资源在当前后台内解析；写入不自动重试。
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/AdminSession
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+  delete:
+    operationId: deleteCurrentAdminSession
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 撤销当前后台会话
+    description: 撤销当前后台会话。所有资源在当前后台内解析；写入不自动重试。
+    security:
+      - AdminSession: []
+    responses:
+      '204':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+          Set-Cookie:
+            schema:
+              type: string
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+me:
+  get:
+    operationId: getOwnProfile
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 读取本人资料
+    description: 读取本人资料。所有资源在当前后台内解析；写入不自动重试。
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/AdminProfile
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+  patch:
+    operationId: updateOwnProfile
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 修改本人资料
+    description: 修改本人资料。所有资源在当前后台内解析；写入不自动重试。
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/AdminProfile
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/admin-schemas.yaml#/ProfileUpdate
+passwordChange:
+  post:
+    operationId: changeOwnPassword
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 校验旧密码并修改本人密码
+    description:
+      校验当前密码后修改本人密码；错误旧密码返回 auth.invalid_old_password（409），不代表会话失效。成功撤销该账号所有旧会话并清除本端
+      Cookie，必须重新登录。
+    security:
+      - AdminSession: []
+    responses:
+      '204':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+          Set-Cookie:
+            schema:
+              type: string
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    parameters:
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/admin-schemas.yaml#/PasswordChange
+accounts:
+  get:
+    operationId: listAdminAccounts
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 分页查询管理员
+    description: 分页查询管理员。所有资源在当前后台内解析；写入不自动重试。
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/AccountPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions:
+      - admin.account.read
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: login_name
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 64
+            - type: 'null'
+      - name: enabled
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - created_at
+            - -created_at
+            - login_name
+            - -login_name
+          default: -created_at
+  post:
+    operationId: createAdminAccount
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 事务创建管理员及初始角色
+    description: 账号、可选初始角色关联和审计在同一 MySQL 事务内提交。初始密码要求改密；只能分配本后台启用角色。仅系统超级管理员可写入。
+    security:
+      - AdminSession: []
+    responses:
+      '201':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/AdminAccount
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions:
+      - admin.account.create
+    parameters:
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/admin-schemas.yaml#/AccountCreate
+account:
+  get:
+    operationId: getAdminAccount
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 读取管理员详情
+    description: 读取管理员详情。所有资源在当前后台内解析；写入不自动重试。
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/AdminAccount
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions:
+      - admin.account.read
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema:
+          type: string
+  patch:
+    operationId: updateAdminAccount
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 修改管理员资料或启停状态
+    description: 修改管理员资料或启停状态。所有资源在当前后台内解析；写入不自动重试。
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/AdminAccount
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions:
+      - admin.account.update
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/admin-schemas.yaml#/AccountUpdate
+passwordReset:
+  post:
+    operationId: resetAdminPassword
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 重置他人密码并要求改密
+    description: 重置他人密码并要求改密。所有资源在当前后台内解析；写入不自动重试。
+    security:
+      - AdminSession: []
+    responses:
+      '204':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions:
+      - admin.account.reset_password
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/admin-schemas.yaml#/PasswordReset
+accountRoles:
+  put:
+    operationId: setAdminAccountRoles
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 完整替换管理员角色
+    description: 完整替换账号角色，仅系统超级管理员可写入。已分配的停用角色可保留或移除，不能新增停用角色。授权变化使该账号旧会话失效。保护本人及最后一个有效超级管理员。
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/AdminAccount
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions:
+      - admin.account.assign_roles
+    parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/admin-schemas.yaml#/RoleSet
+roles:
+  get:
+    operationId: listAdminRoles
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 分页查询角色
+    description: 分页查询角色。所有资源在当前后台内解析；写入不自动重试。
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/RolePage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions:
+      - admin.role.read
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: name
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 80
+            - type: 'null'
+      - name: enabled
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - code
+            - -code
+            - name
+            - -name
+          default: code
+  post:
+    operationId: createAdminRole
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 创建普通角色
+    description: 创建普通角色。所有资源在当前后台内解析；写入不自动重试。
+    security:
+      - AdminSession: []
+    responses:
+      '201':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/AdminRole
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions:
+      - admin.role.create
+    parameters:
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/admin-schemas.yaml#/RoleCreate
+role:
+  get:
+    operationId: getAdminRole
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 读取角色详情
+    description: 读取角色详情。所有资源在当前后台内解析；写入不自动重试。
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/AdminRole
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions:
+      - admin.role.read
+    parameters:
+      - name: role_id
+        in: path
+        required: true
+        schema:
+          type: string
+  patch:
+    operationId: updateAdminRole
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 修改普通角色资料或启停状态
+    description: 修改普通角色资料或启停状态。所有资源在当前后台内解析；写入不自动重试。
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/AdminRole
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions:
+      - admin.role.update
+    parameters:
+      - name: role_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/admin-schemas.yaml#/RoleUpdate
+rolePermissions:
+  put:
+    operationId: setAdminRolePermissions
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 完整替换普通角色权限
+    description: 完整替换普通角色权限，仅系统超级管理员可写入。只能使用本后台目录中可分配的权限码，系统角色固定。变化使关联账号旧会话失效。
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/AdminRole
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions:
+      - admin.role.assign_permissions
+    parameters:
+      - name: role_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/admin-schemas.yaml#/PermissionSet
+permissions:
+  get:
+    operationId: listAdminPermissions
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 读取所属后台的权限目录
+    description: 读取所属后台的权限目录。所有资源在当前后台内解析；写入不自动重试。
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../components/admin-schemas.yaml#/AdminPermission
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions:
+      - admin.role.read
+audit:
+  get:
+    operationId: listAdminAuditLogs
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - admin
+    summary: 分页查询审计日志
+    description: 分页查询审计日志。所有资源在当前后台内解析；写入不自动重试。
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/admin-schemas.yaml#/AuditPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '400':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions:
+      - admin.audit.read
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: from_time
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+      - name: to_time
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+      - name: action
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 64
+            - type: 'null'
+      - name: result
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              enum:
+                - success
+                - failure
+            - type: 'null'
+      - name: request_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 64
+            - type: 'null'
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - created_at
+            - -created_at
+          default: -created_at

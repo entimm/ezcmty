@@ -1,54 +1,123 @@
+---
 openapi: 3.1.0
 info:
   title: Community Property Platform API
-  version: 0.2.0
+  version: 0.3.0
   description: 社区物业消费返利与物业费抵扣平台 API 契约。
 servers:
-  - url: /
+  - url: '/'
 tags:
   - name: system
     description: 运行状态接口
+  - name: admin
+    description: 后台认证、账号、角色与审计
 paths:
-  /healthz:
-    $ref: './modules/system.yaml#/health'
-  /readyz:
-    $ref: './modules/system.yaml#/readiness'
+  '/healthz':
+    '$ref': './modules/system.yaml#/health'
+  '/readyz':
+    '$ref': './modules/system.yaml#/readiness'
+  '/v1/admin-sessions':
+    '$ref': './modules/admin.yaml#/sessions'
+  '/v1/admin-sessions/current':
+    '$ref': './modules/admin.yaml#/currentSession'
+  '/v1/admin-accounts/me':
+    '$ref': './modules/admin.yaml#/me'
+  '/v1/admin-accounts/me/password-changes':
+    '$ref': './modules/admin.yaml#/passwordChange'
+  '/v1/admin-accounts':
+    '$ref': './modules/admin.yaml#/accounts'
+  '/v1/admin-accounts/{account_id}':
+    '$ref': './modules/admin.yaml#/account'
+  '/v1/admin-accounts/{account_id}/password-resets':
+    '$ref': './modules/admin.yaml#/passwordReset'
+  '/v1/admin-accounts/{account_id}/roles':
+    '$ref': './modules/admin.yaml#/accountRoles'
+  '/v1/admin-roles':
+    '$ref': './modules/admin.yaml#/roles'
+  '/v1/admin-roles/{role_id}':
+    '$ref': './modules/admin.yaml#/role'
+  '/v1/admin-roles/{role_id}/permissions':
+    '$ref': './modules/admin.yaml#/rolePermissions'
+  '/v1/admin-permissions':
+    '$ref': './modules/admin.yaml#/permissions'
+  '/v1/admin-audit-logs':
+    '$ref': './modules/admin.yaml#/audit'
 components:
   schemas:
     RequestId:
-      $ref: './components/schemas.yaml#/RequestId'
+      '$ref': './components/schemas.yaml#/RequestId'
     HealthResponse:
-      $ref: './components/schemas.yaml#/HealthResponse'
+      '$ref': './components/schemas.yaml#/HealthResponse'
     ReadinessResponse:
-      $ref: './components/schemas.yaml#/ReadinessResponse'
+      '$ref': './components/schemas.yaml#/ReadinessResponse'
     ProblemDetails:
-      $ref: './components/errors.yaml#/ProblemDetails'
+      '$ref': './components/errors.yaml#/ProblemDetails'
     ValidationIssue:
-      $ref: './components/errors.yaml#/ValidationIssue'
+      '$ref': './components/errors.yaml#/ValidationIssue'
+    AdminLogin:
+      '$ref': './components/admin-schemas.yaml#/AdminLogin'
+    PasswordChange:
+      '$ref': './components/admin-schemas.yaml#/PasswordChange'
+    PasswordReset:
+      '$ref': './components/admin-schemas.yaml#/PasswordReset'
+    ProfileUpdate:
+      '$ref': './components/admin-schemas.yaml#/ProfileUpdate'
+    AccountCreate:
+      '$ref': './components/admin-schemas.yaml#/AccountCreate'
+    AccountUpdate:
+      '$ref': './components/admin-schemas.yaml#/AccountUpdate'
+    RoleSet:
+      '$ref': './components/admin-schemas.yaml#/RoleSet'
+    RoleCreate:
+      '$ref': './components/admin-schemas.yaml#/RoleCreate'
+    RoleUpdate:
+      '$ref': './components/admin-schemas.yaml#/RoleUpdate'
+    PermissionSet:
+      '$ref': './components/admin-schemas.yaml#/PermissionSet'
+    AdminSession:
+      '$ref': './components/admin-schemas.yaml#/AdminSession'
+    AdminProfile:
+      '$ref': './components/admin-schemas.yaml#/AdminProfile'
+    RoleSummary:
+      '$ref': './components/admin-schemas.yaml#/RoleSummary'
+    AdminAccount:
+      '$ref': './components/admin-schemas.yaml#/AdminAccount'
+    AdminRole:
+      '$ref': './components/admin-schemas.yaml#/AdminRole'
+    AdminPermission:
+      '$ref': './components/admin-schemas.yaml#/AdminPermission'
+    AuditEntry:
+      '$ref': './components/admin-schemas.yaml#/AuditEntry'
+    AccountPage:
+      '$ref': './components/admin-schemas.yaml#/AccountPage'
+    RolePage:
+      '$ref': './components/admin-schemas.yaml#/RolePage'
+    AuditPage:
+      '$ref': './components/admin-schemas.yaml#/AuditPage'
   responses:
     InternalError:
-      $ref: './components/responses.yaml#/InternalError'
+      '$ref': './components/responses.yaml#/InternalError'
     ValidationError:
-      $ref: './components/responses.yaml#/ValidationError'
+      '$ref': './components/responses.yaml#/ValidationError'
     Unauthorized:
-      $ref: './components/responses.yaml#/Unauthorized'
+      '$ref': './components/responses.yaml#/Unauthorized'
     Forbidden:
-      $ref: './components/responses.yaml#/Forbidden'
+      '$ref': './components/responses.yaml#/Forbidden'
     NotFound:
-      $ref: './components/responses.yaml#/NotFound'
+      '$ref': './components/responses.yaml#/NotFound'
     MethodNotAllowed:
-      $ref: './components/responses.yaml#/MethodNotAllowed'
+      '$ref': './components/responses.yaml#/MethodNotAllowed'
     Conflict:
-      $ref: './components/responses.yaml#/Conflict'
+      '$ref': './components/responses.yaml#/Conflict'
     ServiceUnavailable:
-      $ref: './components/responses.yaml#/ServiceUnavailable'
+      '$ref': './components/responses.yaml#/ServiceUnavailable'
   headers:
     RequestId:
-      $ref: './components/headers.yaml#/RequestId'
+      '$ref': './components/headers.yaml#/RequestId'
   securitySchemes:
     AdminSession:
-      $ref: './components/security-schemes.yaml#/AdminSession'
+      '$ref': './components/security-schemes.yaml#/AdminSession'
     ResidentToken:
-      $ref: './components/security-schemes.yaml#/ResidentToken'
+      '$ref': './components/security-schemes.yaml#/ResidentToken'
     WebhookSignature:
-      $ref: './components/security-schemes.yaml#/WebhookSignature'
+      '$ref': './components/security-schemes.yaml#/WebhookSignature'

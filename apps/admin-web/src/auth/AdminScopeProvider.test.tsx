@@ -63,6 +63,10 @@ function login(context: AdminSessionContextValue, permissions: string[] = []) {
     scope: context.scope,
     subjectId: `${context.scope}-user`,
     permissions,
+    loginName: 'tester',
+    displayName: '测试管理员',
+    mustChangePassword: false,
+    csrfToken: 'test-csrf',
   });
 }
 
@@ -76,6 +80,10 @@ describe('admin scope isolation', () => {
         scope: 'property_admin',
         subjectId: 'property-user',
         permissions: [],
+        loginName: 'tester',
+        displayName: '测试管理员',
+        mustChangePassword: false,
+        csrfToken: 'test-csrf',
       }),
     ).toThrow('Session scope');
   });
