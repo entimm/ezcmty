@@ -5,13 +5,13 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from './App';
 import configuredRoutes from '../../config/routes';
-import { rootContainer } from '../app';
+import { patchClientRoutes, rootContainer } from '../app';
 import PlatformApp from './platform/PlatformApp';
 import PlatformHome from './platform/HomePage';
 import PropertyApp from './property/PropertyApp';
@@ -233,26 +233,168 @@ interface ConfiguredRoute {
   path: string;
   component: string;
   routes?: ConfiguredRoute[];
+  children?: ConfiguredRoute[];
 }
 function routeElements(routes: ConfiguredRoute[]): ReactElement[] {
   return routes.map((route) => {
     const Page = pages[route.component as keyof typeof pages];
     return (
       <Route key={route.path} path={route.path} element={<Page />}>
-        {route.routes && routeElements(route.routes)}
+        {route.children && routeElements(route.children)}
       </Route>
     );
   });
 }
-function renderRoutes(path: string) {
+function LocationProbe() {
+  const location = useLocation();
+  return (
+    <output data-testid="location">
+      {location.pathname}
+      {location.search}
+    </output>
+  );
+}
+function renderRoutes(path: string, hostname?: string) {
+  if (hostname) {
+    const location = new URL(`http://${hostname}:8080`);
+    vi.stubGlobal(
+      'window',
+      new Proxy(window, {
+        get: (target, key) =>
+          key === 'location' ? location : Reflect.get(target, key, target),
+      }),
+    );
+  }
+  function copyRoutes(routes: ConfiguredRoute[]): ConfiguredRoute[] {
+    return routes.map(({ routes: children, ...route }) => ({
+      ...route,
+      children: children && copyRoutes(children),
+    }));
+  }
+  const routes = copyRoutes(configuredRoutes);
+  patchClientRoutes({ routes });
   return render(
     rootContainer(
       <MemoryRouter initialEntries={[path]}>
-        <Routes>{routeElements(configuredRoutes)}</Routes>
+        <LocationProbe />
+        <Routes>{routeElements(routes)}</Routes>
       </MemoryRouter>,
     ),
   );
 }
+describe('domain navigation and identity', () => {
+  it.each([
+    ['platform.xlife.test', '平台管理 · 登录', '/api/platform/'],
+    ['property.xlife.test', '物业管理 · 登录', '/api/property/'],
+  ])('opens only its own login from %s root', async (host, title, apiBase) => {
+    const fetcher = mockApi(null, null);
+    renderRoutes('/', host);
+    expect(await screen.findByText(title)).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/login?return_to=%2F',
+    );
+    expect(screen.queryByText('进入平台管理端')).not.toBeInTheDocument();
+    expect(
+      fetcher.mock.calls.every(([url]) =>
+        new URL(String(url)).pathname.startsWith(apiBase),
+      ),
+    ).toBe(true);
+  });
+
+  it('returns to a clean protected URL after login', async () => {
+    mockApi(null);
+    renderRoutes('/system/accounts?page=2', 'platform.xlife.test');
+    expect(await screen.findByText('平台管理 · 登录')).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/login?return_to=%2Fsystem%2Faccounts%3Fpage%3D2',
+    );
+    fireEvent.change(screen.getByLabelText('登录名'), {
+      target: { value: 'root' },
+    });
+    fireEvent.change(screen.getByLabelText('密码'), {
+      target: { value: 'test-login-password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '登 录' }));
+    expect(await screen.findByText('成员')).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/system/accounts?page=2',
+    );
+  });
+
+  it.each([
+    ['platform.xlife.test', '平台管理首页', '/api/platform/'],
+    ['property.xlife.test', '物业工作台', '/api/property/'],
+  ])(
+    'keeps %s menus, shortcuts and requests in its scope',
+    async (host, title, apiBase) => {
+      const fetcher = mockApi();
+      renderRoutes('/', host);
+      expect(await screen.findByText(title)).toBeInTheDocument();
+      for (const link of screen.getAllByRole('link')) {
+        expect(link.getAttribute('href')).not.toMatch(
+          /^\/(platform|property)(\/|$)/,
+        );
+      }
+      fireEvent.click(screen.getAllByRole('link', { name: '个人资料' })[0]);
+      expect(await screen.findByLabelText('显示名称')).toBeInTheDocument();
+      expect(screen.getByTestId('location')).toHaveTextContent('/profile');
+      expect(
+        fetcher.mock.calls.every(([url]) =>
+          new URL(String(url)).pathname.startsWith(apiBase),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it('normalizes old return targets and company detail links', async () => {
+    renderRoutes(
+      '/login?return_to=' +
+        encodeURIComponent(
+          `/platform/property/companies/${companyId}?admins_page=2`,
+        ),
+      'platform.xlife.test',
+    );
+    expect(
+      await screen.findByRole('link', { name: '返回公司列表' }),
+    ).toHaveAttribute('href', '/companies');
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      `/companies/${companyId}?admins_page=2`,
+    );
+    fireEvent.click(screen.getByRole('link', { name: '返回公司列表' }));
+    expect(await screen.findByRole('link', { name: '详情' })).toHaveAttribute(
+      'href',
+      `/companies/${companyId}`,
+    );
+  });
+
+  it('uses clean paths for the forced password flow', async () => {
+    mockApi({ ...session, must_change_password: true, permissions: [] });
+    renderRoutes('/profile', 'platform.xlife.test');
+    expect(await screen.findByText('首次登录 · 修改密码')).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/change-password',
+    );
+  });
+
+  it.each([
+    ['platform.xlife.test', '/property/login', '/api/property/'],
+    ['property.xlife.test', '/platform/login', '/api/platform/'],
+    ['property.xlife.test', '/companies', '/api/platform/'],
+    ['property.xlife.test', '/system/accounts', '/api/platform/'],
+  ])('rejects client navigation to %s %s', async (host, path, foreignApi) => {
+    const fetcher = mockApi();
+    renderRoutes(path, host);
+    await waitFor(() =>
+      expect(screen.getByText('页面不存在')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('location')).toHaveTextContent(path);
+    expect(
+      fetcher.mock.calls.every(
+        ([url]) => !new URL(String(url)).pathname.startsWith(foreignApi),
+      ),
+    ).toBe(true);
+  });
+});
 describe('admin navigation and identity', () => {
   it('shows both portal entry points and keeps each layout independent', async () => {
     renderRoutes('/');

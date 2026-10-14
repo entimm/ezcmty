@@ -2,7 +2,7 @@ import { PageContainer } from '@ant-design/pro-components';
 import { Card, Col, Row, Typography } from 'antd';
 import { Link } from '@umijs/max';
 import { useAdminSession } from '../../auth/use-admin-session';
-import { platformRoutes } from '../admin-routes';
+import { adminPath, adminRoot, routesForScope } from '../admin-routes';
 
 export default function HomePage() {
   const { session, hasPermission } = useAdminSession();
@@ -17,11 +17,11 @@ export default function HomePage() {
         </Typography.Text>
       </Card>
       <Row gutter={[16, 16]}>
-        {platformRoutes
+        {routesForScope('platform_admin')
           .filter(
             (item) =>
               item.menu &&
-              item.path !== '/platform' &&
+              item.path !== adminRoot('platform_admin') &&
               (!item.permission || hasPermission(item.permission)),
           )
           .map((item) => (
@@ -33,9 +33,15 @@ export default function HomePage() {
           ))}
       </Row>
       <Card title="个人账户" style={{ marginTop: 24 }}>
-        <Link to="/platform/profile">个人资料</Link>
+        <Link to={adminPath('platform_admin', '/platform/profile')}>
+          个人资料
+        </Link>
         <Typography.Text> </Typography.Text>
-        <Link to="/platform/profile?tab=password">修改密码</Link>
+        <Link
+          to={adminPath('platform_admin', '/platform/profile?tab=password')}
+        >
+          修改密码
+        </Link>
       </Card>
     </PageContainer>
   );

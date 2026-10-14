@@ -58,7 +58,15 @@ uv run python -m backend_app.cli init-platform-admin --login-name your-admin --d
 
 两端 Cookie 路径分别由 `APP_PLATFORM_ADMIN_COOKIE_PATH`、`APP_PROPERTY_ADMIN_COOKIE_PATH` 配置，必须与浏览器访问的 API 前缀一致且互不包含。登录尝试限制由 `APP_ADMIN_LOGIN_LIMIT` 和 `APP_ADMIN_LOGIN_WINDOW_SECONDS` 配置，按账号和来源 IP 分别执行。
 
-平台后台访问 `/platform`，物业后台访问 `/property`，未登录时进入各端登录页面。物业使用平台开通的公司管理员账号，公司和账号均须启用；首次登录要求改密，流程见 [物业管理端登录与基础工作台设计](../design/property/workbench.md)。
+平台与物业的域名和页面路径规则见 [域名与页面路径](../architecture/admin-web.md#域名与页面路径)。直接访问开发服务器时使用 `/platform`、`/property`；域名站点从 `/` 进入，未登录时跳转本端 `/login`。物业使用平台开通的公司管理员账号，公司和账号均须启用；首次登录要求改密，流程见 [物业管理端登录与基础工作台设计](../design/property/workbench.md)。
+
+### 本地域名站点
+
+将 `platform.xlife.test`、`property.xlife.test` 解析到 `127.0.0.1`，Nginx 在 8080 端口分别提供两个站点并转发到 `127.0.0.1:5173`。站点配置参考 [本地 Nginx 配置](../../apps/admin-web/config/nginx.local.conf)，Homebrew Nginx 可将其放入 `/opt/homebrew/etc/nginx/servers/xlife.test.conf`，执行 `nginx -t` 后重载。
+
+访问地址为 `http://platform.xlife.test:8080/`、`http://property.xlife.test:8080/`。在 `services/backend/.env` 的 `APP_ADMIN_TRUSTED_ORIGINS` 中加入这两个完整 Origin，保留需要的直连开发 Origin；Cookie 路径使用对应 API 前缀。域名变更时同步配置前端 hostname 与后端可信 Origin。
+
+若浏览器的代理规则使 `.test` 域名热更新 WebSocket 经 HTTP 代理发送 `CONNECT`，在 `apps/admin-web/.env.local` 配置 `SOCKET_SERVER=http://127.0.0.1:5173`，让本机热更新直接连接开发服务器；修改环境文件后重启管理后台。该配置仅用于本机开发。
 
 ### 服务命令
 

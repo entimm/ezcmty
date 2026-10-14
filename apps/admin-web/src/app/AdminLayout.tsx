@@ -8,6 +8,8 @@ import type { AdminScope } from '../auth/session-context';
 import { useAdminSession } from '../auth/use-admin-session';
 import { appName } from '../shared/config';
 import {
+  adminPath,
+  adminRoot,
   adminRoots,
   adminTitles,
   findAdminRoute,
@@ -25,7 +27,8 @@ export function AdminLayout({
   const { session, hasPermission, logout } = useAdminSession();
   const { message } = App.useApp();
   const title = adminTitles[scope],
-    path = adminRoots[scope];
+    path = adminRoot(scope);
+  const profilePath = adminPath(scope, `${adminRoots[scope]}/profile`);
 
   function filterMenu(items: MenuDataItem[]): MenuDataItem[] {
     return items
@@ -55,19 +58,23 @@ export function AdminLayout({
       const children = pages
         .filter((item) => item.menu === group)
         .map((item) => ({ path: item.path, name: item.title }));
-      return children.length
-        ? [{ path: `${path}/property`, name: group, children }]
-        : [];
+      return children.length ? [{ name: group, children }] : [];
     }),
     ...(system.length
-      ? [{ path: `${path}/system`, name: '系统管理', children: system }]
+      ? [
+          {
+            path: adminPath(scope, `${adminRoots[scope]}/system`),
+            name: '系统管理',
+            children: system,
+          },
+        ]
       : []),
   ];
   const activeRoute = findAdminRoute(scope, location.pathname);
   const hiddenPages: MenuDataItem[] = routesForScope(scope)
     .filter((item) => !item.menu && item.states.includes('authenticated'))
     .map((item) => ({
-      path: item === activeRoute ? location.pathname : item.path,
+      path: item.path === activeRoute?.path ? location.pathname : item.path,
       name: item.title,
       permission: item.permission,
       hideInMenu: true,
@@ -105,12 +112,12 @@ export function AdminLayout({
                 items: [
                   {
                     key: 'profile',
-                    label: <Link to={`${path}/profile`}>个人资料</Link>,
+                    label: <Link to={profilePath}>个人资料</Link>,
                   },
                   {
                     key: 'password',
                     label: (
-                      <Link to={`${path}/profile?tab=password`}>修改密码</Link>
+                      <Link to={`${profilePath}?tab=password`}>修改密码</Link>
                     ),
                   },
                   {
@@ -137,7 +144,7 @@ export function AdminLayout({
       }}
       actionsRender={() => [
         <Link key="portal" to="/">
-          返回入口
+          {path === '/' ? '返回首页' : '返回入口'}
         </Link>,
       ]}
       footerRender={() => (

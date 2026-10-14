@@ -43,12 +43,24 @@ ProComponents 沿用该正式模板锁定的预发布版本，支持 Ant Design 
 
 ## 双后台边界
 
-平台与物业共用工程和静态构建产物，通过 Umi 配置路由分别进入 `/platform/*` 和 `/property/*`。两端各自使用 ProLayout、菜单、会话与权限上下文；共享组件不持有跨端身份状态。
+平台与物业共用工程和静态构建产物，由访问域名选择所属后台。两端各自使用 ProLayout、菜单、会话与权限上下文；共享组件不持有跨端身份状态。
 
 - 平台作用域为 `platform_admin`，物业作用域为 `property_admin`；会话不能写入其他作用域。
 - 路由与菜单权限由所属后台的会话上下文计算。前端权限用于页面展示与导航，服务端权限和数据范围执行要求见 [开发规范](../guidelines/development.md#安全)。
 - 每端独立创建 QueryClient，并隔离 ProComponents 请求缓存。身份变更、退出、认证失效时，取消本端进行中的请求并重置本端缓存，避免旧身份响应回填。
 - 请求客户端与认证失效处理绑定所属作用域；一个后台的 401 不清理另一个后台的会话或缓存。
+
+### 域名与页面路径
+
+`UMI_APP_PLATFORM_HOST` 和 `UMI_APP_PROPERTY_HOST` 分别配置平台与物业的 hostname，不包含协议或端口，默认是 `platform.xlife.test`、`property.xlife.test`。浏览器按 hostname 精确匹配，只注册当前端的页面；域名端的 `/` 直接进入本端首页，未登录时跳转 `/login`，不展示双端入口。
+
+页面元数据同时生成 Umi 路由、菜单、面包屑、快捷入口和身份跳转。域名访问使用本端相对根路径：`/login`、`/change-password`、`/profile`；平台系统管理使用 `/system/*`，平台物业公司与小区管理使用 `/companies`、`/companies/:company_id`、`/communities`，物业小区查询使用 `/communities`。
+
+直接访问 `localhost:5173` 或 `127.0.0.1:5173` 时保留双端入口和 `/platform/*`、`/property/*` 路由，平台物业接入页保留 `/platform/property/*`。该模式用于开发，不作为域名站点的入口。
+
+Nginx 将当前域名所属的旧页面地址重定向到对应无前缀地址，保留查询参数；旧登录链接的 `return_to` 由前端转换为当前端路径后执行受保护路由白名单校验。另一端的旧页面前缀返回 404，前端也不注册另一端的页面。未知路径保持 404。
+
+API 前缀仍为 `/api/platform` 和 `/api/property`，Cookie 路径与 API 前缀一致。Nginx 每个域名只转发本端 API，其他 API 路径返回 404，不回退到前端页面；页面路径隐藏前缀不改变后端契约或会话隔离。
 
 ## 作用域入口与路由组织
 

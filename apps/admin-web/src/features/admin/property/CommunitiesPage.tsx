@@ -8,6 +8,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { App, Button, Space, Tag } from 'antd';
 import { useAdminSession } from '../../../auth/use-admin-session';
+import { adminPath } from '../../../app/admin-routes';
 import {
   ListEmpty,
   OperationError,
@@ -55,7 +56,10 @@ export function CommunityList({ company }: { company?: PropertyCompany }) {
             render: (_: unknown, row: Community) =>
               hasPermission('property.company.read') ? (
                 <Link
-                  to={`/platform/property/companies/${row.property_company_id}`}
+                  to={adminPath(
+                    'platform_admin',
+                    `/platform/property/companies/${row.property_company_id}`,
+                  )}
                 >
                   {row.property_company_name}
                 </Link>

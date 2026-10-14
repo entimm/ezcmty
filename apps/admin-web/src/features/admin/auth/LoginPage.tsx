@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from '@umijs/max';
 
 import { useAdminSession } from '../../../auth/use-admin-session';
 import {
+  adminPath,
   adminRoots,
   adminTitles,
   safeReturnTarget,
@@ -47,7 +48,7 @@ export default function LoginPage() {
               const session = await login(values.login_name, values.password);
               navigate(
                 session.mustChangePassword
-                  ? `${adminRoots[scope]}/change-password`
+                  ? adminPath(scope, `${adminRoots[scope]}/change-password`)
                   : safeReturnTarget(
                       scope,
                       new URLSearchParams(location.search).get('return_to'),

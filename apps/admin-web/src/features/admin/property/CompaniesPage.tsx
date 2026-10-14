@@ -8,6 +8,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { Button, Space, Tag } from 'antd';
 import { useAdminSession } from '../../../auth/use-admin-session';
+import { adminPath } from '../../../app/admin-routes';
 import {
   ListEmpty,
   OperationError,
@@ -64,7 +65,14 @@ export default function CompaniesPage() {
       width: 220,
       render: (_, row) => (
         <Space wrap>
-          <Link to={`/platform/property/companies/${row.id}`}>详情</Link>
+          <Link
+            to={adminPath(
+              'platform_admin',
+              `/platform/property/companies/${row.id}`,
+            )}
+          >
+            详情
+          </Link>
           <CompanyActions
             company={row}
             onEdit={() => setEditor({ id: row.id })}

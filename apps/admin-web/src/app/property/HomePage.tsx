@@ -6,7 +6,7 @@ import { Button, Card, Col, Descriptions, Row, Space, Typography } from 'antd';
 import { useAdminSession } from '../../auth/use-admin-session';
 import { ReadError } from '../../components/AdminFeedback';
 import { usePropertyApi } from '../../features/admin/property/hooks';
-import { propertyRoutes } from '../admin-routes';
+import { adminPath, adminRoot, routesForScope } from '../admin-routes';
 
 export default function HomePage() {
   const { session, status, hasPermission } = useAdminSession();
@@ -69,11 +69,11 @@ export default function HomePage() {
         </Card>
       )}
       <Row gutter={[16, 16]}>
-        {propertyRoutes
+        {routesForScope('property_admin')
           .filter(
             (route) =>
               route.menu &&
-              route.path !== '/property' &&
+              route.path !== adminRoot('property_admin') &&
               (!route.permission || hasPermission(route.permission)),
           )
           .map((route) => (
@@ -86,8 +86,14 @@ export default function HomePage() {
       </Row>
       <Card title="个人账户" style={{ marginTop: 24 }}>
         <Space>
-          <Link to="/property/profile">个人资料</Link>
-          <Link to="/property/profile?tab=password">修改密码</Link>
+          <Link to={adminPath('property_admin', '/property/profile')}>
+            个人资料
+          </Link>
+          <Link
+            to={adminPath('property_admin', '/property/profile?tab=password')}
+          >
+            修改密码
+          </Link>
         </Space>
       </Card>
     </PageContainer>

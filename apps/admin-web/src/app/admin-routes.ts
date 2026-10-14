@@ -13,6 +13,65 @@ export const adminRoots: Record<AdminScope, string> = {
   platform_admin: '/platform',
   property_admin: '/property',
 };
+const adminHosts: Record<AdminScope, string> = {
+  platform_admin: process.env.UMI_APP_PLATFORM_HOST || 'platform.xlife.test',
+  property_admin: process.env.UMI_APP_PROPERTY_HOST || 'property.xlife.test',
+};
+
+function currentHostname() {
+  return typeof window === 'undefined' ? '' : window.location.hostname;
+}
+
+export function scopeForHostname(hostname = currentHostname()) {
+  return (Object.keys(adminHosts) as AdminScope[]).find(
+    (scope) => adminHosts[scope].toLowerCase() === hostname.toLowerCase(),
+  );
+}
+
+// Build configuration keeps the prefixed routes; domain sites use root paths.
+export function adminPath(
+  scope: AdminScope,
+  path: string,
+  hostname = currentHostname(),
+) {
+  if (scopeForHostname(hostname) !== scope) return path;
+  const prefix =
+    scope === 'platform_admin' &&
+    /^\/platform\/property\/(companies|communities)(\/|\?|$)/.test(path)
+      ? '/platform/property'
+      : adminRoots[scope];
+  if (path === prefix) return '/';
+  return path.startsWith(`${prefix}/`) ? path.slice(prefix.length) : path;
+}
+
+export function adminRoot(scope: AdminScope, hostname = currentHostname()) {
+  return adminPath(scope, adminRoots[scope], hostname);
+}
+
+export interface ScopedClientRoute {
+  path?: string;
+  children?: ScopedClientRoute[];
+  routes?: ScopedClientRoute[];
+}
+
+export function patchAdminClientRoutes(
+  routes: ScopedClientRoute[],
+  hostname = currentHostname(),
+) {
+  const scope = scopeForHostname(hostname);
+  if (!scope) return;
+  const entry = routes.find((route) => route.path === adminRoots[scope]);
+  function convert(route: ScopedClientRoute) {
+    if (route.path) route.path = adminPath(scope!, route.path, hostname);
+    if (route.children) {
+      route.children.forEach(convert);
+      // Umi also exposes children as routes for layout consumers.
+      route.routes = route.children;
+    }
+  }
+  if (entry) convert(entry);
+  routes.splice(0, routes.length, ...(entry ? [entry] : []));
+}
 export const adminTitles: Record<AdminScope, string> = {
   platform_admin: '平台管理',
   property_admin: '物业管理',
@@ -127,14 +186,31 @@ export const propertyRoutes: AdminRoute[] = [
     states: ['authenticated'],
   },
 ];
-export function routesForScope(scope: AdminScope) {
-  return scope === 'platform_admin' ? platformRoutes : propertyRoutes;
+export function routesForScope(
+  scope: AdminScope,
+  hostname = currentHostname(),
+) {
+  const selected = scopeForHostname(hostname);
+  if (selected && selected !== scope) return [];
+  const routes = scope === 'platform_admin' ? platformRoutes : propertyRoutes;
+  if (!selected) return routes;
+  return routes.map((route) => ({
+    ...route,
+    path: adminPath(scope, route.path, hostname),
+    menuParent: route.menuParent
+      ? adminPath(scope, route.menuParent, hostname)
+      : undefined,
+  }));
 }
-export function findAdminRoute(scope: AdminScope, pathname: string) {
+export function findAdminRoute(
+  scope: AdminScope,
+  pathname: string,
+  hostname = currentHostname(),
+) {
   const identifier =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[47][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const actual = pathname.split('/');
-  return routesForScope(scope).find((route) => {
+  return routesForScope(scope, hostname).find((route) => {
     const expected = route.path.split('/');
     return (
       expected.length === actual.length &&
@@ -144,8 +220,12 @@ export function findAdminRoute(scope: AdminScope, pathname: string) {
     );
   });
 }
-export function safeReturnTarget(scope: AdminScope, candidate: string | null) {
-  const root = adminRoots[scope];
+export function safeReturnTarget(
+  scope: AdminScope,
+  candidate: string | null,
+  hostname = currentHostname(),
+) {
+  const root = adminRoot(scope, hostname);
   if (
     !candidate ||
     !candidate.startsWith('/') ||
@@ -156,9 +236,10 @@ export function safeReturnTarget(scope: AdminScope, candidate: string | null) {
   try {
     const target = new URL(candidate, 'https://admin.invalid');
     if (target.origin !== 'https://admin.invalid' || target.hash) return root;
-    const route = findAdminRoute(scope, target.pathname);
+    const pathname = adminPath(scope, target.pathname, hostname);
+    const route = findAdminRoute(scope, pathname, hostname);
     return route?.states.includes('authenticated')
-      ? `${target.pathname}${target.search}`
+      ? `${pathname}${target.search}`
       : root;
   } catch {
     return root;

@@ -4,6 +4,7 @@ import { PageContainer } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Card, Descriptions, Space, Spin, Tag } from 'antd';
 import { useAdminSession } from '../../../auth/use-admin-session';
+import { adminPath } from '../../../app/admin-routes';
 import { OperationError, ReadError } from '../../../components/AdminFeedback';
 import { usePropertyApi, usePropertyOperation } from './hooks';
 import { CompanyActions } from './CompanyActions';
@@ -26,12 +27,16 @@ export default function CompanyDetailPage() {
       hasPermission('property.company.read'),
   });
   const company = query.data;
+  const companiesPath = adminPath(
+    'platform_admin',
+    '/platform/property/companies',
+  );
   return (
     <PageContainer
       title={company?.name ?? '物业公司详情'}
       breadcrumb={{
         items: [
-          { title: <Link to="/platform/property/companies">物业公司</Link> },
+          { title: <Link to={companiesPath}>物业公司</Link> },
           { title: '公司详情' },
         ],
       }}
@@ -44,7 +49,7 @@ export default function CompanyDetailPage() {
               onEdit={() => setEditing(true)}
             />
           )}
-          <Link to="/platform/property/companies">返回公司列表</Link>
+          <Link to={companiesPath}>返回公司列表</Link>
         </Space>
       }
     >

@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { AdminLayout } from '../app/AdminLayout';
 import NotFoundPage from '../components/NotFoundPage';
 import {
+  adminPath,
   adminRoots,
   adminTitles,
   findAdminRoute,
@@ -17,6 +18,8 @@ export function AdminRouter() {
     useAdminSession();
   const location = useLocation();
   const root = adminRoots[scope];
+  const loginPath = adminPath(scope, `${root}/login`);
+  const passwordPath = adminPath(scope, `${root}/change-password`);
   const route = findAdminRoute(scope, location.pathname);
   useEffect(() => {
     document.title = `${route?.title ?? '页面不存在'} - ${adminTitles[scope]}`;
@@ -41,21 +44,21 @@ export function AdminRouter() {
       />
     );
   if (status === 'anonymous') {
-    if (location.pathname === `${root}/login`) return <Outlet />;
+    if (location.pathname === loginPath) return <Outlet />;
     return (
       <Navigate
         replace
-        to={`${root}/login?return_to=${encodeURIComponent(location.pathname + location.search)}`}
+        to={`${loginPath}?return_to=${encodeURIComponent(location.pathname + location.search)}`}
       />
     );
   }
   if (status === 'password_change')
-    return location.pathname === `${root}/change-password` ? (
+    return location.pathname === passwordPath ? (
       <Outlet />
     ) : (
-      <Navigate replace to={`${root}/change-password`} />
+      <Navigate replace to={passwordPath} />
     );
-  if (location.pathname === `${root}/login`)
+  if (location.pathname === loginPath)
     return (
       <Navigate
         replace
@@ -65,8 +68,10 @@ export function AdminRouter() {
         )}
       />
     );
-  if (location.pathname === `${root}/change-password`)
-    return <Navigate replace to={`${root}/profile?tab=password`} />;
+  if (location.pathname === passwordPath)
+    return (
+      <Navigate replace to={adminPath(scope, `${root}/profile?tab=password`)} />
+    );
   return (
     <AdminLayout scope={scope}>
       {route.permission && !hasPermission(route.permission) ? (
