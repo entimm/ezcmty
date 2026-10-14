@@ -8,7 +8,7 @@ import {
   routesForScope,
   safeReturnTarget,
   scopeForHostname,
-} from './admin-routes';
+} from '@/app/admin-routes';
 
 interface ConfiguredRoute {
   path: string;

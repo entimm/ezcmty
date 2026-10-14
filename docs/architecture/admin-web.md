@@ -125,6 +125,8 @@ Umi 负责路由、开发服务器、热更新和生产构建，静态产物输�
 
 工程保留 ESLint、Prettier 和 Vitest，TypeScript 使用 5.9.3，以满足现有 typescript-eslint 的兼容范围。Vitest 使用独立测试配置；Umi 生成文件不提交、不参与人工格式和 Lint 检查。
 
+管理后台自动化测试及其初始化、框架替身文件统一放在 `apps/admin-web/tests/`。测试目录按被测模块组织：`app/`、`auth/`、`features/`、`shared/` 对应源码模块，`config/` 对应工程配置。测试文件保留 `.test.*` 命名，Vitest 仅从 `tests/` 收集测试；TypeScript 和 ESLint 同时检查测试代码。
+
 管理后台开发服务器固定监听 `127.0.0.1:5173`。启动器通过 [Node 开发入口](../../apps/admin-web/scripts/dev.cjs) 加载 Umi Max，并沿用批次身份登记、就绪和停止机制；该入口将 Umi 开发子进程意外退出报告为失败，开发端口校验阻止 Umi 在端口冲突时自动改用其他端口。开发入口约束见 [本地开发入口设计](local-development.md)，操作见 [本地开发指南](../guidelines/local-development.md)。
 
 验证覆盖各端 API 能力和导入边界、入口与双后台路由、权限和会话作用域、请求与缓存隔离、认证失效处理、类型检查、Lint、单元测试和构建，以及启动停止、端口冲突与清理回归。

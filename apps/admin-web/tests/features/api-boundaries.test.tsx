@@ -2,12 +2,12 @@ import { renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { AdminScopeProvider } from '../auth/AdminScopeProvider';
-import type { AdminScope } from '../shared/admin-types';
-import { usePlatformAdminApi } from './platform/hooks';
-import { usePropertyOnboardingApi } from './platform/property/hooks';
-import { createPropertyWorkspaceApi } from './property/api';
-import { usePropertyWorkspaceApi } from './property/hooks';
+import { AdminScopeProvider } from '@/auth/AdminScopeProvider';
+import type { AdminScope } from '@/shared/admin-types';
+import { usePlatformAdminApi } from '@/features/platform/hooks';
+import { usePropertyOnboardingApi } from '@/features/platform/property/hooks';
+import { createPropertyWorkspaceApi } from '@/features/property/api';
+import { usePropertyWorkspaceApi } from '@/features/property/hooks';
 
 describe('application API boundaries', () => {
   it.each([

@@ -12,6 +12,6 @@
     "skipLibCheck": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src", "config", "vitest.config.ts"],
+  "include": ["src", "config", "tests", "vitest.config.ts"],
   "exclude": ["node_modules", "dist", "coverage"]
 }

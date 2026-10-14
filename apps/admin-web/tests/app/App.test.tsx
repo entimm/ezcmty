@@ -9,26 +9,26 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import App from './App';
+import App from '@/app/App';
 import configuredRoutes from '../../config/routes';
-import { patchClientRoutes, rootContainer } from '../app';
-import PlatformApp from './platform/PlatformApp';
-import PlatformHome from '../features/platform/HomePage';
-import PropertyApp from './property/PropertyApp';
-import PropertyHome from '../features/property/HomePage';
-import NotFoundPage from '../components/NotFoundPage';
-import LoginPage from '../features/auth/LoginPage';
-import ChangePasswordPage from '../features/auth/ChangePasswordPage';
-import ProfilePage from '../features/profile/ProfilePage';
-import AccountsPage from '../features/platform/accounts/AccountsPage';
-import RolesPage from '../features/platform/roles/RolesPage';
-import AuditPage from '../features/platform/audit/AuditPage';
-import CompaniesPage from '../features/platform/property/CompaniesPage';
-import CompanyDetailPage from '../features/platform/property/CompanyDetailPage';
-import CommunitiesPage from '../features/platform/property/CommunitiesPage';
-import WorkspaceCommunitiesPage from '../features/property/CommunitiesPage';
-import type { SessionResponse } from '../shared/api/admin';
-import { safeReturnTarget } from './admin-routes';
+import { patchClientRoutes, rootContainer } from '@/app';
+import PlatformApp from '@/app/platform/PlatformApp';
+import PlatformHome from '@/features/platform/HomePage';
+import PropertyApp from '@/app/property/PropertyApp';
+import PropertyHome from '@/features/property/HomePage';
+import NotFoundPage from '@/components/NotFoundPage';
+import LoginPage from '@/features/auth/LoginPage';
+import ChangePasswordPage from '@/features/auth/ChangePasswordPage';
+import ProfilePage from '@/features/profile/ProfilePage';
+import AccountsPage from '@/features/platform/accounts/AccountsPage';
+import RolesPage from '@/features/platform/roles/RolesPage';
+import AuditPage from '@/features/platform/audit/AuditPage';
+import CompaniesPage from '@/features/platform/property/CompaniesPage';
+import CompanyDetailPage from '@/features/platform/property/CompanyDetailPage';
+import CommunitiesPage from '@/features/platform/property/CommunitiesPage';
+import WorkspaceCommunitiesPage from '@/features/property/CommunitiesPage';
+import type { SessionResponse } from '@/shared/api/admin';
+import { safeReturnTarget } from '@/app/admin-routes';
 
 const pages = {
   '@/app/App': App,

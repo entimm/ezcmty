@@ -3,16 +3,16 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import configuredRoutes from '../../../config/routes';
-import { rootContainer } from '../../app';
-import NotFoundPage from '../../components/NotFoundPage';
-import LoginPage from '../../features/auth/LoginPage';
-import ChangePasswordPage from '../../features/auth/ChangePasswordPage';
-import ProfilePage from '../../features/profile/ProfilePage';
-import WorkspaceCommunitiesPage from '../../features/property/CommunitiesPage';
-import type { SessionResponse } from '../../shared/api/admin';
-import { safeReturnTarget } from '../admin-routes';
-import HomePage from '../../features/property/HomePage';
-import PropertyApp from './PropertyApp';
+import { rootContainer } from '@/app';
+import NotFoundPage from '@/components/NotFoundPage';
+import LoginPage from '@/features/auth/LoginPage';
+import ChangePasswordPage from '@/features/auth/ChangePasswordPage';
+import ProfilePage from '@/features/profile/ProfilePage';
+import WorkspaceCommunitiesPage from '@/features/property/CommunitiesPage';
+import type { SessionResponse } from '@/shared/api/admin';
+import { safeReturnTarget } from '@/app/admin-routes';
+import HomePage from '@/features/property/HomePage';
+import PropertyApp from '@/app/property/PropertyApp';
 
 const session: SessionResponse = {
   scope: 'property_admin',

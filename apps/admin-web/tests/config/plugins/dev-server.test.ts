@@ -1,7 +1,9 @@
 import type { IApi } from '@umijs/max';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import devServer, { configureDevServer } from './dev-server';
+import devServer, {
+  configureDevServer,
+} from '../../../config/plugins/dev-server';
 
 afterEach(() => vi.unstubAllEnvs());
 

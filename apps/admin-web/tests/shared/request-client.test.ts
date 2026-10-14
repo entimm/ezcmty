@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ApiError, createAdminRequestClient } from './request-client';
+import { ApiError, createAdminRequestClient } from '@/shared/request-client';
 
 afterEach(() => vi.unstubAllGlobals());
 

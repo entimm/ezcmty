@@ -4,11 +4,11 @@ import { Form } from 'antd';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { PermissionGuard } from '../components/PermissionGuard';
-import { AdminScopeProvider } from './AdminScopeProvider';
-import type { AdminScope } from '../shared/admin-types';
-import type { AdminSessionContextValue } from './session-context';
-import { useAdminSession } from './use-admin-session';
+import { PermissionGuard } from '@/components/PermissionGuard';
+import { AdminScopeProvider } from '@/auth/AdminScopeProvider';
+import type { AdminScope } from '@/shared/admin-types';
+import type { AdminSessionContextValue } from '@/auth/session-context';
+import { useAdminSession } from '@/auth/use-admin-session';
 
 afterEach(() => vi.unstubAllGlobals());
 

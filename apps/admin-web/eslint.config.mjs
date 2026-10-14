@@ -31,7 +31,6 @@ export default tseslint.config(
   },
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: ['**/*.test.{ts,tsx}', 'src/test/**'],
     plugins: {
       'admin-boundaries': {
         rules: {

@@ -10,9 +10,7 @@ export default defineConfig({
       },
       {
         find: '@umijs/max',
-        replacement: fileURLToPath(
-          new URL('./src/test/umi.ts', import.meta.url),
-        ),
+        replacement: fileURLToPath(new URL('./tests/umi.ts', import.meta.url)),
       },
       {
         // Transform extensionless locale imports through Vite's ES loader.
@@ -28,7 +26,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    setupFiles: './src/test/setup.ts',
+    include: ['tests/**/*.{test,spec}.{js,jsx,mjs,cjs,ts,tsx,mts,cts}'],
+    setupFiles: './tests/setup.ts',
     globals: true,
     server: { deps: { inline: ['@ant-design/pro-components', 'antd'] } },
     exclude: ['**/node_modules/**', '**/.umi*/**', '**/dist/**'],

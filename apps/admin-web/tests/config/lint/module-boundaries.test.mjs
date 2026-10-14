@@ -1,7 +1,7 @@
 import { RuleTester } from 'eslint';
 import { resolve } from 'node:path';
 import { describe, it } from 'vitest';
-import { createAdminBoundaryRule } from './module-boundaries.mjs';
+import { createAdminBoundaryRule } from '../../../config/lint/module-boundaries.mjs';
 
 RuleTester.describe = describe;
 RuleTester.it = it;
