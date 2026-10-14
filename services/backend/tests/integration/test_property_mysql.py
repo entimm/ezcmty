@@ -25,8 +25,9 @@ from backend_app.models.admin import AdminAccount, AdminAccountRole, AdminRole, 
 from backend_app.models.property import Community, PropertyCompany
 from backend_app.schemas import admin as admin_schema
 from backend_app.schemas import property as schema
-from backend_app.services.admin import AdminService
-from backend_app.services.property import PropertyOnboardingService
+from backend_app.services.platform_admin.admin import PlatformAdminService
+from backend_app.services.platform_admin.property import PropertyOnboardingService
+from backend_app.services.property_admin.admin import PropertyAdminService
 
 pytestmark = [
     pytest.mark.integration,
@@ -38,7 +39,7 @@ pytestmark = [
 
 def platform_token(factory: sessionmaker[Session], store: AdminSessionStore) -> str:
     with factory() as db:
-        AdminService(db, "platform_admin").initialize_super_admin("root", "平台", PASSWORD)
+        PlatformAdminService(db).initialize_super_admin("root", "平台", PASSWORD)
         account = db.scalar(select(AdminAccount).where(AdminAccount.login_name == "root"))
         assert account
         account.must_change_password = False
@@ -191,7 +192,7 @@ def test_concurrent_company_provisioning_and_last_admin_disables(
     factory, store = real_admin
     token = platform_token(factory, store)
     with factory() as db:
-        actor = AdminService(db, "platform_admin").authenticate(store, token)
+        actor = PlatformAdminService(db).authenticate(store, token)
         company = PropertyOnboardingService(db).create_company(
             actor, schema.CompanyCreate(code="concurrent", name="并发"), "create-company"
         )
@@ -199,7 +200,7 @@ def test_concurrent_company_provisioning_and_last_admin_disables(
 
     def provision(name: str) -> str:
         with factory() as db:
-            actor = AdminService(db, "platform_admin").authenticate(store, token)
+            actor = PlatformAdminService(db).authenticate(store, token)
             barrier.wait(timeout=10)
             return (
                 PropertyOnboardingService(db)
@@ -231,7 +232,7 @@ def test_concurrent_company_provisioning_and_last_admin_disables(
 
     def disable(account_id: str) -> str:
         with factory() as db:
-            actor = AdminService(db, "platform_admin").authenticate(store, token)
+            actor = PlatformAdminService(db).authenticate(store, token)
             barrier.wait(timeout=10)
             try:
                 PropertyOnboardingService(db).update_admin(
@@ -262,7 +263,7 @@ def test_mysql_property_session_revocation_and_same_company_authorization(
     factory, store = real_admin
     platform = platform_token(factory, store)
     with factory() as db:
-        actor = AdminService(db, "platform_admin").authenticate(store, platform)
+        actor = PlatformAdminService(db).authenticate(store, platform)
         service = PropertyOnboardingService(db)
         company = service.create_company(
             actor, schema.CompanyCreate(code="sessions", name="会话"), "create-company"
@@ -285,7 +286,7 @@ def test_mysql_property_session_revocation_and_same_company_authorization(
             assert account
             account.must_change_password = False
         db.commit()
-        prop = AdminService(db, "property_admin")
+        prop = PropertyAdminService(db)
         token, _ = prop.login(
             admin_schema.AdminLogin(login_name="first", password=PASSWORD), store, "ip", "login"
         )
@@ -296,9 +297,9 @@ def test_mysql_property_session_revocation_and_same_company_authorization(
         )
         service.update_company(actor, company.id, schema.CompanyUpdate(enabled=True), "reenable")
         with pytest.raises(AppError) as caught:
-            AdminService(db, "property_admin").authenticate(store, token)
+            PropertyAdminService(db).authenticate(store, token)
         assert caught.value.code == "auth.unauthenticated" and store.read("property_admin", token)
-        prop = AdminService(db, "property_admin")
+        prop = PropertyAdminService(db)
         token, _ = prop.login(
             admin_schema.AdminLogin(login_name="first", password=PASSWORD),
             store,
@@ -306,9 +307,13 @@ def test_mysql_property_session_revocation_and_same_company_authorization(
             "login-again",
         )
         context = prop.authenticate(store, token)
-        # Common security operations use the trusted company, including role lookup.
-        prop.update_account(
-            context, second.id, admin_schema.AccountUpdate(enabled=False), "own-company-disable"
+        # Platform provisioning mutations retain their actor and target company.
+        service.update_admin(
+            actor,
+            company.id,
+            second.id,
+            admin_schema.AccountUpdate(enabled=False),
+            "own-company-disable",
         )
         other = service.create_company(
             actor, schema.CompanyCreate(code="other", name="另一"), "other-company"
@@ -320,10 +325,16 @@ def test_mysql_property_session_revocation_and_same_company_authorization(
             "other-admin",
         )
         with pytest.raises(AppError) as caught:
-            prop.update_account(
-                context, target.id, admin_schema.AccountUpdate(enabled=False), "cross-company"
+            service.update_admin(
+                actor,
+                company.id,
+                target.id,
+                admin_schema.AccountUpdate(enabled=False),
+                "cross-company",
             )
         assert caught.value.code == "resource.not_found"
+        assert prop.identity.repo.account(second.id) is not None
+        assert prop.identity.repo.account(target.id) is None
 
 
 def test_mysql_migration_roundtrip_and_unmapped_identity_preflight(

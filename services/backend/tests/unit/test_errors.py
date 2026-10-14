@@ -209,8 +209,8 @@ def test_readiness_keeps_state_response_and_safe_diagnostics(
     def fail_dependency() -> None:
         raise RedisConnectionError(SECRET)
 
-    monkeypatch.setattr("backend_app.services.system.check_database_connection", fail_dependency)
-    monkeypatch.setattr("backend_app.services.system.get_redis", fail_dependency)
+    monkeypatch.setattr("backend_app.core.readiness.check_database_connection", fail_dependency)
+    monkeypatch.setattr("backend_app.core.readiness.get_redis", fail_dependency)
     response = TestClient(app).get("/readyz")
     assert response.status_code == 503
     assert response.headers["content-type"] == "application/json"

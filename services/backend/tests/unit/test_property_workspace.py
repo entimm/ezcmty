@@ -16,11 +16,11 @@ from backend_app.app_factory import create_app
 from backend_app.core.admin_security import verify_password
 from backend_app.core.errors import AppError
 from backend_app.db.session import get_database_session
+from backend_app.domain.admin.permissions import PermissionDefinition
 from backend_app.models.admin import AdminAccount, AdminAuditLog
 from backend_app.repositories.admin import AdminRepository
-from backend_app.schemas import admin as schema
-from backend_app.services.admin import AdminService
-from backend_app.services.property_workspace import PropertyWorkspaceService
+from backend_app.services.property_admin.admin import PropertyAdminService
+from backend_app.services.property_admin.workspace import PropertyWorkspaceService
 from tests.unit.test_admin import NEW_PASSWORD, ORIGIN, TEST_PASSWORD, Harness
 from tests.unit.test_admin import harness as harness
 from tests.unit.test_property import admin, company
@@ -423,10 +423,10 @@ def test_workspace_permissions_and_missing_company_fail_closed(
     w = workspace
     w.complete_login()
     monkeypatch.setattr(
-        "backend_app.services.admin.permission_catalog",
+        "backend_app.domain.admin.identity.permission_catalog",
         lambda scope: (
             [
-                schema.AdminPermission(
+                PermissionDefinition(
                     code="property.company.read", name="公司", group="公司", assignable=True
                 )
             ]
@@ -439,7 +439,7 @@ def test_workspace_permissions_and_missing_company_fail_closed(
     token = w.client.cookies.get("admin_session")
     assert token
     with w.platform.factory() as db:
-        ctx = AdminService(db, "property_admin").authenticate(w.platform.store, token)
+        ctx = PropertyAdminService(db).authenticate(w.platform.store, token)
         service = PropertyWorkspaceService(db)
         for invalid in (
             replace(ctx, property_company_id=None),

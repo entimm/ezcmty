@@ -613,8 +613,8 @@ def test_explicit_backend_env_and_environment_priority(
 ) -> None:
     from scripts.dev.services import dependency_probe
 
+    from backend_app.core import readiness as system
     from backend_app.core.config import get_settings
-    from backend_app.services import system
 
     backend = harness.source.parent
     (backend / ".env").write_text(

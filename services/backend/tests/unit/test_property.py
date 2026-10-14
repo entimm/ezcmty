@@ -13,7 +13,7 @@ from backend_app.models.admin import AdminAccount, AdminAccountRole, AdminAuditL
 from backend_app.models.property import PropertyCompany
 from backend_app.repositories.admin import AdminRepository
 from backend_app.schemas import admin as schema
-from backend_app.services.admin import AdminService
+from backend_app.services.property_admin.admin import PropertyAdminService
 from tests.unit.test_admin import NEW_PASSWORD, TEST_PASSWORD, Harness
 from tests.unit.test_admin import harness as harness
 
@@ -180,7 +180,7 @@ def test_company_disabling_revokes_all_sessions_without_changing_child_status(
     path = f"/v1/property-companies/{c['id']}"
     headers = harness.headers()
     with harness.factory() as db:
-        svc = AdminService(db, "property_admin")
+        svc = PropertyAdminService(db)
         with pytest.raises(AppError) as caught:
             svc.login(
                 schema.AdminLogin(login_name=a["login_name"], password=TEST_PASSWORD),
@@ -191,7 +191,7 @@ def test_company_disabling_revokes_all_sessions_without_changing_child_status(
         assert caught.value.code == "auth.invalid_credentials"
     assert harness.client.patch(path, json={"enabled": True}, headers=headers).status_code == 200
     with harness.factory() as db:
-        svc = AdminService(db, "property_admin")
+        svc = PropertyAdminService(db)
         token, _ = svc.login(
             schema.AdminLogin(login_name=a["login_name"], password=TEST_PASSWORD),
             harness.store,
@@ -222,14 +222,14 @@ def test_company_disabling_revokes_all_sessions_without_changing_child_status(
         assert {row.id: row.enabled for row in rows} == {a["id"]: True, b["id"]: False}
         assert all(row.session_version == versions[row.id] + 1 for row in rows)
         with pytest.raises(AppError) as caught:
-            AdminService(db, "property_admin").authenticate(harness.store, token)
+            PropertyAdminService(db).authenticate(harness.store, token)
         assert caught.value.code == "auth.unauthenticated"
     assert harness.client.patch(path, json={"enabled": True}, headers=headers).status_code == 200
     with harness.factory() as db:
         with pytest.raises(AppError) as caught:
-            AdminService(db, "property_admin").authenticate(harness.store, token)
+            PropertyAdminService(db).authenticate(harness.store, token)
         assert caught.value.code == "auth.unauthenticated"
-        new_token, _ = AdminService(db, "property_admin").login(
+        new_token, _ = PropertyAdminService(db).login(
             schema.AdminLogin(login_name=a["login_name"], password=TEST_PASSWORD),
             harness.store,
             "ip",

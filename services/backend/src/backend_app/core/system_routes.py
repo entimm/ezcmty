@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Response
 
 from backend_app.core.openapi import get_problem_responses, get_request_id_headers
+from backend_app.core.readiness import check_readiness
 from backend_app.schemas.system import HealthResponse, ReadinessResponse
-from backend_app.services.system import check_readiness
 
 
 def create_system_router(service_name: str) -> APIRouter:

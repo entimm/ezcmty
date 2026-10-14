@@ -20,7 +20,7 @@
 | `webhook`            | 外部回调接收和校验 |
 | `worker`             | 异步任务执行       |
 
-各 API 进程共享 Service、Repository、Model 和 Integration。
+各 API 进程使用独立的应用 Service，共享 Domain、Repository、Model、Integration 和响应映射。后台业务编排与复用边界见 [后端业务边界与公共能力](backend-services.md)。
 
 管理后台平台和物业功能共用 Ant Design Pro 项目，但保持独立路由、布局、会话和权限上下文；前端工程与缓存隔离见 [管理后台前端设计](admin-web.md)。
 
@@ -29,13 +29,17 @@
 ## 后端分层
 
 ```text
-API → Service → Repository → Model
+API → Service → Domain
+Service / Domain → Repository → Model
 Service → Integration → 第三方服务
+Service → Schema / Mapper
 Worker → Service
 ```
 
 - API 只负责 HTTP 请求处理、输入校验、认证入口和响应转换，不直接访问数据库。
-- Service 负责业务规则、权限、数据范围、状态流转和事务边界。
+- Service 负责各端业务编排、操作权限、数据范围、状态流转、会话生命周期和事务边界。
+- Domain 按业务领域维护共用规则；与应用 Service、API Schema 和会话存储的依赖边界见 [后端业务边界与公共能力](backend-services.md#分层与职责)。
+- Schema 定义请求与响应模型，Mapper 负责纯响应转换。
 - 数据库访问统一通过 Repository。
 - 第三方能力统一放入 Integration，由其负责第三方协议和外部能力封装。
 

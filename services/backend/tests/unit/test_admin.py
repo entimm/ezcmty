@@ -34,7 +34,7 @@ from backend_app.models.admin import (
 )
 from backend_app.models.property import PropertyCompany
 from backend_app.schemas import admin as schema
-from backend_app.services.admin import AdminService
+from backend_app.services.platform_admin.admin import PlatformAdminService
 
 TEST_PASSWORD = "test-initial-password"
 NEW_PASSWORD = "test-changed-password"
@@ -126,9 +126,7 @@ def harness(tmp_path: Path, monkeypatch: MonkeyPatch) -> Iterator[Harness]:
     }
     factory = sessionmaker(bind=engine, autoflush=False)
     with factory() as db:
-        AdminService(db, "platform_admin").initialize_super_admin(
-            "root", "平台管理员", TEST_PASSWORD
-        )
+        PlatformAdminService(db).initialize_super_admin("root", "平台管理员", TEST_PASSWORD)
     redis = MemoryRedis()
     monkeypatch.setattr("backend_app.core.admin_sessions.time", lambda: redis.now)
     store = AdminSessionStore(cast("Redis[str]", redis), settings)
@@ -300,7 +298,7 @@ def test_role_write_rules_revocation_and_account_creation(harness: Harness) -> N
         db.commit()
         token, stored = harness.store.create("platform_admin", saved.id, saved.session_version)
     with harness.factory() as db:
-        service = AdminService(db, "platform_admin")
+        service = PlatformAdminService(db)
         context = service.authenticate(harness.store, token)
         assert context.permissions == ["admin.account.read", "admin.role.read"]
         with pytest.raises(AppError, match="没有操作权限"):
@@ -315,7 +313,7 @@ def test_role_write_rules_revocation_and_account_creation(harness: Harness) -> N
     assert harness.store.read("platform_admin", token) is not None
     with harness.factory() as db:
         with pytest.raises(AppError) as caught:
-            AdminService(db, "platform_admin").authenticate(harness.store, token)
+            PlatformAdminService(db).authenticate(harness.store, token)
         assert caught.value.code == "auth.unauthenticated"
     audit = harness.client.get("/v1/admin-audit-logs").json()["items"]
     assert any(
@@ -344,9 +342,7 @@ def test_super_admin_protection_and_fixed_role(harness: Harness) -> None:
     assert fixed.status_code == 409 and fixed.json()["code"] == "admin.system_role_readonly"
     with harness.factory() as db:
         with pytest.raises(AppError):
-            AdminService(db, "platform_admin").initialize_super_admin(
-                "another", "管理员", TEST_PASSWORD
-            )
+            PlatformAdminService(db).initialize_super_admin("another", "管理员", TEST_PASSWORD)
         db.rollback()
         assert db.scalar(select(func.count()).select_from(AdminAccount)) == 1
 

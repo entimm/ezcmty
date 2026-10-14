@@ -9,8 +9,8 @@ from backend_app.core.openapi import get_problem_responses, get_request_id_heade
 from backend_app.db.session import get_database_session
 from backend_app.schemas import property as schema
 from backend_app.schemas.admin import Identifier
-from backend_app.services.admin import AdminContext
-from backend_app.services.property_workspace import PropertyWorkspaceService
+from backend_app.services.contracts.admin import AdminContext
+from backend_app.services.property_admin.workspace import PropertyWorkspaceService
 
 
 def create_property_workspace_router(permission: Callable[[str], DependsParameter]) -> APIRouter:

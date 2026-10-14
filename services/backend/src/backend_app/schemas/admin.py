@@ -4,8 +4,8 @@ from typing import Annotated, Any, Literal
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
 from backend_app.core.identifiers import UUID_PATTERN, normalize_uuid
+from backend_app.domain.admin.types import AdminScope as AdminScope
 
-AdminScope = Literal["platform_admin", "property_admin"]
 Name = Annotated[str, Field(min_length=1, max_length=80)]
 Identifier = Annotated[
     str,

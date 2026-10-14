@@ -32,7 +32,7 @@ from backend_app.db.base import Base
 from backend_app.models.admin import AdminAccount, AdminAuditLog, AdminRole, AdminRolePermission
 from backend_app.models.property import Community, PropertyCompany
 from backend_app.schemas import admin as schema
-from backend_app.services.admin import AdminService
+from backend_app.services.platform_admin.admin import PlatformAdminService
 
 pytestmark = [
     pytest.mark.integration,
@@ -172,7 +172,7 @@ def test_competing_super_admin_disables_preserve_one_valid_admin(
 ) -> None:
     factory, store = real_admin
     with factory() as db:
-        service = AdminService(db, "platform_admin")
+        service = PlatformAdminService(db)
         service.initialize_super_admin("first", "First", PASSWORD)
         first = db.scalar(select(AdminAccount).where(AdminAccount.login_name == "first"))
         system = db.scalar(select(AdminRole).where(AdminRole.code == "super_admin"))
@@ -198,7 +198,7 @@ def test_competing_super_admin_disables_preserve_one_valid_admin(
 
     def disable(token: str, target: str) -> str:
         with factory() as db:
-            service = AdminService(db, "platform_admin")
+            service = PlatformAdminService(db)
             context = service.authenticate(store, token)
             barrier.wait(timeout=10)
             try:
@@ -220,7 +220,7 @@ def test_competing_super_admin_disables_preserve_one_valid_admin(
     with factory() as db:
         role = db.scalar(select(AdminRole).where(AdminRole.code == "super_admin"))
         assert role
-        assert len(AdminService(db, "platform_admin").repo.active_super_accounts(role.id)) == 1
+        assert len(PlatformAdminService(db).repo.active_super_accounts(role.id)) == 1
 
 
 def test_real_redis_revocation_and_scope_separation(
@@ -228,7 +228,7 @@ def test_real_redis_revocation_and_scope_separation(
 ) -> None:
     factory, store = real_admin
     with factory() as db:
-        service = AdminService(db, "platform_admin")
+        service = PlatformAdminService(db)
         service.initialize_super_admin("admin", "Admin", PASSWORD)
         account = db.scalar(select(AdminAccount))
         assert account
@@ -245,7 +245,7 @@ def test_real_redis_revocation_and_scope_separation(
         assert store.read("platform_admin", token) is not None
     with factory() as db:
         with pytest.raises(AppError) as caught:
-            AdminService(db, "platform_admin").authenticate(store, token)
+            PlatformAdminService(db).authenticate(store, token)
         assert caught.value.code == "auth.unauthenticated"
     # Real Lua counters enforce both account and source limits.
     source = uuid4().hex
@@ -262,7 +262,7 @@ def test_uuid_binary_storage_and_fresh_migration_schema(
     factory, _ = real_admin
     legacy_id = str(uuid4())
     with factory() as db:
-        service = AdminService(db, "platform_admin")
+        service = PlatformAdminService(db)
         service.initialize_super_admin("admin", "Admin", PASSWORD)
         account = db.scalar(select(AdminAccount))
         assert account is not None and UUID(account.id).version == 7

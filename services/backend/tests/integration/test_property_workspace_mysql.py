@@ -29,8 +29,9 @@ from backend_app.models.admin import AdminAccount
 from backend_app.repositories.admin import AdminRepository
 from backend_app.schemas import admin as admin_schema
 from backend_app.schemas import property as schema
-from backend_app.services.admin import AdminService
-from backend_app.services.property import PropertyOnboardingService
+from backend_app.services.platform_admin.admin import PlatformAdminService
+from backend_app.services.platform_admin.property import PropertyOnboardingService
+from backend_app.services.property_admin.admin import PropertyAdminService
 
 pytestmark = [
     pytest.mark.integration,
@@ -49,7 +50,7 @@ def provision(
 ) -> tuple[str, schema.PropertyAdminAccount]:
     token = platform_token(factory, store)
     with factory() as db:
-        actor = AdminService(db, "platform_admin").authenticate(store, token)
+        actor = PlatformAdminService(db).authenticate(store, token)
         service = PropertyOnboardingService(db)
         company = service.create_company(
             actor, schema.CompanyCreate(code=new_id(), name="物业公司"), "company"
@@ -82,7 +83,7 @@ def mutate(
     mutation: Mutation,
 ) -> None:
     with factory() as db:
-        actor = AdminService(db, "platform_admin").authenticate(store, token)
+        actor = PlatformAdminService(db).authenticate(store, token)
         service = PropertyOnboardingService(db)
         if mutation == "company":
             service.update_company(
@@ -129,7 +130,7 @@ def test_mysql_login_rechecks_state_and_password_after_concurrent_platform_chang
     def login() -> str:
         with factory() as db:
             try:
-                AdminService(db, "property_admin").login(
+                PropertyAdminService(db).login(
                     admin_schema.AdminLogin(login_name=account.login_name, password=PASSWORD),
                     store,
                     account.id,
@@ -161,7 +162,7 @@ def test_mysql_password_write_rejects_stale_context_after_platform_change(
 
     def change() -> str:
         with factory() as db:
-            service = AdminService(db, "property_admin")
+            service = PropertyAdminService(db)
             context = service.authenticate(store, token)
             observed.set()
             assert release.wait(10), "Platform mutation did not finish"

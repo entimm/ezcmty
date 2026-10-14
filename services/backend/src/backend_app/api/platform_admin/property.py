@@ -10,8 +10,8 @@ from backend_app.db.session import get_database_session
 from backend_app.schemas import admin as admin_schema
 from backend_app.schemas import property as schema
 from backend_app.schemas.admin import Identifier
-from backend_app.services.admin import AdminContext
-from backend_app.services.property import PropertyOnboardingService
+from backend_app.services.contracts.admin import AdminContext
+from backend_app.services.platform_admin.property import PropertyOnboardingService
 
 
 def create_property_router(
@@ -32,11 +32,11 @@ def create_property_router(
         "/v1/property-companies",
         response_model=schema.CompanyPage,
         operation_id="listPropertyCompanies",
-        dependencies=[permission("property.company.read")],
         responses=ok,
     )
     def list_companies(
         svc: Service,
+        ctx: Annotated[AdminContext, permission("property.company.read")],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         name: Annotated[str | None, Query(max_length=160)] = None,
@@ -45,7 +45,7 @@ def create_property_router(
         sort: Literal["created_at", "-created_at"] = "-created_at",
     ) -> schema.CompanyPage:
         return svc.list_companies(
-            page=page, page_size=page_size, name=name, code=code, enabled=enabled, sort=sort
+            ctx, page=page, page_size=page_size, name=name, code=code, enabled=enabled, sort=sort
         )
 
     @router.post(
@@ -68,11 +68,14 @@ def create_property_router(
         "/v1/property-companies/{company_id}",
         response_model=schema.PropertyCompany,
         operation_id="getPropertyCompany",
-        dependencies=[permission("property.company.read")],
         responses=ok,
     )
-    def get_company(company_id: Identifier, svc: Service) -> schema.PropertyCompany:
-        return svc.get_company(company_id)
+    def get_company(
+        company_id: Identifier,
+        svc: Service,
+        ctx: Annotated[AdminContext, permission("property.company.read")],
+    ) -> schema.PropertyCompany:
+        return svc.get_company(ctx, company_id)
 
     @router.patch(
         "/v1/property-companies/{company_id}",
@@ -94,11 +97,11 @@ def create_property_router(
         "/v1/communities",
         response_model=schema.CommunityPage,
         operation_id="listCommunities",
-        dependencies=[permission("property.community.read")],
         responses=ok,
     )
     def list_communities(
         svc: Service,
+        ctx: Annotated[AdminContext, permission("property.community.read")],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         name: Annotated[str | None, Query(max_length=160)] = None,
@@ -108,6 +111,7 @@ def create_property_router(
         sort: Literal["created_at", "-created_at"] = "-created_at",
     ) -> schema.CommunityPage:
         return svc.list_communities(
+            ctx,
             page=page,
             page_size=page_size,
             name=name,
@@ -137,11 +141,14 @@ def create_property_router(
         "/v1/communities/{community_id}",
         response_model=schema.Community,
         operation_id="getCommunity",
-        dependencies=[permission("property.community.read")],
         responses=ok,
     )
-    def get_community(community_id: Identifier, svc: Service) -> schema.Community:
-        return svc.get_community(community_id)
+    def get_community(
+        community_id: Identifier,
+        svc: Service,
+        ctx: Annotated[AdminContext, permission("property.community.read")],
+    ) -> schema.Community:
+        return svc.get_community(ctx, community_id)
 
     @router.patch(
         "/v1/communities/{community_id}",
@@ -163,12 +170,12 @@ def create_property_router(
         "/v1/property-companies/{company_id}/admin-accounts",
         response_model=schema.PropertyAdminPage,
         operation_id="listPropertyAdminAccounts",
-        dependencies=[permission("property.admin.read")],
         responses=ok,
     )
     def list_admins(
         company_id: Identifier,
         svc: Service,
+        ctx: Annotated[AdminContext, permission("property.admin.read")],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         login_name: Annotated[str | None, Query(max_length=64)] = None,
@@ -176,6 +183,7 @@ def create_property_router(
         sort: Literal["created_at", "-created_at"] = "-created_at",
     ) -> schema.PropertyAdminPage:
         return svc.list_admins(
+            ctx,
             company_id,
             page=page,
             page_size=page_size,
@@ -205,13 +213,15 @@ def create_property_router(
         "/v1/property-companies/{company_id}/admin-accounts/{account_id}",
         response_model=schema.PropertyAdminAccount,
         operation_id="getPropertyAdminAccount",
-        dependencies=[permission("property.admin.read")],
         responses=ok,
     )
     def get_admin(
-        company_id: Identifier, account_id: Identifier, svc: Service
+        company_id: Identifier,
+        account_id: Identifier,
+        svc: Service,
+        ctx: Annotated[AdminContext, permission("property.admin.read")],
     ) -> schema.PropertyAdminAccount:
-        return svc.get_admin(company_id, account_id)
+        return svc.get_admin(ctx, company_id, account_id)
 
     @router.patch(
         "/v1/property-companies/{company_id}/admin-accounts/{account_id}",

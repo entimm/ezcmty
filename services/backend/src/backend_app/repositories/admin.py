@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
+from backend_app.domain.admin.types import AdminScope
 from backend_app.models.admin import (
     AdminAccount,
     AdminAccountRole,
@@ -11,7 +12,6 @@ from backend_app.models.admin import (
     AdminRole,
     AdminRolePermission,
 )
-from backend_app.schemas.admin import AdminScope
 
 
 class AdminRepository:

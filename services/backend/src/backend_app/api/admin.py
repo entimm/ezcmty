@@ -1,13 +1,13 @@
 import secrets
-from datetime import UTC, datetime
-from typing import Annotated, Literal
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Query, Request, Response, Security
+from fastapi import APIRouter, Depends, Header, Request, Response, Security
 from fastapi.params import Depends as DependsParameter
 from fastapi.security import APIKeyCookie
 from sqlalchemy.orm import Session
 
-from backend_app.core.admin_security import permission_catalog
 from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.config import get_settings
 from backend_app.core.errors import AppError
@@ -15,7 +15,7 @@ from backend_app.core.openapi import get_problem_responses, get_request_id_heade
 from backend_app.core.redis import get_redis
 from backend_app.db.session import get_database_session
 from backend_app.schemas import admin as schema
-from backend_app.services.admin import AdminContext, AdminService
+from backend_app.services.contracts.admin import AdminAuthService, AdminContext
 
 _cookie = APIKeyCookie(name="admin_session", scheme_name="AdminSession", auto_error=False)
 
@@ -24,16 +24,28 @@ def get_admin_session_store() -> AdminSessionStore:
     return AdminSessionStore(get_redis(), get_settings())
 
 
-def create_admin_router(scope: schema.AdminScope, *, include_management: bool = True) -> APIRouter:
+@dataclass(frozen=True)
+class AdminAuthRoutes:
+    router: APIRouter
+    permission: Callable[[str], DependsParameter]
+    check_write: Callable[..., None]
+
+
+def create_admin_auth_router(
+    scope: schema.AdminScope, service_factory: Callable[[Session], AdminAuthService]
+) -> AdminAuthRoutes:
     router = APIRouter(tags=["admin"])
     common_errors = get_problem_responses(401, 403, 404, 409, 422, 500, 503)
     session_headers = {**get_request_id_headers(), "Cache-Control": {"schema": {"type": "string"}}}
     cookie_headers = {**session_headers, "Set-Cookie": {"schema": {"type": "string"}}}
 
-    def service(db: Annotated[Session, Depends(get_database_session)]) -> AdminService:
-        return AdminService(db, scope)
+    def service(db: Annotated[Session, Depends(get_database_session)]) -> AdminAuthService:
+        svc = service_factory(db)
+        if svc.scope != scope:
+            raise RuntimeError("Admin API and application service scopes must match")
+        return svc
 
-    Service = Annotated[AdminService, Depends(service)]
+    Service = Annotated[AdminAuthService, Depends(service)]
     Store = Annotated[AdminSessionStore, Depends(get_admin_session_store)]
 
     def authenticate(
@@ -128,7 +140,7 @@ def create_admin_router(scope: schema.AdminScope, *, include_management: bool = 
     )
     def get_current(ctx: Context, svc: Service, response: Response) -> schema.AdminSession:
         response.headers["Cache-Control"] = "no-store"
-        return svc.session_view(svc._account(ctx.account_id), ctx.stored)
+        return svc.get_current_session(ctx)
 
     @router.delete(
         "/v1/admin-sessions/current",
@@ -181,238 +193,4 @@ def create_admin_router(scope: schema.AdminScope, *, include_management: bool = 
         store.delete(scope, ctx.token)
         clear_cookie(response)
 
-    if not include_management:
-        if scope == "property_admin":
-            from backend_app.api.property_admin.workspace import create_property_workspace_router
-
-            property_router = APIRouter()
-            property_router.include_router(router)
-            property_router.include_router(create_property_workspace_router(permission))
-            return property_router
-        return router
-
-    @router.get(
-        "/v1/admin-accounts",
-        response_model=schema.AccountPage,
-        operation_id="listAdminAccounts",
-        dependencies=[permission("admin.account.read")],
-        responses={**common_errors, 200: {"headers": get_request_id_headers()}},
-    )
-    def list_accounts(
-        svc: Service,
-        page: Annotated[int, Query(ge=1)] = 1,
-        page_size: Annotated[int, Query(ge=1, le=100)] = 20,
-        login_name: Annotated[str | None, Query(max_length=64)] = None,
-        enabled: bool | None = None,
-        sort: Literal["created_at", "-created_at", "login_name", "-login_name"] = "-created_at",
-    ) -> schema.AccountPage:
-        return svc.list_accounts(
-            page=page, page_size=page_size, login_name=login_name, enabled=enabled, sort=sort
-        )
-
-    @router.post(
-        "/v1/admin-accounts",
-        response_model=schema.AdminAccount,
-        status_code=201,
-        operation_id="createAdminAccount",
-        dependencies=[Depends(check_write)],
-        responses={**common_errors, 201: {"headers": get_request_id_headers()}},
-    )
-    def create_account(
-        data: schema.AccountCreate,
-        request: Request,
-        svc: Service,
-        ctx: Annotated[AdminContext, permission("admin.account.create")],
-    ) -> schema.AdminAccount:
-        return svc.create_account(ctx, data, request.state.request_id)
-
-    @router.get(
-        "/v1/admin-accounts/{account_id}",
-        response_model=schema.AdminAccount,
-        operation_id="getAdminAccount",
-        dependencies=[permission("admin.account.read")],
-        responses={**common_errors, 200: {"headers": get_request_id_headers()}},
-    )
-    def get_account(account_id: schema.Identifier, svc: Service) -> schema.AdminAccount:
-        return svc.account_view(svc._account(account_id))
-
-    @router.patch(
-        "/v1/admin-accounts/{account_id}",
-        response_model=schema.AdminAccount,
-        operation_id="updateAdminAccount",
-        dependencies=[Depends(check_write)],
-        responses={**common_errors, 200: {"headers": get_request_id_headers()}},
-    )
-    def update_account(
-        account_id: schema.Identifier,
-        data: schema.AccountUpdate,
-        request: Request,
-        svc: Service,
-        ctx: Annotated[AdminContext, permission("admin.account.update")],
-    ) -> schema.AdminAccount:
-        return svc.update_account(ctx, account_id, data, request.state.request_id)
-
-    @router.post(
-        "/v1/admin-accounts/{account_id}/password-resets",
-        status_code=204,
-        operation_id="resetAdminPassword",
-        dependencies=[Depends(check_write)],
-        responses={**common_errors, 204: {"headers": get_request_id_headers()}},
-    )
-    def reset_password(
-        account_id: schema.Identifier,
-        data: schema.PasswordReset,
-        request: Request,
-        svc: Service,
-        ctx: Annotated[AdminContext, permission("admin.account.reset_password")],
-    ) -> None:
-        svc.reset_password(ctx, account_id, data, request.state.request_id)
-
-    @router.put(
-        "/v1/admin-accounts/{account_id}/roles",
-        response_model=schema.AdminAccount,
-        operation_id="setAdminAccountRoles",
-        dependencies=[Depends(check_write)],
-        responses={**common_errors, 200: {"headers": get_request_id_headers()}},
-    )
-    def set_account_roles(
-        account_id: schema.Identifier,
-        data: schema.RoleSet,
-        request: Request,
-        svc: Service,
-        ctx: Annotated[AdminContext, permission("admin.account.assign_roles")],
-    ) -> schema.AdminAccount:
-        return svc.set_account_roles(ctx, account_id, data, request.state.request_id)
-
-    @router.get(
-        "/v1/admin-roles",
-        response_model=schema.RolePage,
-        operation_id="listAdminRoles",
-        dependencies=[permission("admin.role.read")],
-        responses={**common_errors, 200: {"headers": get_request_id_headers()}},
-    )
-    def list_roles(
-        svc: Service,
-        page: Annotated[int, Query(ge=1)] = 1,
-        page_size: Annotated[int, Query(ge=1, le=100)] = 20,
-        name: Annotated[str | None, Query(max_length=80)] = None,
-        enabled: bool | None = None,
-        sort: Literal["code", "-code", "name", "-name"] = "code",
-    ) -> schema.RolePage:
-        return svc.list_roles(page=page, page_size=page_size, name=name, enabled=enabled, sort=sort)
-
-    @router.post(
-        "/v1/admin-roles",
-        response_model=schema.AdminRole,
-        status_code=201,
-        operation_id="createAdminRole",
-        dependencies=[Depends(check_write)],
-        responses={**common_errors, 201: {"headers": get_request_id_headers()}},
-    )
-    def create_role(
-        data: schema.RoleCreate,
-        request: Request,
-        svc: Service,
-        ctx: Annotated[AdminContext, permission("admin.role.create")],
-    ) -> schema.AdminRole:
-        return svc.create_role(ctx, data, request.state.request_id)
-
-    @router.get(
-        "/v1/admin-roles/{role_id}",
-        response_model=schema.AdminRole,
-        operation_id="getAdminRole",
-        dependencies=[permission("admin.role.read")],
-        responses={**common_errors, 200: {"headers": get_request_id_headers()}},
-    )
-    def get_role(role_id: schema.Identifier, svc: Service) -> schema.AdminRole:
-        return svc.role_view(svc._role(role_id))
-
-    @router.patch(
-        "/v1/admin-roles/{role_id}",
-        response_model=schema.AdminRole,
-        operation_id="updateAdminRole",
-        dependencies=[Depends(check_write)],
-        responses={**common_errors, 200: {"headers": get_request_id_headers()}},
-    )
-    def update_role(
-        role_id: schema.Identifier,
-        data: schema.RoleUpdate,
-        request: Request,
-        svc: Service,
-        ctx: Annotated[AdminContext, permission("admin.role.update")],
-    ) -> schema.AdminRole:
-        return svc.update_role(ctx, role_id, data, request.state.request_id)
-
-    @router.put(
-        "/v1/admin-roles/{role_id}/permissions",
-        response_model=schema.AdminRole,
-        operation_id="setAdminRolePermissions",
-        dependencies=[Depends(check_write)],
-        responses={**common_errors, 200: {"headers": get_request_id_headers()}},
-    )
-    def set_permissions(
-        role_id: schema.Identifier,
-        data: schema.PermissionSet,
-        request: Request,
-        svc: Service,
-        ctx: Annotated[AdminContext, permission("admin.role.assign_permissions")],
-    ) -> schema.AdminRole:
-        return svc.set_role_permissions(ctx, role_id, data, request.state.request_id)
-
-    @router.get(
-        "/v1/admin-permissions",
-        response_model=list[schema.AdminPermission],
-        operation_id="listAdminPermissions",
-        dependencies=[permission("admin.role.read")],
-        responses={**common_errors, 200: {"headers": get_request_id_headers()}},
-    )
-    def get_permissions() -> list[schema.AdminPermission]:
-        return permission_catalog(scope)
-
-    @router.get(
-        "/v1/admin-audit-logs",
-        response_model=schema.AuditPage,
-        operation_id="listAdminAuditLogs",
-        responses={
-            **common_errors,
-            **get_problem_responses(400),
-            200: {"headers": get_request_id_headers()},
-        },
-    )
-    def list_audit(
-        svc: Service,
-        ctx: Annotated[AdminContext, permission("admin.audit.read")],
-        page: Annotated[int, Query(ge=1)] = 1,
-        page_size: Annotated[int, Query(ge=1, le=100)] = 20,
-        from_time: datetime | None = None,
-        to_time: datetime | None = None,
-        action: Annotated[str | None, Query(max_length=64)] = None,
-        result: Literal["success", "failure"] | None = None,
-        request_id: Annotated[str | None, Query(max_length=64)] = None,
-        sort: Literal["created_at", "-created_at"] = "-created_at",
-    ) -> schema.AuditPage:
-        for value in (from_time, to_time):
-            if value is not None and value.tzinfo is None:
-                raise AppError("request.bad_request", public_detail="时间必须包含时区")
-        if from_time and to_time and from_time > to_time:
-            raise AppError("request.bad_request", public_detail="时间范围无效")
-        return svc.list_audit(
-            ctx,
-            page=page,
-            page_size=page_size,
-            from_time=from_time.astimezone(UTC).replace(tzinfo=None) if from_time else None,
-            to_time=to_time.astimezone(UTC).replace(tzinfo=None) if to_time else None,
-            action=action,
-            result=result,
-            request_id=request_id,
-            sort=sort,
-        )
-
-    if scope == "platform_admin":
-        from backend_app.api.platform_admin.property import create_property_router
-
-        platform = APIRouter()
-        platform.include_router(router)
-        platform.include_router(create_property_router(permission, check_write))
-        return platform
-    return router
+    return AdminAuthRoutes(router=router, permission=permission, check_write=check_write)

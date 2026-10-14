@@ -13,7 +13,7 @@ from backend_app.core.config import Settings
 from backend_app.core.errors import AppError
 from backend_app.core.identifiers import normalize_uuid
 from backend_app.core.session_store import RedisSessionStore
-from backend_app.schemas.admin import AdminScope
+from backend_app.domain.admin.types import AdminScope
 
 
 class StoredAdminSession(BaseModel):

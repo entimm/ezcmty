@@ -106,7 +106,7 @@ def dependency_probe() -> dict[str, Any]:
     from pydantic import ValidationError
 
     from backend_app.core.config import get_settings
-    from backend_app.services.system import check_readiness
+    from backend_app.core.readiness import check_readiness
 
     try:
         settings = get_settings()

@@ -4,7 +4,7 @@ from getpass import getpass
 from backend_app.core.errors import AppError
 from backend_app.db.session import get_session_factory
 from backend_app.schemas.admin import AccountCreate
-from backend_app.services.admin import AdminService
+from backend_app.services.platform_admin.admin import PlatformAdminService
 
 
 def main() -> None:
@@ -22,7 +22,7 @@ def main() -> None:
         parser.error("登录名、显示名称或密码不符合规则")
     with get_session_factory()() as db:
         try:
-            AdminService(db, "platform_admin").initialize_super_admin(
+            PlatformAdminService(db).initialize_super_admin(
                 args.login_name, args.display_name, password
             )
         except AppError as exc:

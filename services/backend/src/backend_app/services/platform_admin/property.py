@@ -5,13 +5,15 @@ from sqlalchemy.orm import Session
 
 from backend_app.core.admin_security import hash_password
 from backend_app.core.errors import AppError
+from backend_app.domain.admin.identity import AdminIdentity
 from backend_app.models.admin import AdminAccount, AdminRole, utc_now
 from backend_app.models.property import Community, PropertyCompany
 from backend_app.repositories.admin import AdminRepository
 from backend_app.repositories.property import PropertyRepository
 from backend_app.schemas import admin as admin_schema
 from backend_app.schemas import property as schema
-from backend_app.services.admin import AdminContext, AdminService
+from backend_app.schemas.mappers.property import community_view, property_admin_view
+from backend_app.services.contracts.admin import AdminContext
 
 
 class PropertyOnboardingService:
@@ -20,13 +22,13 @@ class PropertyOnboardingService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = PropertyRepository(db)
-        self.admin = AdminService(db, "platform_admin")
+        self.identity = AdminIdentity(AdminRepository(db, "platform_admin"))
 
     def _business_writer(self, context: AdminContext, permission: str) -> AdminAccount:
-        actor = self.admin._actor(context)
+        actor = self.identity.actor(context)
         if actor.must_change_password:
             raise AppError("auth.password_change_required")
-        if permission not in self.admin.effective_permissions(actor.id):
+        if permission not in self.identity.effective_permissions(actor.id):
             raise AppError("auth.forbidden")
         return actor
 
@@ -52,7 +54,7 @@ class PropertyOnboardingService:
         request_id: str,
         changed_fields: list[str] | None = None,
     ) -> None:
-        self.admin._audit(
+        self.identity.audit.record(
             actor=actor,
             action=action,
             target_type=target_type,
@@ -62,10 +64,12 @@ class PropertyOnboardingService:
             metadata={"changed_fields": changed_fields or []},
         )
 
-    def get_company(self, company_id: str) -> schema.PropertyCompany:
+    def get_company(self, context: AdminContext, company_id: str) -> schema.PropertyCompany:
+        self.identity.require_permission(context, "property.company.read")
         return schema.PropertyCompany.model_validate(self._company(company_id))
 
-    def list_companies(self, **filters: Any) -> schema.CompanyPage:
+    def list_companies(self, context: AdminContext, **filters: Any) -> schema.CompanyPage:
+        self.identity.require_permission(context, "property.company.read")
         items, total = self.repo.companies(**filters)
         return schema.CompanyPage(
             items=[schema.PropertyCompany.model_validate(item) for item in items],
@@ -151,24 +155,19 @@ class PropertyOnboardingService:
     def community_view(
         self, community: Community, company_name: str | None = None
     ) -> schema.Community:
-        return schema.Community(
-            id=community.id,
-            property_company_id=community.property_company_id,
-            property_company_name=company_name
+        name = (
+            company_name
             if company_name is not None
-            else self._company(community.property_company_id).name,
-            code=community.code,
-            name=community.name,
-            address=community.address,
-            enabled=community.enabled,
-            created_at=community.created_at,
-            updated_at=community.updated_at,
+            else self._company(community.property_company_id).name
         )
+        return community_view(community, name)
 
-    def get_community(self, community_id: str) -> schema.Community:
+    def get_community(self, context: AdminContext, community_id: str) -> schema.Community:
+        self.identity.require_permission(context, "property.community.read")
         return self.community_view(self._community(community_id))
 
-    def list_communities(self, **filters: Any) -> schema.CommunityPage:
+    def list_communities(self, context: AdminContext, **filters: Any) -> schema.CommunityPage:
+        self.identity.require_permission(context, "property.community.read")
         items, total = self.repo.communities(**filters)
         return schema.CommunityPage(
             items=[self.community_view(item, company_name) for item, company_name in items],
@@ -234,23 +233,12 @@ class PropertyOnboardingService:
     def _admin_view(
         self, repo: AdminRepository, account: AdminAccount
     ) -> schema.PropertyAdminAccount:
-        assert account.property_company_id is not None
-        return schema.PropertyAdminAccount(
-            id=account.id,
-            scope="property_admin",
-            property_company_id=account.property_company_id,
-            login_name=account.login_name,
-            display_name=account.display_name,
-            enabled=account.enabled,
-            must_change_password=account.must_change_password,
-            created_at=account.created_at,
-            roles=[
-                admin_schema.RoleSummary.model_validate(role)
-                for role in repo.account_roles(account.id)
-            ],
-        )
+        return property_admin_view(account, repo.account_roles(account.id))
 
-    def get_admin(self, company_id: str, account_id: str) -> schema.PropertyAdminAccount:
+    def get_admin(
+        self, context: AdminContext, company_id: str, account_id: str
+    ) -> schema.PropertyAdminAccount:
+        self.identity.require_permission(context, "property.admin.read")
         self._company(company_id)
         repo = AdminRepository(self.db, "property_admin", company_id)
         account = repo.account(account_id)
@@ -258,7 +246,10 @@ class PropertyOnboardingService:
             raise AppError("resource.not_found")
         return self._admin_view(repo, account)
 
-    def list_admins(self, company_id: str, **filters: Any) -> schema.PropertyAdminPage:
+    def list_admins(
+        self, context: AdminContext, company_id: str, **filters: Any
+    ) -> schema.PropertyAdminPage:
+        self.identity.require_permission(context, "property.admin.read")
         self._company(company_id)
         repo = AdminRepository(self.db, "property_admin", company_id)
         items, total = repo.accounts(**filters)
@@ -276,7 +267,7 @@ class PropertyOnboardingService:
         data: schema.PropertyAdminCreate,
         request_id: str,
     ) -> schema.PropertyAdminAccount:
-        actor, _ = self.admin._writer(context)
+        actor, _ = self.identity.management_writer(context)
         self._company(company_id, lock=True)
         repo = AdminRepository(self.db, "property_admin", company_id)
         if repo.identity_by_login(data.login_name):
@@ -324,7 +315,7 @@ class PropertyOnboardingService:
         data: admin_schema.AccountUpdate,
         request_id: str,
     ) -> schema.PropertyAdminAccount:
-        actor, _ = self.admin._writer(context)
+        actor, _ = self.identity.management_writer(context)
         self._company(company_id, lock=True)
         repo = AdminRepository(self.db, "property_admin", company_id)
         system = repo.role_by_code("super_admin", lock=True)
@@ -357,7 +348,7 @@ class PropertyOnboardingService:
         data: admin_schema.PasswordReset,
         request_id: str,
     ) -> None:
-        actor, _ = self.admin._writer(context)
+        actor, _ = self.identity.management_writer(context)
         self._company(company_id, lock=True)
         repo = AdminRepository(self.db, "property_admin", company_id)
         account = repo.account(account_id, lock=True)

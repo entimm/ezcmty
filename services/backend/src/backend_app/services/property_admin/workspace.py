@@ -3,10 +3,10 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from backend_app.core.errors import AppError
-from backend_app.models.property import Community
 from backend_app.repositories.property import PropertyRepository
 from backend_app.schemas import property as schema
-from backend_app.services.admin import AdminContext
+from backend_app.schemas.mappers.property import community_view
+from backend_app.services.contracts.admin import AdminContext
 
 
 class PropertyWorkspaceService:
@@ -29,24 +29,11 @@ class PropertyWorkspaceService:
             raise AppError("auth.unauthenticated")
         return schema.PropertyCompany.model_validate(company)
 
-    def _community_view(self, community: Community, company_name: str) -> schema.Community:
-        return schema.Community(
-            id=community.id,
-            property_company_id=community.property_company_id,
-            property_company_name=company_name,
-            code=community.code,
-            name=community.name,
-            address=community.address,
-            enabled=community.enabled,
-            created_at=community.created_at,
-            updated_at=community.updated_at,
-        )
-
     def list_communities(self, context: AdminContext, **filters: Any) -> schema.CommunityPage:
         company_id = self._company_id(context, "property.community.read")
         items, total = self.repo.communities(company_scope_id=company_id, **filters)
         return schema.CommunityPage(
-            items=[self._community_view(item, company_name) for item, company_name in items],
+            items=[community_view(item, company_name) for item, company_name in items],
             total=total,
             page=filters["page"],
             page_size=filters["page_size"],
@@ -60,4 +47,4 @@ class PropertyWorkspaceService:
         company = self.repo.company(company_id)
         if company is None or not company.enabled:
             raise AppError("auth.unauthenticated")
-        return self._community_view(community, company.name)
+        return community_view(community, company.name)

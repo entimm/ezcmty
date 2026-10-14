@@ -1,1 +1,1 @@
-"""Business services."""
+"""Application services and their contracts."""

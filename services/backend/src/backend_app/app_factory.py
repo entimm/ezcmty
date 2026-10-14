@@ -21,12 +21,13 @@ def create_app(service_name: str) -> FastAPI:
     register_exception_handlers(app)
     app.include_router(create_system_router(service_name))
     runtime = service_name.replace("-", "_")
-    if runtime in {"platform_admin_api", "property_admin_api"}:
-        from backend_app.api.admin import create_admin_router
+    if runtime == "platform_admin_api":
+        from backend_app.api.platform_admin.router import create_platform_admin_router
 
-        if runtime == "platform_admin_api":
-            app.include_router(create_admin_router("platform_admin"))
-        else:
-            app.include_router(create_admin_router("property_admin", include_management=False))
+        app.include_router(create_platform_admin_router())
+    elif runtime == "property_admin_api":
+        from backend_app.api.property_admin.router import create_property_admin_router
+
+        app.include_router(create_property_admin_router())
     configure_openapi(app)
     return app
