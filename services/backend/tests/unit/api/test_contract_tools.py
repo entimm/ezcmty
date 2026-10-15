@@ -1,35 +1,17 @@
 import copy
-import subprocess
 from importlib import import_module
-from pathlib import Path
 from types import ModuleType
 from typing import Any
 
 import pytest
-from fastapi import FastAPI
 from pytest import MonkeyPatch
-
-from backend_app.app_factory import create_app
+from tests.support.paths import REPOSITORY_ROOT
 
 
 @pytest.fixture
 def contract_tools(monkeypatch: MonkeyPatch) -> tuple[ModuleType, ModuleType]:
-    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[4]))
+    monkeypatch.syspath_prepend(str(REPOSITORY_ROOT))
     return import_module("scripts.check_api_contract"), import_module("scripts.build_error_catalog")
-
-
-@pytest.fixture(scope="session")
-def bundled_contract() -> None:
-    # Build the authoritative files, even in a fresh checkout or after a contract edit.
-    result = subprocess.run(
-        ["pnpm", "api:bundle"],
-        cwd=Path(__file__).resolve().parents[4],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode:
-        pytest.fail(result.stdout + result.stderr)
 
 
 def get_sample_contract() -> dict[str, Any]:
@@ -126,32 +108,3 @@ def test_bad_reference_is_rejected(contract_tools: tuple[ModuleType, ModuleType]
     checker, _ = contract_tools
     with pytest.raises(AssertionError, match="Unbundled reference"):
         checker.resolve_references({"$ref": "missing.yaml#/Object"}, {})
-
-
-def test_error_catalog_is_generated_and_rejects_duplicates(
-    contract_tools: tuple[ModuleType, ModuleType], bundled_contract: None
-) -> None:
-    checker, builder = contract_tools
-    contract = checker.load_contract()
-    builder.check_catalog(contract)
-    duplicate = copy.deepcopy(contract)
-    catalog = duplicate["components"]["schemas"]["ProblemDetails"]["x-error-catalog"]
-    catalog["another"] = {"INTERNAL_ERROR": {"status": 500, "title": "duplicate"}}
-    with pytest.raises(ValueError, match="duplicate"):
-        builder.build_catalog(duplicate)
-    changed = copy.deepcopy(contract)
-    changed["components"]["schemas"]["ProblemDetails"]["x-error-catalog"]["system"][
-        "INTERNAL_ERROR"
-    ]["title"] = "changed"
-    with pytest.raises(AssertionError, match="stale"):
-        builder.check_catalog(changed)
-
-
-def test_operational_contract_matches_every_runtime(
-    contract_tools: tuple[ModuleType, ModuleType], bundled_contract: None
-) -> None:
-    checker, _ = contract_tools
-    contract = checker.load_contract()
-    for runtime in checker.RUNTIMES:
-        app: FastAPI = create_app(runtime)
-        checker.check_documents(contract, app.openapi(), runtime=runtime)

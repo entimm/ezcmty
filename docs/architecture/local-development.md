@@ -106,7 +106,7 @@ sequenceDiagram
 
 ## 验证要求
 
-使用 [隔离测试](../../services/backend/tests/unit/test_dev.py) 和 [辅助进程](../../services/backend/tests/dev_helpers.py) 运行真实子进程，重点覆盖：
+使用 [隔离测试](../../services/backend/tests/integration/dev/) 和 [辅助进程](../../services/backend/tests/support/dev_helpers.py) 运行真实子进程，重点覆盖：
 
 - 各启动目标、终端关闭后后台存活、重复与混合冲突、并发启停、配置优先级、端口冲突、就绪与超时。
 - 正常重载、实际子进程故障、恢复超时及清理不影响已有独立批次。

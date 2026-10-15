@@ -1,8 +1,5 @@
-"""Verify property HTTP flows and status races on isolated MySQL/Redis instances."""
-
 from __future__ import annotations
 
-import os
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
@@ -13,10 +10,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 from sqlalchemy.orm import Session, sessionmaker
-from tests.integration.test_admin_mysql import PASSWORD
-from tests.integration.test_admin_mysql import mysql_redis as mysql_redis
-from tests.integration.test_admin_mysql import real_admin as real_admin
-from tests.integration.test_property_mysql import platform_token
+from tests.support.mysql import PASSWORD, platform_token
 
 from backend_app.api.admin import get_admin_session_store
 from backend_app.app_factory import create_app
@@ -33,15 +27,12 @@ from backend_app.services.platform_admin.admin import PlatformAdminService
 from backend_app.services.platform_admin.property import PropertyOnboardingService
 from backend_app.services.property_admin.admin import PropertyAdminService
 
-pytestmark = [
-    pytest.mark.integration,
-    pytest.mark.skipif(
-        os.environ.get("APP_RUN_MYSQL_TESTS") != "1", reason="Requires isolated MySQL/Redis"
-    ),
-]
 NEW_PASSWORD = "mysql-property-new-password"
+
 RESET_PASSWORD = "mysql-property-reset-password"
+
 ORIGIN = "http://127.0.0.1:5173"
+
 Mutation = Literal["company", "account", "password"]
 
 

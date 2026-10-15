@@ -16,6 +16,7 @@
 
 - 文档治理规范：[docs/standards/documentation.md](docs/standards/documentation.md)
 - 开发规范：[docs/guidelines/development.md](docs/guidelines/development.md)
+- 测试规范：[docs/conventions/testing.md](docs/conventions/testing.md)
 - 系统架构：[docs/architecture/overview.md](docs/architecture/overview.md)
 - 部署约定：[docs/architecture/deployment.md](docs/architecture/deployment.md)
 - API 规范：[docs/api/conventions.md](docs/api/conventions.md)
@@ -27,6 +28,7 @@
 ## 执行要求
 
 - 工程实现、安全、质量检查及提交遵循开发规范。
+- 测试新增、维护与执行遵循测试规范。
 - API 设计与实现遵循 API 规范；数据与迁移遵循数据库规范。
 - 文档新增、修改与审查遵循文档治理规范。
 - 复杂任务先完成方案设计；后续评审、确认、落盘及实施授权遵循 [设计工作流](docs/standards/documentation.md#设计工作流)。

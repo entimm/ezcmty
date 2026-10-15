@@ -16,8 +16,7 @@ from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
 from sqlalchemy.exc import TimeoutError as DatabaseTimeoutError
 
 from backend_app.app_factory import create_app
-from backend_app.core.config import Settings
-from backend_app.core.error_catalog import CONTRACT_VERSION, ERROR_CATALOG, ERROR_TYPE_PREFIX
+from backend_app.core.error_catalog import ERROR_CATALOG, ERROR_TYPE_PREFIX
 from backend_app.core.errors import AppError
 from backend_app.core.logging import JsonFormatter, request_id_context
 from backend_app.core.openapi import get_problem_responses
@@ -249,15 +248,3 @@ def test_external_protocol_response_is_preserved(app: FastAPI) -> None:
     assert response.text == "FAIL"
     assert response.headers["content-type"].startswith("text/plain")
     assert response.headers["x-request-id"]
-
-
-@pytest.mark.parametrize("code", ["unregistered.error", "HTTP_ERROR"])
-def test_business_error_rejects_invalid_definitions(code: str) -> None:
-    with pytest.raises(ValueError):
-        AppError(code)
-
-
-def test_configuration_cannot_claim_a_different_contract_version() -> None:
-    with pytest.raises(ValueError, match="APP_VERSION"):
-        Settings(version="wrong-revision")
-    assert Settings().version == CONTRACT_VERSION

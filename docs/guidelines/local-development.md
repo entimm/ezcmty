@@ -72,25 +72,30 @@ uv run python -m backend_app.cli init-platform-admin --login-name your-admin --d
 
 全部命令在仓库根目录执行；`make` 默认显示帮助。
 
-| 命令                  | 用途                                                                  |
-| --------------------- | --------------------------------------------------------------------- |
-| `make install`        | 安装后端及前端工作区开发依赖                                          |
-| `make migrate`        | 执行 Alembic 数据库迁移，升级到 `head`                                |
-| `make dev`            | 前台同时启动四个 API、Worker 和管理后台                               |
-| `make dev-bg`         | 后台同时启动同样六个服务，全部就绪后返回                              |
-| `make stop`           | 停止本仓库所有开发入口登记的批次                                      |
-| `make platform`       | 前台启动平台管理 API，8001                                            |
-| `make property`       | 前台启动物业管理 API，8002                                            |
-| `make resident`       | 前台启动居民 API，8003                                                |
-| `make webhook`        | 前台启动 Webhook，8004                                                |
-| `make worker`         | 前台启动占位 Worker                                                   |
-| `make admin`          | 前台启动管理后台，5173                                                |
-| `make miniapp-build`  | 构建小程序到 `apps/miniapp/dist/`，通过微信开发者工具打开小程序项目   |
-| `make check`          | 先运行根目录 Prettier，再依次运行后端、前端和 OpenAPI 检查            |
-| `make check-backend`  | 后端源码、测试及仓库 scripts 的 Ruff lint、format check、mypy、pytest |
-| `make check-frontend` | 管理后台 typecheck、lint、test、build；小程序 typecheck、lint、build  |
-| `make check-api`      | 现有 `pnpm api:check`：OpenAPI lint、bundle、contract                 |
-| `make help`           | 显示全部命令及用途                                                    |
+| 命令                    | 用途                                                                  |
+| ----------------------- | --------------------------------------------------------------------- |
+| `make install`          | 安装后端及前端工作区开发依赖                                          |
+| `make migrate`          | 执行 Alembic 数据库迁移，升级到 `head`                                |
+| `make dev`              | 前台同时启动四个 API、Worker 和管理后台                               |
+| `make dev-bg`           | 后台同时启动同样六个服务，全部就绪后返回                              |
+| `make stop`             | 停止本仓库所有开发入口登记的批次                                      |
+| `make platform`         | 前台启动平台管理 API，8001                                            |
+| `make property`         | 前台启动物业管理 API，8002                                            |
+| `make resident`         | 前台启动居民 API，8003                                                |
+| `make webhook`          | 前台启动 Webhook，8004                                                |
+| `make worker`           | 前台启动占位 Worker                                                   |
+| `make admin`            | 前台启动管理后台，5173                                                |
+| `make miniapp-build`    | 构建小程序到 `apps/miniapp/dist/`，通过微信开发者工具打开小程序项目   |
+| `make check`            | 先运行根目录 Prettier，再依次运行后端、前端和 OpenAPI 检查            |
+| `make check-backend`    | 后端源码、测试及仓库 scripts 的 Ruff lint、format check、mypy、pytest |
+| `make check-frontend`   | 管理后台 typecheck、lint、test、build；小程序 typecheck、lint、build  |
+| `make check-api`        | 现有 `pnpm api:check`：OpenAPI lint、bundle、contract                 |
+| `make test-unit`        | 后端单元测试                                                          |
+| `make test-integration` | 后端快速集成测试，排除 MySQL/Redis 和进程生命周期                     |
+| `make test-contract`    | 后端与权威 OpenAPI 的契约一致性测试                                   |
+| `make test-mysql`       | 使用独立临时实例执行真实 MySQL/Redis 测试                             |
+| `make test-full`        | 全部后端和管理后台测试，包含真实依赖与进程生命周期，生成 JUnit 报告   |
+| `make help`             | 显示全部命令及用途                                                    |
 
 小程序不作为常驻进程；构建后使用微信开发者工具运行。
 
@@ -144,17 +149,32 @@ make stop
 
 ## 质量检查
 
+测试分类、执行范围和结果判定遵循 [测试规范](../conventions/testing.md)。
+
 ```bash
 make check
 ```
 
-管理员接口回归使用临时 SQLite 数据库验证迁移、事务和接口行为。MySQL 行锁与真实 Redis 的集成检查在 `services/backend/` 下执行：
+`make check-backend` 执行全部单元测试、快速集成测试和契约测试，通过 `mysql`、`slow` 标记排除真实 MySQL/Redis 与进程生命周期测试。`make check` 还执行前端测试及其余质量检查。
+
+管理员接口集成测试使用临时 SQLite 数据库验证迁移、事务和接口行为。合并前执行完整测试：
 
 ```bash
-APP_RUN_MYSQL_TESTS=1 uv run pytest tests/integration
+make test-full
 ```
 
-该检查需要本机可用的 `mysqld` 和 `redis-server`，会创建独立的临时实例、随机端口和测试数据库，完成后关闭并清理测试资源。
+完整测试需要本机可用的 `mysqld`、`redis-server` 以及已安装的前端依赖，会创建独立的临时实例、随机端口和测试数据库，完成后关闭并清理所属资源。JUnit 报告写入 `build/test-results/backend.xml` 和 `build/test-results/admin-web.xml`，CI 应保留这些报告和失败日志。
+
+按模块、文件或用例运行时，在 `services/backend/` 下选择具体路径。例如：
+
+```bash
+uv run pytest tests/integration/api/property/test_onboarding.py --require-all-tests
+uv run pytest tests/unit/core/test_admin_sessions.py::test_idle_session_expires --require-all-tests
+APP_RUN_MYSQL_TESTS=1 uv run pytest tests/integration/mysql --require-all-tests
+uv run pytest tests/integration/dev --require-all-tests --durations=20
+```
+
+测试分类和 `mysql`、`slow` 标记按目录自动设置。直接运行 pytest 时，未启用 `APP_RUN_MYSQL_TESTS=1` 的 MySQL/Redis 测试会给出原因并跳过；显式启用后依赖缺失会失败。上述 Make 测试入口的后端检查均启用 `--require-all-tests`，选中测试出现跳过或预期失败时返回非零，未收集到测试沿用 pytest 的非零退出码。`make test-full` 还检查两端 JUnit 报告，拒绝空报告、跳过、失败及错误记录。
 
 任一检查失败返回非零。也可使用上表中的单项检查或构建命令。
 

@@ -1,10 +1,6 @@
-"""Company tenancy and concurrent provisioning against temporary MySQL/Redis instances."""
-
 from __future__ import annotations
 
-import os
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 from threading import Barrier
 
 import pytest
@@ -14,9 +10,8 @@ from sqlalchemy import inspect, select, text
 from sqlalchemy.dialects.mysql import DATETIME
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
-from tests.integration.test_admin_mysql import PASSWORD
-from tests.integration.test_admin_mysql import mysql_redis as mysql_redis
-from tests.integration.test_admin_mysql import real_admin as real_admin
+from tests.support.mysql import PASSWORD, platform_token
+from tests.support.paths import BACKEND_ROOT
 
 from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.errors import AppError
@@ -28,24 +23,6 @@ from backend_app.schemas import property as schema
 from backend_app.services.platform_admin.admin import PlatformAdminService
 from backend_app.services.platform_admin.property import PropertyOnboardingService
 from backend_app.services.property_admin.admin import PropertyAdminService
-
-pytestmark = [
-    pytest.mark.integration,
-    pytest.mark.skipif(
-        os.environ.get("APP_RUN_MYSQL_TESTS") != "1", reason="Requires isolated MySQL/Redis"
-    ),
-]
-
-
-def platform_token(factory: sessionmaker[Session], store: AdminSessionStore) -> str:
-    with factory() as db:
-        PlatformAdminService(db).initialize_super_admin("root", "平台", PASSWORD)
-        account = db.scalar(select(AdminAccount).where(AdminAccount.login_name == "root"))
-        assert account
-        account.must_change_password = False
-        db.commit()
-        token, _ = store.create("platform_admin", account.id, account.session_version)
-        return token
 
 
 def test_mysql_role_uniqueness_and_company_association_constraints(
@@ -342,7 +319,7 @@ def test_mysql_migration_roundtrip_and_unmapped_identity_preflight(
 ) -> None:
     factory, store = real_admin
     platform_token(factory, store)
-    cfg = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini"))
+    cfg = Config(str(BACKEND_ROOT / "alembic.ini"))
     command.downgrade(cfg, "20261014_admin_foundation")
     identifier = new_id()
     with factory() as db:

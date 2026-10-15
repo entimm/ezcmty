@@ -43,8 +43,15 @@ quote-style = "double"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
-markers = ["integration: isolated MySQL/Redis checks enabled by APP_RUN_MYSQL_TESTS=1"]
+addopts = "-q -ra --strict-markers --import-mode=importlib"
+pythonpath = [".", "../.."]
+markers = [
+  "unit: isolated component behavior",
+  "integration: collaboration between components or real dependencies",
+  "contract: authoritative OpenAPI and runtime consistency",
+  "mysql: isolated MySQL/Redis checks enabled by APP_RUN_MYSQL_TESTS=1",
+  "slow: process lifecycle checks",
+]
 
 [tool.mypy]
 python_version = "3.14"

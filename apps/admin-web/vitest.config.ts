@@ -26,6 +26,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // Ant Design Pro page suites need bounded concurrency for reliable render waits.
+    maxWorkers: 2,
     include: ['tests/**/*.{test,spec}.{js,jsx,mjs,cjs,ts,tsx,mts,cts}'],
     setupFiles: './tests/setup.ts',
     globals: true,

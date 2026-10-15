@@ -1,10 +1,6 @@
-"""Verify audit schema migration and company isolation on a temporary MySQL database."""
-
 from __future__ import annotations
 
-import os
 from datetime import datetime
-from pathlib import Path
 from uuid import UUID
 
 import pytest
@@ -14,8 +10,7 @@ from sqlalchemy import MetaData, Table, delete, inspect, text
 from sqlalchemy.dialects.mysql import BINARY
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
-from tests.integration.test_admin_mysql import mysql_redis as mysql_redis
-from tests.integration.test_admin_mysql import real_admin as real_admin
+from tests.support.paths import BACKEND_ROOT
 
 from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.identifiers import new_id
@@ -23,19 +18,12 @@ from backend_app.models.admin import AdminAuditLog
 from backend_app.models.property import PropertyCompany
 from backend_app.repositories.admin import AdminRepository
 
-pytestmark = [
-    pytest.mark.integration,
-    pytest.mark.skipif(
-        os.environ.get("APP_RUN_MYSQL_TESTS") != "1", reason="Requires isolated MySQL/Redis"
-    ),
-]
-
 
 def test_mysql_audit_company_migration_preserves_history_and_indexes_company_queries(
     real_admin: tuple[sessionmaker[Session], AdminSessionStore],
 ) -> None:
     factory, _ = real_admin
-    cfg = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini"))
+    cfg = Config(str(BACKEND_ROOT / "alembic.ini"))
     command.downgrade(cfg, "20261014_property_onboarding")
     history_query = text(
         "SELECT id, scope, actor_id, actor_name, action, target_type, target_id, result, "

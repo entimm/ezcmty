@@ -3,67 +3,29 @@ from __future__ import annotations
 from collections.abc import Generator
 from dataclasses import replace
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Annotated, Any, Literal
-from uuid import UUID
 
 import pytest
-from alembic import command
-from alembic.config import Config
 from fastapi import Depends, FastAPI, Query, Request
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
-from sqlalchemy import MetaData, Table, create_engine, select, text
+from sqlalchemy import select
 from sqlalchemy.orm import Session
+from tests.support.admin import ORIGIN, TEST_PASSWORD, Harness
+from tests.support.audit import audit_filters, provision_company
 
 from backend_app.api.admin import get_admin_session_store
 from backend_app.app_factory import create_app
 from backend_app.core.admin_sessions import AdminSessionStore
-from backend_app.core.config import get_settings
 from backend_app.core.errors import AppError
 from backend_app.core.identifiers import new_id
 from backend_app.db.session import get_database_session
 from backend_app.domain.admin.permissions import PermissionDefinition, permission_catalog
 from backend_app.models.admin import AdminAccount, AdminAuditLog
 from backend_app.models.property import PropertyCompany
-from backend_app.repositories.admin import AdminRepository
 from backend_app.schemas import admin as schema
 from backend_app.schemas.mappers import admin as views
 from backend_app.services.property_admin.admin import PropertyAdminService
-from tests.unit.test_admin import ORIGIN, TEST_PASSWORD, Harness
-from tests.unit.test_admin import harness as harness
-from tests.unit.test_property import admin, company
-
-
-def provision_company(h: Harness, name: str) -> tuple[str, str]:
-    company_data = company(h, name)
-    account_data = admin(h, company_data["id"], name)
-    response = h.client.patch(
-        f"/v1/property-companies/{company_data['id']}",
-        json={"enabled": True},
-        headers=h.headers(),
-    )
-    assert response.status_code == 200
-    with h.factory() as db:
-        account = db.get(AdminAccount, account_data["id"])
-        assert account
-        account.must_change_password = False
-        db.commit()
-    return str(company_data["id"]), str(account_data["id"])
-
-
-def audit_filters(**overrides: Any) -> dict[str, Any]:
-    return {
-        "page": 1,
-        "page_size": 20,
-        "from_time": None,
-        "to_time": None,
-        "action": None,
-        "result": None,
-        "request_id": None,
-        "sort": "-created_at",
-        **overrides,
-    }
 
 
 def test_property_audit_http_isolates_companies_before_count_and_pagination(
@@ -352,53 +314,3 @@ def test_audit_domain_rejects_missing_or_mismatched_authorization_context(
         )
         stored = db.scalar(select(AdminAuditLog).where(AdminAuditLog.request_id == "trusted-write"))
         assert stored and stored.safe_metadata == {}
-
-
-def test_audit_company_migration_preserves_all_existing_values(
-    tmp_path: Path, monkeypatch: MonkeyPatch
-) -> None:
-    url = f"sqlite:///{tmp_path / 'audit-history.sqlite'}"
-    monkeypatch.setenv("APP_DATABASE_URL", url)
-    get_settings.cache_clear()
-    cfg = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini"))
-    command.upgrade(cfg, "20261014_property_onboarding")
-    engine = create_engine(url)
-    old_table = Table("admin_audit_logs", MetaData(), autoload_with=engine)
-    history_query = text(
-        "SELECT id, scope, actor_id, actor_name, action, target_type, target_id, result, "
-        "request_id, created_at, metadata FROM admin_audit_logs ORDER BY id"
-    )
-    legacy_company_id = new_id()
-    metadata = {"property_company_id": legacy_company_id, "changed_fields": ["enabled"]}
-    with engine.begin() as connection:
-        for scope in ("platform_admin", "property_admin"):
-            connection.execute(
-                old_table.insert().values(
-                    id=UUID(new_id()).bytes,
-                    scope=scope,
-                    actor_id=UUID(new_id()).bytes,
-                    actor_name="历史操作人",
-                    action="history.fixture",
-                    target_type="account",
-                    target_id=UUID(new_id()).bytes,
-                    result="success",
-                    request_id=scope,
-                    created_at=datetime(2020, 1, 1),
-                    metadata=metadata,
-                )
-            )
-        old_values = connection.execute(history_query).all()
-    command.upgrade(cfg, "head")
-    with engine.connect() as connection:
-        assert connection.execute(history_query).all() == old_values
-        assert connection.execute(
-            text("SELECT property_company_id FROM admin_audit_logs")
-        ).all() == [(None,), (None,)]
-    with Session(engine) as db:
-        logs, total = AdminRepository(db, "property_admin", legacy_company_id).audit_logs(
-            **audit_filters()
-        )
-        assert logs == [] and total == 0
-        platform_logs, total = AdminRepository(db, "platform_admin").audit_logs(**audit_filters())
-        assert total == 1 and platform_logs[0].safe_metadata == metadata
-    engine.dispose()

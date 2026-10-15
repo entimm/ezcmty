@@ -4,6 +4,8 @@ from dataclasses import replace
 import pytest
 from pytest import MonkeyPatch
 from sqlalchemy import select
+from tests.support.admin import NEW_PASSWORD, TEST_PASSWORD
+from tests.support.workspace import PREFIX, WorkspaceHarness
 
 from backend_app.core.admin_security import verify_password
 from backend_app.core.errors import AppError
@@ -15,10 +17,6 @@ from backend_app.services.platform_admin.admin import PlatformAdminService
 from backend_app.services.platform_admin.property import PropertyOnboardingService
 from backend_app.services.property_admin.admin import PropertyAdminService
 from backend_app.services.property_admin.workspace import PropertyWorkspaceService
-from tests.unit.test_admin import NEW_PASSWORD, TEST_PASSWORD
-from tests.unit.test_admin import harness as harness
-from tests.unit.test_property_workspace import PREFIX, WorkspaceHarness
-from tests.unit.test_property_workspace import workspace as workspace
 
 
 def test_property_runtime_keeps_management_routes_absent_with_platform_permissions(
