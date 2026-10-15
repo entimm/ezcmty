@@ -6,6 +6,7 @@ coverage
 .umi
 .umi-production
 .umi-test
+.umi-types
 services/backend/.venv
 services/backend/uv.lock
 pnpm-lock.yaml

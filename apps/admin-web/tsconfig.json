@@ -1,5 +1,5 @@
 {
-  "extends": "./src/.umi/tsconfig.json",
+  "extends": "./src/.umi-types/tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
@@ -13,5 +13,11 @@
     "types": ["node", "vitest/globals"]
   },
   "include": ["src", "config", "tests", "vitest.config.ts"],
-  "exclude": ["node_modules", "dist", "coverage"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "src/.umi",
+    "src/.umi-production"
+  ]
 }

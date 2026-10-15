@@ -120,17 +120,20 @@ class Harness:
         (fixture / "src").mkdir(parents=True)
         (fixture / "node_modules").symlink_to(project / "node_modules", target_is_directory=True)
         (fixture / "package.json").write_text((project / "package.json").read_text())
+        (fixture / "tsconfig.json").write_text((project / "tsconfig.json").read_text())
         (fixture / "src" / "Home.tsx").write_text(
             "export default function Home() { return <main>Admin fixture</main>; }\n"
         )
         plugin = project / "config" / "plugins" / "dev-server.ts"
+        setup_types = project / "config" / "plugins" / "setup-types.ts"
         (fixture / "dev-server.ts").write_text(
             f"import {{ configureDevServer }} from {json.dumps(str(plugin))};\n"
             f"export default function plugin(api) {{ configureDevServer(api, {port}); }}\n"
         )
         (fixture / ".umirc.ts").write_text(
             "export default { layout: false, antd: false, mfsu: false, "
-            "routes: [{ path: '/', component: '@/Home' }], plugins: ['./dev-server.ts'] };\n"
+            "routes: [{ path: '/', component: '@/Home' }], "
+            f"plugins: ['./dev-server.ts', {json.dumps(str(setup_types))}] }};\n"
         )
         self.timing = replace(self.timing, startup=60)
         return replace(service, cwd=str(fixture), port=port)

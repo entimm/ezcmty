@@ -26,6 +26,7 @@ coverage/
 .umi/
 .umi-production/
 .umi-test/
+.umi-types/
 
 # Generated documentation and build output
 build/

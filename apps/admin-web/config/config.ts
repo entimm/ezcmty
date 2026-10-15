@@ -19,7 +19,10 @@ export default defineConfig({
   mfsu: false,
   antd: {},
   layout: false,
-  plugins: ['./config/plugins/dev-server.ts'],
+  plugins: [
+    './config/plugins/dev-server.ts',
+    './config/plugins/setup-types.ts',
+  ],
   // Umi 会随 changeOrigin 改写 Origin，需保留浏览器来源供 CSRF 校验。
   proxy: {
     [platformApiBase]: {
