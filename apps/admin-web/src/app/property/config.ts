@@ -8,6 +8,6 @@ export const propertyApp: AdminAppConfig = {
   apiBase: process.env.UMI_APP_PROPERTY_API_BASE || '/api/property',
   title: '物业管理',
   theme: 'light',
-  menuGroups: [{ id: 'property', title: '物业管理' }],
+  menuGroups: [],
   routes: propertyRoutes,
 };

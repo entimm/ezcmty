@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderRoutes } from '../../app/platform-harness';
 import type { SessionResponse } from '@/shared/api/admin';
+import type { Community } from '@/shared/api/property';
 import type {
   House,
   HouseOwner,
@@ -14,6 +15,25 @@ const houseId = '019a0000-0000-7000-8000-000000000003';
 const timestamp = '2026-10-15T00:00:00Z';
 const base = `/api/property/v1/communities/${communityId}`;
 const route = `/property/communities/${communityId}/houses`;
+const community: Community = {
+  id: communityId,
+  name: '春日小区',
+  code: 'SPRING',
+  property_company_id: communityId,
+  property_company_name: '春日物业',
+  address: '小区地址',
+  enabled: true,
+  created_at: timestamp,
+  updated_at: timestamp,
+};
+const otherCommunity: Community = {
+  ...community,
+  id: '019a0000-0000-7000-8000-000000000005',
+  name: '秋日小区',
+  code: 'AUTUMN',
+  enabled: false,
+};
+const otherBase = `/api/property/v1/communities/${otherCommunity.id}`;
 const node: SpaceNode = {
   id: nodeId,
   community_id: communityId,
@@ -74,7 +94,11 @@ const session: SessionResponse = {
   csrf_token: 'housing-csrf',
 };
 
-function mockHousing(allowed = permissions, conflict = false) {
+function mockHousing(
+  allowed = permissions,
+  conflict = false,
+  availableCommunities?: Community[],
+) {
   let houses = [{ ...house }];
   let owners = [{ ...owner }];
   let nodes = [{ ...node }];
@@ -91,18 +115,59 @@ function mockHousing(allowed = permissions, conflict = false) {
     const data = init?.body ? JSON.parse(String(init.body)) : {};
     if (path.endsWith('/admin-sessions/current'))
       return Response.json({ ...session, permissions: allowed });
-    if (path === base)
-      return Response.json({
-        id: communityId,
-        name: '春日小区',
-        code: 'SPRING',
-        property_company_id: communityId,
-        property_company_name: '春日物业',
-        address: '小区地址',
-        enabled: true,
-        created_at: timestamp,
-        updated_at: timestamp,
-      });
+    if (path === '/api/property/v1/communities') {
+      const name = target.searchParams.get('name');
+      if (availableCommunities)
+        return page(
+          availableCommunities.filter(
+            (item) => !name || item.name.includes(name),
+          ),
+          target,
+        );
+      if (name)
+        return page(
+          [community, otherCommunity].filter((item) =>
+            item.name.includes(name),
+          ),
+          target,
+        );
+      return page(
+        target.searchParams.get('page') === '2'
+          ? [otherCommunity]
+          : [community],
+        target,
+        101,
+      );
+    }
+    if (path === base) return Response.json(community);
+    if (path === otherBase) return Response.json(otherCommunity);
+    if (path === `${otherBase}/space-nodes`)
+      return page(
+        [
+          {
+            ...node,
+            id: '019a0000-0000-7000-8000-000000000006',
+            community_id: otherCommunity.id,
+            name: '秋日楼栋',
+            effective_enabled: false,
+            has_children: false,
+          },
+        ],
+        target,
+      );
+    if (path === `${otherBase}/houses`)
+      return page(
+        [
+          {
+            ...house,
+            community_id: otherCommunity.id,
+            room_no: '201',
+            display_address: '秋日小区／秋日楼栋／201',
+            effective_enabled: false,
+          },
+        ],
+        target,
+      );
     if (path === `${base}/space-nodes`) {
       if (init?.method === 'POST') {
         nodes = [...nodes, { ...node, id: 'new-node', ...data }];
@@ -207,6 +272,163 @@ function mockHousing(allowed = permissions, conflict = false) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('property housing', () => {
+  it.each([
+    ['localhost', '/property/houses', route],
+    ['property.xlife.test', '/houses', `/communities/${communityId}/houses`],
+  ])(
+    'automatically loads the only community on %s',
+    async (host, entry, selectedPath) => {
+      mockHousing(permissions, false, [community]);
+      renderRoutes(entry, host);
+      expect(
+        await screen.findByText(house.display_address),
+      ).toBeInTheDocument();
+      expect(screen.getByText('春日小区（SPRING）')).toBeInTheDocument();
+      expect(screen.getByTestId('location').textContent).toBe(selectedPath);
+    },
+  );
+
+  it('keeps a single search result unselected when the company has multiple communities', async () => {
+    const fetcher = mockHousing();
+    renderRoutes('/property/houses');
+    const picker = await screen.findByRole('combobox', { name: '当前小区' });
+    fireEvent.mouseDown(picker);
+    fireEvent.change(picker, { target: { value: '秋日' } });
+    expect(
+      await screen.findByText('秋日小区（AUTUMN） · 停用'),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('location').textContent).toBe('/property/houses');
+    expect(
+      fetcher.mock.calls.some(([url]) =>
+        new URL(String(url), window.location.origin).pathname.endsWith(
+          '/houses',
+        ),
+      ),
+    ).toBe(false);
+    fireEvent.click(screen.getByText('秋日小区（AUTUMN） · 停用'));
+    expect(
+      await screen.findByText('秋日小区／秋日楼栋／201'),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['localhost', '/property/houses', '/property'],
+    ['property.xlife.test', '/houses', ''],
+  ])(
+    'opens the standalone flat menu and keeps it selected on %s',
+    async (host, entry, prefix) => {
+      const fetcher = mockHousing();
+      renderRoutes(entry, host);
+      expect(
+        await screen.findByText('请先选择小区，查看和维护房屋资料'),
+      ).toBeInTheDocument();
+      const menu = within(screen.getByRole('menu'));
+      expect(menu.getAllByRole('menuitem')).toHaveLength(3);
+      expect(menu.getByRole('link', { name: /工作台/ })).toHaveAttribute(
+        'href',
+        prefix || '/',
+      );
+      expect(menu.getByRole('link', { name: '小区查询' })).toHaveAttribute(
+        'href',
+        `${prefix}/communities`,
+      );
+      expect(menu.getByRole('link', { name: '房屋管理' })).toHaveAttribute(
+        'href',
+        entry,
+      );
+      expect(menu.queryByText('物业管理')).not.toBeInTheDocument();
+      expect(
+        fetcher.mock.calls.some(([url]) =>
+          String(url).includes(`${communityId}/`),
+        ),
+      ).toBe(false);
+      fireEvent.mouseDown(screen.getByRole('combobox', { name: '当前小区' }));
+      fireEvent.click(await screen.findByText('春日小区（SPRING）'));
+      expect(
+        await screen.findByText(house.display_address),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('location').textContent).toBe(
+        `${prefix}/communities/${communityId}/houses`,
+      );
+      expect(menu.getByRole('menuitem', { name: '房屋管理' })).toHaveClass(
+        'ant-menu-item-selected',
+      );
+      fireEvent.click(screen.getByRole('link', { name: '房屋详情' }));
+      expect(
+        await screen.findByRole('link', { name: '返回房屋列表' }),
+      ).toHaveAttribute('href', `${prefix}/communities/${communityId}/houses`);
+      expect(menu.getByRole('menuitem', { name: '房屋管理' })).toHaveClass(
+        'ant-menu-item-selected',
+      );
+    },
+  );
+
+  it('switches communities and resets the previous space, filters and page', async () => {
+    const fetcher = mockHousing();
+    renderRoutes(
+      `${route}?space_node_id=${nodeId}&room_no=101&external_code=001A&floor_no=1&enabled=true&sort=created_at&page=2&page_size=5`,
+    );
+    await screen.findByText(house.display_address);
+    await screen.findByText('一单元');
+    const picker = screen.getByRole('combobox', { name: '当前小区' });
+    fireEvent.mouseDown(picker);
+    fireEvent.click(
+      await screen.findByRole('button', { name: '加载更多小区' }),
+    );
+    fireEvent.click(await screen.findByText('秋日小区（AUTUMN） · 停用'));
+    expect(
+      await screen.findByText('秋日小区／秋日楼栋／201'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(house.display_address)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '一号楼' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('location').textContent).toBe(
+      `/property/communities/${otherCommunity.id}/houses`,
+    );
+    expect(screen.getByLabelText('房号')).toHaveValue('');
+    expect(
+      await screen.findByText(
+        '小区已停用，可维护已有资料；启用小区后才能新增。',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '新增房屋' })).toBeDisabled();
+    const requests = fetcher.mock.calls
+      .map(([url]) => new URL(String(url), window.location.origin))
+      .filter((url) => url.pathname.startsWith(otherBase));
+    const houses = requests.find(
+      (url) => url.pathname === `${otherBase}/houses`,
+    )!;
+    expect(Object.fromEntries(houses.searchParams)).toEqual({
+      page: '1',
+      page_size: '20',
+      sort: '-created_at',
+    });
+    expect(requests.some((url) => url.pathname.includes(nodeId))).toBe(false);
+  });
+
+  it('searches community options on the server and shows the selected community on a deep link', async () => {
+    const fetcher = mockHousing();
+    renderRoutes(`/property/communities/${otherCommunity.id}/houses`);
+    expect(
+      await screen.findByText('秋日小区（AUTUMN） · 停用'),
+    ).toBeInTheDocument();
+    const picker = screen.getByRole('combobox', { name: '当前小区' });
+    fireEvent.mouseDown(picker);
+    fireEvent.change(picker, { target: { value: '春日' } });
+    fireEvent.click(await screen.findByText('春日小区（SPRING）'));
+    expect(await screen.findByText(house.display_address)).toBeInTheDocument();
+    expect(
+      fetcher.mock.calls.some(([url]) => {
+        const target = new URL(String(url), window.location.origin);
+        return (
+          target.pathname === '/api/property/v1/communities' &&
+          target.searchParams.get('name') === '春日'
+        );
+      }),
+    ).toBe(true);
+  });
+
   it('selects a building when creating from the community and omits unpermitted owners', async () => {
     const fetcher = mockHousing([
       'property.house.read',
@@ -215,6 +437,18 @@ describe('property housing', () => {
     ]);
     renderRoutes(route);
     await screen.findByText(house.display_address);
+    expect(
+      screen.queryByRole('combobox', { name: '当前小区' }),
+    ).not.toBeInTheDocument();
+    expect(
+      fetcher.mock.calls.some(([url]) => {
+        const target = new URL(String(url), window.location.origin);
+        return (
+          target.pathname === '/api/property/v1/communities' ||
+          target.pathname === base
+        );
+      }),
+    ).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: '新增房屋' }));
     const editor = within(await screen.findByRole('dialog'));
     expect(
@@ -269,7 +503,7 @@ describe('property housing', () => {
   });
 
   it('restores the selected node, loads tree pages and puts exact filters in the URL', async () => {
-    const fetcher = mockHousing();
+    const fetcher = mockHousing(permissions, false, [community]);
     renderRoutes(
       `${route}?space_node_id=${nodeId}&floor_no=-1&external_code=001A`,
     );

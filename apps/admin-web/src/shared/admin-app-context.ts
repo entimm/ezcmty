@@ -6,7 +6,7 @@ export interface AdminRoute {
   sitePath?: string;
   component: string;
   title: string;
-  menu?: string;
+  menu?: string | true;
   menuParent?: string;
   permission?: string;
   states: AuthStatus[];

@@ -98,6 +98,12 @@ describe('domain routes', () => {
     patchAdminClientRoutes(property, 'property.xlife.test');
     patchAdminClientRoutes(platform, 'platform.xlife.test');
     const houses = `/communities/${companyId}/houses`;
+    expect(matchRoutes(property, '/houses')?.at(-1)?.route.element).toBe(
+      '@/features/property/housing/HousesPage',
+    );
+    expect(matchRoutes(platform, '/houses')?.at(-1)?.route.element).toBe(
+      '@/components/NotFoundPage',
+    );
     expect(matchRoutes(property, houses)?.at(-1)?.route.element).toBe(
       '@/features/property/housing/HousesPage',
     );

@@ -43,6 +43,9 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
       name: pages.find((page) => page.path === path)?.title ?? '首页',
       icon: <HomeOutlined />,
     },
+    ...pages
+      .filter((item) => item.menu === true && item.path !== path)
+      .map((item) => ({ path: item.path, name: item.title })),
     ...menuGroups.flatMap((group) => {
       const children = pages
         .filter((item) => item.menu === group.id)

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from '@umijs/max';
+import { Link, useNavigate, useParams } from '@umijs/max';
 import {
   PageContainer,
   ProTable,
@@ -11,6 +11,7 @@ import {
   Button,
   Card,
   Col,
+  Empty,
   Form,
   Input,
   InputNumber,
@@ -29,6 +30,7 @@ import {
 import { usePropertySession, usePropertyWorkspaceApi } from '../hooks';
 import { useHousingApi, useHousingOperation } from './hooks';
 import type { House, SpaceNode } from './api';
+import { CommunityPicker } from './CommunityPicker';
 import { SpaceBranch } from './SpaceTree';
 import { HousingStatus } from './HousingStatus';
 import { HouseEditor, SpaceEditor } from './HousingEditors';
@@ -49,20 +51,82 @@ export default function HousesPage() {
     community_id: string;
   }>();
   const { path } = useAdminApp();
+  const navigate = useNavigate();
+  const workspace = usePropertyWorkspaceApi();
+  const { status, hasPermission } = usePropertySession();
+  const community = useQuery({
+    queryKey: ['communities', 'detail', communityId],
+    queryFn: () => workspace.community(communityId),
+    enabled:
+      !!communityId &&
+      status === 'authenticated' &&
+      hasPermission('property.community.read'),
+  });
+  return (
+    <PageContainer
+      title={community.data ? `${community.data.name} · 房屋管理` : '房屋管理'}
+      breadcrumb={{ items: [{ title: '房屋管理' }] }}
+      content={
+        <CommunityPicker
+          value={communityId}
+          community={community.data}
+          onChange={(nextId) => {
+            if (nextId !== communityId)
+              navigate(path(`/property/communities/${nextId}/houses`));
+          }}
+          onAutoSelect={(nextId) =>
+            navigate(path(`/property/communities/${nextId}/houses`), {
+              replace: true,
+            })
+          }
+        />
+      }
+    >
+      {community.isError && (
+        <ReadError
+          error={community.error}
+          retry={() => void community.refetch()}
+        />
+      )}
+      {communityId ? (
+        <CommunityHouses
+          key={communityId}
+          communityId={communityId}
+          communityName={community.data?.name}
+          communityEnabled={community.data?.enabled}
+        />
+      ) : (
+        <Card>
+          <Empty
+            description={
+              hasPermission('property.community.read')
+                ? '请先选择小区，查看和维护房屋资料'
+                : '暂无可选小区，请联系管理员开通小区查询权限'
+            }
+          />
+        </Card>
+      )}
+    </PageContainer>
+  );
+}
+
+function CommunityHouses({
+  communityId,
+  communityName,
+  communityEnabled,
+}: {
+  communityId: string;
+  communityName?: string;
+  communityEnabled?: boolean;
+}) {
+  const { path } = useAdminApp();
   const state = useListState();
   const api = useHousingApi();
-  const workspace = usePropertyWorkspaceApi();
   const { status, hasPermission } = usePropertySession();
   const operation = useHousingOperation();
   const [editor, setEditor] = useState<Editor | null>(null);
   const selectedId = state.params.get('space_node_id') || undefined;
   const canReadSpaces = hasPermission('property.space.read');
-  const community = useQuery({
-    queryKey: ['communities', 'detail', communityId],
-    queryFn: () => workspace.community(communityId),
-    enabled:
-      status === 'authenticated' && hasPermission('property.community.read'),
-  });
   const selected = useQuery({
     queryKey: ['spaces', 'detail', communityId, selectedId],
     queryFn: () => api.node(communityId, selectedId!),
@@ -92,7 +156,7 @@ export default function HousesPage() {
   });
   const node = selected.data;
   const creatingAllowed =
-    community.data?.enabled !== false &&
+    communityEnabled !== false &&
     (!selectedId || node?.effective_enabled === true);
   const columns: ProColumns<House>[] = [
     { title: '完整位置', dataIndex: 'display_address' },
@@ -158,18 +222,9 @@ export default function HousesPage() {
     ? [...node.ancestors.map((part) => part.id), node.id]
     : [];
   return (
-    <PageContainer
-      title={community.data ? `${community.data.name} · 房屋管理` : '房屋管理'}
-      extra={<Link to={path('/property/communities')}>返回小区列表</Link>}
-    >
+    <>
       <OperationError error={operation.error} />
-      {community.isError && (
-        <ReadError
-          error={community.error}
-          retry={() => void community.refetch()}
-        />
-      )}
-      {community.data?.enabled === false && (
+      {communityEnabled === false && (
         <Alert
           type="info"
           showIcon
@@ -179,7 +234,7 @@ export default function HousesPage() {
       )}
       <Row gutter={[16, 16]}>
         {canReadSpaces && (
-          <Col xs={24} lg={7}>
+          <Col xs={24} lg={{ flex: '0 0 280px' }}>
             <Card title="空间定位">
               <Button
                 type={!selectedId ? 'primary' : 'default'}
@@ -187,7 +242,7 @@ export default function HousesPage() {
                   state.update({ space_node_id: undefined, page: 1 })
                 }
               >
-                {community.data?.name ?? '全部房屋'}
+                {communityName ?? '全部房屋'}
               </Button>
               <div role="tree" aria-label="小区空间" style={{ marginTop: 12 }}>
                 <SpaceBranch
@@ -202,7 +257,7 @@ export default function HousesPage() {
             </Card>
           </Col>
         )}
-        <Col xs={24} lg={canReadSpaces ? 17 : 24}>
+        <Col xs={24} lg={{ flex: '1 1 0%' }} style={{ minWidth: 0 }}>
           {selected.isError && (
             <ReadError
               error={selected.error}
@@ -381,6 +436,6 @@ export default function HousesPage() {
           done={() => setEditor(null)}
         />
       )}
-    </PageContainer>
+    </>
   );
 }
