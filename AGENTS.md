@@ -8,7 +8,7 @@
 
 - 管理后台：Ant Design Pro、Umi Max、TypeScript、React、Ant Design、ProComponents
 - 后端：Python、FastAPI
-- 数据库：MySQL
+- 数据库：PostgreSQL
 - 居民端：微信小程序
 - 运行组件：平台管理端、物业管理端、居民端、Webhook、任务系统
 

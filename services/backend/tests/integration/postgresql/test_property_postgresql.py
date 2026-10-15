@@ -7,10 +7,10 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import inspect, select, text
-from sqlalchemy.dialects.mysql import DATETIME
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
-from tests.support.mysql import PASSWORD, platform_token
+from tests.support.admin_services import PASSWORD, platform_token
 from tests.support.paths import BACKEND_ROOT
 
 from backend_app.core.admin_sessions import AdminSessionStore
@@ -25,14 +25,14 @@ from backend_app.services.platform_admin.property import PropertyOnboardingServi
 from backend_app.services.property_admin.admin import PropertyAdminService
 
 
-def test_mysql_role_uniqueness_and_company_association_constraints(
+def test_postgresql_role_uniqueness_and_company_association_constraints(
     real_admin: tuple[sessionmaker[Session], AdminSessionStore],
 ) -> None:
     factory, _ = real_admin
     with factory() as db:
         first, second = (
-            PropertyCompany(code="first", name="第一"),
-            PropertyCompany(code="second", name="第二"),
+            PropertyCompany(code="FIRST", name="第一"),
+            PropertyCompany(code="SECOND", name="第二"),
         )
         db.add_all([first, second])
         db.flush()
@@ -70,22 +70,26 @@ def test_mysql_role_uniqueness_and_company_association_constraints(
                     scope="platform_admin", account_id=platform_account.id, role_id=platform.id
                 ),
                 Community(
-                    property_company_id=first.id, code="community", name="小区", address="地址"
+                    property_company_id=first.id, code="COMMUNITY", name="小区", address="地址"
                 ),
             ]
         )
         db.commit()
-        assert (
-            platform.platform_code == "super_admin"
-            and role1.platform_code is None
-            and role2.platform_code is None
-        )
+        assert "platform_code" not in {
+            column["name"] for column in inspect(db.connection()).get_columns("admin_roles")
+        }
 
         def reject(row: AdminRole | AdminAccount | AdminAccountRole) -> None:
             with pytest.raises(DBAPIError) as caught, db.begin_nested():
                 db.add(row)
                 db.flush()
-            assert caught.value.orig is not None and caught.value.orig.args[0] in (1062, 1452, 3819)
+            assert caught.value.orig is not None and getattr(
+                caught.value.orig, "sqlstate", None
+            ) in {
+                "23505",
+                "23503",
+                "23514",
+            }
 
         reject(AdminRole(scope="platform_admin", code="super_admin", name="重复平台角色"))
         reject(
@@ -152,15 +156,20 @@ def test_mysql_role_uniqueness_and_company_association_constraints(
             )
         )
         for statement in (
-            "UPDATE property_companies SET enabled=2 WHERE code='first'",
-            "UPDATE communities SET enabled=2 WHERE code='community'",
-            "DELETE FROM property_companies WHERE code='first'",
+            "UPDATE property_companies SET enabled=2 WHERE code='FIRST'",
+            "UPDATE communities SET enabled=2 WHERE code='COMMUNITY'",
+            "DELETE FROM property_companies WHERE code='FIRST'",
         ):
             with pytest.raises(DBAPIError) as caught, db.begin_nested():
                 db.execute(text(statement))
-            assert caught.value.orig is not None and caught.value.orig.args[0] in (1451, 3819)
+            assert caught.value.orig is not None and getattr(
+                caught.value.orig, "sqlstate", None
+            ) in {
+                "23503",
+                "42804",
+            }
         timestamp = inspect(db.connection()).get_columns("property_companies")[-1]["type"]
-        assert isinstance(timestamp, DATETIME) and timestamp.fsp == 6
+        assert isinstance(timestamp, TIMESTAMP) and timestamp.precision == 6 and timestamp.timezone
 
 
 def test_concurrent_company_provisioning_and_last_admin_disables(
@@ -234,7 +243,7 @@ def test_concurrent_company_provisioning_and_last_admin_disables(
         assert sum(account.enabled for account in accounts) == 1
 
 
-def test_mysql_property_session_revocation_and_same_company_authorization(
+def test_postgresql_property_session_revocation_and_same_company_authorization(
     real_admin: tuple[sessionmaker[Session], AdminSessionStore],
 ) -> None:
     factory, store = real_admin
@@ -314,7 +323,7 @@ def test_mysql_property_session_revocation_and_same_company_authorization(
         assert prop.identity.repo.account(target.id) is None
 
 
-def test_mysql_migration_roundtrip_and_unmapped_identity_preflight(
+def test_postgresql_migration_roundtrip_and_unmapped_identity_preflight(
     real_admin: tuple[sessionmaker[Session], AdminSessionStore],
 ) -> None:
     factory, store = real_admin
@@ -328,8 +337,8 @@ def test_mysql_migration_roundtrip_and_unmapped_identity_preflight(
             text(
                 "INSERT INTO admin_accounts (id,scope,login_name,display_name,password_hash,"
                 "enabled,must_change_password,session_version,created_at) "
-                "VALUES (UUID_TO_BIN(:id),'property_admin','unmapped','Unmapped',"
-                "'test-hash',1,1,1,:time)"
+                "VALUES (CAST(:id AS uuid),'property_admin','unmapped','Unmapped',"
+                "'test-hash',true,true,1,:time)"
             ),
             {"id": identifier, "time": utc_now()},
         )
@@ -348,10 +357,10 @@ def test_mysql_migration_roundtrip_and_unmapped_identity_preflight(
     with factory() as db:
         root = db.scalar(select(AdminAccount).where(AdminAccount.login_name == "root"))
         assert root and root.property_company_id is None
-        company = PropertyCompany(code="keep", name="保留")
+        company = PropertyCompany(code="KEEP", name="保留")
         db.add(company)
         db.commit()
     with pytest.raises(RuntimeError, match="organization data"):
         command.downgrade(cfg, "20261014_admin_foundation")
     with factory() as db:
-        assert db.scalar(select(PropertyCompany).where(PropertyCompany.code == "keep")) is not None
+        assert db.scalar(select(PropertyCompany).where(PropertyCompany.code == "KEEP")) is not None

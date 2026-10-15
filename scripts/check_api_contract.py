@@ -160,7 +160,7 @@ def main() -> None:
     if not BUNDLED_CONTRACT.exists():
         raise SystemExit("OpenAPI bundle is missing; run `pnpm api:bundle` first")
 
-    os.environ.setdefault("APP_DATABASE_URL", "mysql+pymysql://127.0.0.1/contract")
+    os.environ.setdefault("APP_DATABASE_URL", "postgresql+psycopg://127.0.0.1/contract")
     os.environ.setdefault("APP_REDIS_URL", "redis://localhost:6379/0")
     contract = load_contract()
     check_catalog(contract)

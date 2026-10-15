@@ -15,7 +15,7 @@
 ## 账号归属与授权上下文
 
 - 后台作用域使用 `platform_admin` 和 `property_admin`，由对应后端进程确定。登录、创建账号和授权请求不能自行指定所属后台。
-- 一个管理员账号属于一个后台，登录名在所属后台内唯一，显示名称可以重复。两端相同登录名不代表同一个账号。
+- 一个管理员账号属于一个后台，登录名按 ASCII 格式校验后转为小写，再用于匹配、唯一性检查、存储、列表筛选和接口返回；输入接受任意大小写，后台内规范化后的登录名唯一。创建、登录和受控初始化使用相同规则；显示名称可以重复。两端相同登录名不代表同一个账号。
 - 物业账号归属一家物业公司；同一人跨公司任职时使用不同账号。
 - 物业角色归属一家物业公司，账号只能关联所属公司的角色。平台账号和角色没有物业公司归属。
 - 管理员身份、会话和角色授权仅在所属后台生效。
@@ -43,14 +43,14 @@
 
 ### 公司归属数据库扩展
 
-`admin_accounts`、`admin_roles`、`admin_account_roles` 均增加可空的 `property_company_id BINARY(16)`，使用 CHECK 约束限定：平台后台必须为 `NULL`，物业后台必须非空。账号和角色的公司字段外键指向 `property_companies.id`，不级联删除。
+`admin_accounts`、`admin_roles`、`admin_account_roles` 均增加可空的 `property_company_id uuid`，使用 CHECK 约束限定：平台后台必须为 `NULL`，物业后台必须非空。账号和角色的公司字段外键指向 `property_companies.id`，不级联删除。
 
 - `admin_accounts` 保留 `UNIQUE(scope, login_name)`，增加 `UNIQUE(property_company_id, id)` 及 `(property_company_id, created_at, id)` 索引。
-- `admin_roles` 增加 `UNIQUE(property_company_id, id)`。原 `UNIQUE(scope, code)` 替换为 `UNIQUE(property_company_id, code)` 和 `UNIQUE(platform_code)`；内部生成列 `platform_code VARCHAR(64)` 使用 `CASE WHEN scope = 'platform_admin' THEN code ELSE NULL END`，采用 STORED，不进入 API。不能用包含可空公司字段的单一联合唯一索引代替平台唯一性约束。
+- `admin_roles` 增加 `UNIQUE(property_company_id, id)`。角色编码使用 `UNIQUE NULLS NOT DISTINCT (property_company_id, code)`，公司为空时保证平台编码唯一，公司非空时保证公司内编码唯一。
 - `admin_account_roles` 保留 `(scope, account_id, role_id)` 主键及原后台复合外键，增加 `(property_company_id, account_id)` 和 `(property_company_id, role_id)` 分别引用账号和角色的 `(property_company_id, id)`。CHECK 与两类外键共同防止跨后台、跨公司及空公司绕过。
 - `admin_role_permissions` 通过角色 ID 确定归属，无需增加公司字段；审计日志规则见 [审计与代码组织](#审计与代码组织)。关联表保留原有非空 `created_at`。
 
-迁移使用新增 Alembic 版本，不修改历史迁移。存在尚未确认公司归属的存量物业账号、角色或关联时，迁移前置检查必须停止，不任意分配公司。迁移验证在隔离数据库中执行。
+建库基线面向空 PostgreSQL 数据库，迁移与后续结构变更遵循 [数据库规范](../../database/conventions.md)。
 
 ## 认证与会话
 
@@ -58,7 +58,7 @@
 
 使用账号密码登录，通过成熟的 `argon2-cffi` 库进行 Argon2id 哈希和校验，数据库仅保存密码哈希。初始密码和重置密码都要求首次登录修改。
 
-登录按账号和来源 IP 限制尝试次数。失败响应不区分账号不存在、密码错误和账号停用，避免暴露账号状态。
+登录按规范化后的小写登录名和来源 IP 限制尝试次数，大小写变体共用同一后台的账号计数。失败响应不区分账号不存在、密码错误和账号停用，避免暴露账号状态。
 
 物业登录和已登录请求的认证必须从服务端账号归属解析公司，并校验公司存在且启用；组织缺失或公司停用时不能签发或接受物业会话。公司停用的登录失败仍使用统一登录失败响应，已登录请求返回认证失效。
 
@@ -280,18 +280,18 @@ Redis 会话按后台作用域隔离，登录成功创建新的随机会话标�
 
 ## 审计与代码组织
 
-管理员、角色和授权变更与对应审计记录在同一 MySQL 事务内提交。登录结果另行记录。
+管理员、角色和授权变更与对应审计记录在同一 PostgreSQL 事务内提交。登录结果另行记录。
 
 审计内容使用明确的字段白名单。密码、Cookie、会话标识和 CSRF Token 不进入审计或诊断日志。
 
-`admin_audit_logs` 的 `scope` 标识操作来源后台，`property_company_id BINARY(16)` 记录关联物业公司，允许为空，外键指向 `property_companies.id`，不级联删除。公司归属在写入日志时确定。
+`admin_audit_logs` 的 `scope` 标识操作来源后台，`property_company_id uuid` 记录关联物业公司，允许为空，外键指向 `property_companies.id`，不级联删除。公司归属在写入日志时确定。
 
 - 物业正常操作从服务端认证上下文获取公司 ID，必须有明确公司归属；成功登录及能够识别账号的失败登录从服务端账号归属获取公司 ID。未知账号的失败登录允许公司字段为空。
 - 平台管理公司、小区和公司管理员时，通过目标资源解析并显式记录公司 ID；平台全局操作允许公司字段为空。
 - `metadata` 保存修改字段、角色集合和权限集合。
 - 审计查询校验 `admin.audit.read` 权限和后台、公司上下文。平台按 `scope = platform_admin` 查询，物业按 `scope = property_admin` 和当前账号所属公司查询。物业公司上下文缺失时拒绝查询；列表与 `total` 使用相同过滤条件，并在过滤后分页。
 - 物业审计接口的启用前提见 [范围与职责](#范围与职责)。
-- 联合索引为 `(scope, property_company_id, created_at, id)`。审计按 `(created_at, id)` 同方向稳定排序，默认两者降序，使用页码分页。
+- 公司查询联合索引为 `(scope, property_company_id, created_at, id)`，另建公司外键查找索引；账号角色关联补齐 `(scope, role_id)` 索引。审计按 `(created_at, id)` 同方向稳定排序，默认两者降序，使用页码分页。
 
 后端各端应用 Service 分别编排认证、本人操作和已开放的管理用例，共享身份、RBAC、审计和数据访问能力；各端 API 保持薄层并显式组装本端接口。分层与复用边界见 [后端业务边界与公共能力](../../architecture/backend-services.md)。菜单配置和页面组件按实际相似程度复用，业务规则不依赖前端传入的身份信息。
 

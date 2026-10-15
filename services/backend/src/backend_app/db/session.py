@@ -14,9 +14,14 @@ def get_engine() -> Engine:
     return create_engine(
         get_settings().database_url.get_secret_value(),
         pool_pre_ping=True,
-        pool_recycle=1800,
+        pool_timeout=3,
+        isolation_level="READ COMMITTED",
         hide_parameters=True,
-        connect_args={"connect_timeout": 3, "read_timeout": 3, "write_timeout": 3},
+        connect_args={
+            "connect_timeout": 3,
+            "options": "-c timezone=UTC -c statement_timeout=10000 -c lock_timeout=3000 "
+            "-c idle_in_transaction_session_timeout=60000",
+        },
     )
 
 

@@ -50,3 +50,14 @@ def test_login_limit_rejects_excess_attempt(store: AdminSessionStore) -> None:
     with pytest.raises(AppError) as caught:
         store.limit_login("platform_admin", "account", "source")
     assert caught.value.code == "auth.rate_limited"
+
+
+def test_login_case_variants_share_account_limit_across_source_ips(
+    store: AdminSessionStore,
+) -> None:
+    store.limit_login("platform_admin", "Admin", "first-ip")
+    store.limit_login("platform_admin", "ADMIN", "second-ip")
+    with pytest.raises(AppError) as caught:
+        store.limit_login("platform_admin", "admin", "third-ip")
+    assert caught.value.code == "auth.rate_limited"
+    store.limit_login("property_admin", "ADMIN", "fourth-ip")

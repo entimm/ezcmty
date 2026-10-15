@@ -3,6 +3,7 @@ CompanyCreate:
   additionalProperties: false
   properties:
     code: &id002
+      description: 编码输入接受任意大小写，匹配、唯一性检查、存储和返回统一使用大写形式。
       type: string
       minLength: 1
       maxLength: 64
@@ -60,6 +61,7 @@ PropertyCompany:
       $ref: ./schemas.yaml#/UUIDIdentifier
     code:
       type: string
+      description: 规范化后的大写编码。
     name:
       type: string
     contact_name:
@@ -136,6 +138,7 @@ Community:
       type: string
     code:
       type: string
+      description: 规范化后的大写编码。
     name:
       type: string
     address:
@@ -164,6 +167,7 @@ PropertyAdminCreate:
   properties:
     login_name:
       type: string
+      description: 登录名统一使用小写；输入接受任意大小写，匹配、唯一性检查、限流和返回使用小写形式。
       minLength: 1
       maxLength: 64
       pattern: ^[A-Za-z0-9][A-Za-z0-9_.@-]*$
@@ -190,6 +194,7 @@ PropertyAdminAccount:
       const: property_admin
     login_name:
       type: string
+      description: 登录名统一使用小写；输入接受任意大小写，匹配、唯一性检查、限流和返回使用小写形式。
     display_name:
       type: string
     enabled:

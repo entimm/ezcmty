@@ -36,6 +36,7 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
         hide_parameters=True,
+        connect_args={"connect_timeout": 3, "options": "-c timezone=UTC"},
     )
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)

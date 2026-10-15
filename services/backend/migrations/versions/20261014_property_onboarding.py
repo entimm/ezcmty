@@ -2,15 +2,15 @@
 
 import sqlalchemy as sa
 from alembic import context, op
-from sqlalchemy.dialects import mysql
+from sqlalchemy.dialects import postgresql
 
 revision = "20261014_property_onboarding"
 down_revision = "20261014_admin_foundation"
 branch_labels = None
 depends_on = None
 
-_uuid = sa.LargeBinary(16).with_variant(mysql.BINARY(16), "mysql")
-_time = sa.DateTime().with_variant(mysql.DATETIME(fsp=6), "mysql")
+_uuid = postgresql.UUID(as_uuid=False)
+_time = postgresql.TIMESTAMP(timezone=True, precision=6)
 _ownership = (
     "(scope = 'platform_admin' AND property_company_id IS NULL) OR "
     "(scope = 'property_admin' AND property_company_id IS NOT NULL)"
@@ -38,40 +38,36 @@ def _preflight(*, downgrade: bool = False) -> None:
 
 
 def upgrade() -> None:
-    # MySQL DDL commits implicitly: reject unmapped identities before any schema changes.
     _preflight()
-    options = {"mysql_engine": "InnoDB", "mysql_charset": "utf8mb4"}
     op.create_table(
         "property_companies",
         sa.Column("id", _uuid, primary_key=True),
-        sa.Column("code", sa.String(64), nullable=False),
+        sa.Column("code", sa.String(64, collation="C"), nullable=False),
         sa.Column("name", sa.String(160), nullable=False),
         sa.Column("contact_name", sa.String(80)),
         sa.Column("contact_phone", sa.String(32)),
-        sa.Column("enabled", sa.Boolean(), nullable=False, server_default="0"),
+        sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("created_at", _time, nullable=False),
         sa.Column("updated_at", _time, nullable=False),
         sa.UniqueConstraint("code", name="uq_property_company_code"),
-        sa.CheckConstraint("enabled IN (0, 1)", name="ck_property_company_enabled"),
-        **options,
+        sa.CheckConstraint("code = upper(code)", name="ck_property_company_code_upper"),
     )
     op.create_index("ix_property_company_time", "property_companies", ["created_at", "id"])
     op.create_table(
         "communities",
         sa.Column("id", _uuid, primary_key=True),
         sa.Column("property_company_id", _uuid, nullable=False),
-        sa.Column("code", sa.String(64), nullable=False),
+        sa.Column("code", sa.String(64, collation="C"), nullable=False),
         sa.Column("name", sa.String(160), nullable=False),
         sa.Column("address", sa.String(255), nullable=False),
-        sa.Column("enabled", sa.Boolean(), nullable=False, server_default="1"),
+        sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column("created_at", _time, nullable=False),
         sa.Column("updated_at", _time, nullable=False),
         sa.UniqueConstraint("code", name="uq_community_code"),
         sa.ForeignKeyConstraint(
             ["property_company_id"], ["property_companies.id"], name="fk_community_company"
         ),
-        sa.CheckConstraint("enabled IN (0, 1)", name="ck_community_enabled"),
-        **options,
+        sa.CheckConstraint("code = upper(code)", name="ck_community_code_upper"),
     )
     op.create_index("ix_community_time", "communities", ["created_at", "id"])
     op.create_index(
@@ -89,19 +85,11 @@ def upgrade() -> None:
         )
     with op.batch_alter_table("admin_roles") as batch:
         batch.add_column(sa.Column("property_company_id", _uuid))
-        batch.add_column(
-            sa.Column(
-                "platform_code",
-                sa.String(64),
-                sa.Computed(
-                    "CASE WHEN scope = 'platform_admin' THEN code ELSE NULL END", persisted=True
-                ),
-            )
-        )
         batch.create_unique_constraint("uq_admin_role_company_id", ["property_company_id", "id"])
-        batch.create_unique_constraint("uq_admin_role_platform_code", ["platform_code"])
         batch.create_unique_constraint(
-            "uq_admin_role_company_code", ["property_company_id", "code"]
+            "uq_admin_role_company_code",
+            ["property_company_id", "code"],
+            postgresql_nulls_not_distinct=True,
         )
         batch.drop_constraint("uq_admin_role_code", type_="unique")
         batch.create_foreign_key(
@@ -141,9 +129,7 @@ def downgrade() -> None:
         batch.drop_constraint("fk_admin_role_company", type_="foreignkey")
         batch.drop_constraint("uq_admin_role_company_id", type_="unique")
         batch.drop_constraint("uq_admin_role_company_code", type_="unique")
-        batch.drop_constraint("uq_admin_role_platform_code", type_="unique")
         batch.create_unique_constraint("uq_admin_role_code", ["scope", "code"])
-        batch.drop_column("platform_code")
         batch.drop_column("property_company_id")
     with op.batch_alter_table("admin_accounts") as batch:
         batch.drop_constraint("ck_admin_account_company", type_="check")

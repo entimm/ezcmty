@@ -19,14 +19,14 @@ def test_explicit_backend_env_and_environment_priority(
     backend.mkdir()
     monkeypatch.setenv("APP_LOG_LEVEL", "INFO")
     (backend / ".env").write_text(
-        "APP_DATABASE_URL=mysql+pymysql://env-user:secret@127.0.0.1/existing\n"
+        "APP_DATABASE_URL=postgresql+psycopg://env-user:secret@127.0.0.1/existing\n"
         "APP_REDIS_URL=redis://127.0.0.1:6379/4\n"
     )
     (tmp_path / ".env").write_text("APP_DATABASE_URL=wrong-root-file\n")
     monkeypatch.delenv("APP_DATABASE_URL")
     monkeypatch.delenv("APP_REDIS_URL")
     monkeypatch.chdir(backend)
-    monkeypatch.setattr(system, "check_readiness", lambda: {"mysql": "ok", "redis": "ok"})
+    monkeypatch.setattr(system, "check_readiness", lambda: {"postgresql": "ok", "redis": "ok"})
     get_settings.cache_clear()
     assert dependency_probe()["ok"]
     assert get_settings().redis_url.get_secret_value().endswith("/4")

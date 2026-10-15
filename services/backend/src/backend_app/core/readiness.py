@@ -9,9 +9,9 @@ def check_readiness() -> dict[str, Literal["ok", "unavailable"]]:
     dependencies: dict[str, Literal["ok", "unavailable"]] = {}
     try:
         check_database_connection()
-        dependencies["mysql"] = "ok"
+        dependencies["postgresql"] = "ok"
     except Exception as exc:
-        dependencies["mysql"] = "unavailable"
+        dependencies["postgresql"] = "unavailable"
         log_exception(exc, code="system.dependency_unavailable")
     try:
         get_redis().ping()

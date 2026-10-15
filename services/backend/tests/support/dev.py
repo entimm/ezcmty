@@ -85,7 +85,7 @@ class Harness:
             "    value = MODE.read_text()\n"
             "    if value == 'slow':\n"
             "        time.sleep(2)\n"
-            "    return {'mysql': 'ok' if value != 'unavailable' else 'unavailable', "
+            "    return {'postgresql': 'ok' if value != 'unavailable' else 'unavailable', "
             "'redis': 'ok'}\n"
             "system_routes.check_readiness = dependencies\n"
             f"app = create_app('{name}-fixture-api')\n"

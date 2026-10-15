@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import MetaData, Table, delete, inspect, text
-from sqlalchemy.dialects.mysql import BINARY
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
 from tests.support.paths import BACKEND_ROOT
@@ -19,7 +19,7 @@ from backend_app.models.property import PropertyCompany
 from backend_app.repositories.admin import AdminRepository
 
 
-def test_mysql_audit_company_migration_preserves_history_and_indexes_company_queries(
+def test_postgresql_audit_company_migration_preserves_history_and_indexes_company_queries(
     real_admin: tuple[sessionmaker[Session], AdminSessionStore],
 ) -> None:
     factory, _ = real_admin
@@ -35,16 +35,16 @@ def test_mysql_audit_company_migration_preserves_history_and_indexes_company_que
         for scope in ("platform_admin", "property_admin"):
             db.execute(
                 old_table.insert().values(
-                    id=UUID(new_id()).bytes,
+                    id=UUID(new_id()),
                     scope=scope,
-                    actor_id=UUID(new_id()).bytes,
+                    actor_id=UUID(new_id()),
                     actor_name="历史操作人",
                     action="history.fixture",
                     target_type="account",
-                    target_id=UUID(new_id()).bytes,
+                    target_id=UUID(new_id()),
                     result="success",
                     request_id=scope,
-                    created_at=datetime(2020, 1, 1),
+                    created_at=datetime(2020, 1, 1, tzinfo=UTC),
                     metadata={"property_company_id": new_id(), "changed_fields": ["enabled"]},
                 )
             )
@@ -61,7 +61,7 @@ def test_mysql_audit_company_migration_preserves_history_and_indexes_company_que
         columns = {column["name"]: column for column in inspector.get_columns("admin_audit_logs")}
         company_column = columns["property_company_id"]
         assert company_column["nullable"] is True
-        assert isinstance(company_column["type"], BINARY) and company_column["type"].length == 16
+        assert isinstance(company_column["type"], PGUUID)
         indexes = {index["name"]: index for index in inspector.get_indexes("admin_audit_logs")}
         assert indexes["ix_admin_audit_company_time"]["column_names"] == [
             "scope",
@@ -74,7 +74,7 @@ def test_mysql_audit_company_migration_preserves_history_and_indexes_company_que
         assert company_fk["constrained_columns"] == ["property_company_id"]
         assert company_fk["referred_table"] == "property_companies"
         assert company_fk["options"].get("ondelete") != "CASCADE"
-        company = PropertyCompany(code="audit", name="审计公司")
+        company = PropertyCompany(code="AUDIT", name="审计公司")
         db.add(company)
         db.flush()
         log = AdminAuditLog(
@@ -87,13 +87,10 @@ def test_mysql_audit_company_migration_preserves_history_and_indexes_company_que
         )
         db.add(log)
         db.flush()
-        assert (
-            db.execute(
-                text("SELECT property_company_id FROM admin_audit_logs WHERE id=UUID_TO_BIN(:id)"),
-                {"id": log.id},
-            ).scalar_one()
-            == UUID(company.id).bytes
-        )
+        assert db.execute(
+            text("SELECT property_company_id FROM admin_audit_logs WHERE id=CAST(:id AS uuid)"),
+            {"id": log.id},
+        ).scalar_one() == UUID(company.id)
         logs, total = AdminRepository(db, "property_admin", company.id).audit_logs(
             page=1,
             page_size=20,
@@ -107,7 +104,10 @@ def test_mysql_audit_company_migration_preserves_history_and_indexes_company_que
         assert total == 1 and [row.id for row in logs] == [log.id]
         with pytest.raises(DBAPIError) as caught, db.begin_nested():
             db.execute(delete(PropertyCompany).where(PropertyCompany.id == company.id))
-        assert caught.value.orig is not None and caught.value.orig.args[0] == 1451
+        assert (
+            caught.value.orig is not None
+            and getattr(caught.value.orig, "sqlstate", None) == "23503"
+        )
         db.commit()
         log_id, company_id = log.id, company.id
     with pytest.raises(RuntimeError, match="existing audit records"):

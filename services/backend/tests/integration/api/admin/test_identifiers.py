@@ -17,7 +17,7 @@ from backend_app.models.admin import (
 )
 
 
-def test_uuidv7_binary_storage_and_creation_times(harness: Harness) -> None:
+def test_uuidv7_native_storage_and_creation_times(harness: Harness) -> None:
     session = harness.login()
     assert UUID(session["subject_id"]).version == 7
     headers = harness.headers()
@@ -33,18 +33,18 @@ def test_uuidv7_binary_storage_and_creation_times(harness: Harness) -> None:
     assert permissions.status_code == 200
     with harness.factory() as db:
         for model in (AdminAccount, AdminRole, AdminAuditLog):
-            rows: Sequence[bytes] = (
+            rows: Sequence[UUID] = (
                 db.execute(text(f"SELECT id FROM {model.__tablename__}")).scalars().all()
             )
             assert rows
             for stored in rows:
-                assert isinstance(stored, bytes) and len(stored) == 16
-                identifier = UUID(bytes=stored)
+                assert isinstance(stored, UUID)
+                identifier = stored
                 assert identifier.version == 7
                 entity = db.get(model, str(identifier))
                 assert isinstance(entity, AdminAccount | AdminRole | AdminAuditLog)
                 assert entity.id == str(identifier)
-        now = datetime.now(UTC).replace(tzinfo=None)
+        now = datetime.now(UTC)
         for record_model in (
             AdminAccount,
             AdminRole,
@@ -54,9 +54,9 @@ def test_uuidv7_binary_storage_and_creation_times(harness: Harness) -> None:
         ):
             created_times = db.scalars(select(record_model.created_at)).all()
             assert created_times
-            assert all(value.tzinfo is None and value <= now for value in created_times)
+            assert all(value.tzinfo is not None and value <= now for value in created_times)
         links = db.execute(text("SELECT account_id, role_id FROM admin_account_roles")).all()
-        assert all(isinstance(value, bytes) and len(value) == 16 for row in links for value in row)
+        assert all(isinstance(value, UUID) for row in links for value in row)
     response = harness.client.get(f"/v1/admin-accounts/{session['subject_id'].upper()}")
     assert response.status_code == 200 and response.json()["id"] == session["subject_id"]
     audits = harness.client.get("/v1/admin-audit-logs").json()["items"]
@@ -93,10 +93,10 @@ def test_uuid_v4_identifiers_remain_stable_and_are_normalized(harness: Harness) 
     assert response.json()["id"] == account_id
     assert response.json()["roles"][0]["id"] == role_id
     with harness.factory() as db:
-        raw: bytes = db.execute(
+        raw: UUID = db.execute(
             text("SELECT id FROM admin_accounts WHERE login_name = 'legacy'")
         ).scalar_one()
-        assert raw == UUID(account_id).bytes
+        assert raw == UUID(account_id)
         link = db.scalar(select(AdminAccountRole).where(AdminAccountRole.account_id == account_id))
         assert link is not None and link.account_id == account_id and link.role_id == role_id
     assert harness.login(name="legacy", password=TEST_PASSWORD)["subject_id"] == account_id

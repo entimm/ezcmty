@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 from backend_app.core.error_catalog import CONTRACT_VERSION
 
@@ -37,6 +38,8 @@ class Settings(BaseSettings):
             raise ValueError("APP_VERSION must match the generated API contract revision")
         if not self.database_url.get_secret_value():
             raise ValueError("APP_DATABASE_URL is required")
+        if make_url(self.database_url.get_secret_value()).drivername != "postgresql+psycopg":
+            raise ValueError("APP_DATABASE_URL must use postgresql+psycopg")
         if not self.redis_url.get_secret_value():
             raise ValueError("APP_REDIS_URL is required")
         if self.admin_session_absolute_seconds < self.admin_session_idle_seconds:

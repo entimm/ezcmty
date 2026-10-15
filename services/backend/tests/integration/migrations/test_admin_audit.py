@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
-from pathlib import Path
+from datetime import UTC, datetime
 from uuid import UUID
 
 from alembic import command
@@ -18,9 +17,9 @@ from backend_app.repositories.admin import AdminRepository
 
 
 def test_audit_company_migration_preserves_all_existing_values(
-    tmp_path: Path, monkeypatch: MonkeyPatch
+    database_url: str, monkeypatch: MonkeyPatch
 ) -> None:
-    url = f"sqlite:///{tmp_path / 'audit-history.sqlite'}"
+    url = database_url
     monkeypatch.setenv("APP_DATABASE_URL", url)
     get_settings.cache_clear()
     cfg = Config(str(BACKEND_ROOT / "alembic.ini"))
@@ -37,16 +36,16 @@ def test_audit_company_migration_preserves_all_existing_values(
         for scope in ("platform_admin", "property_admin"):
             connection.execute(
                 old_table.insert().values(
-                    id=UUID(new_id()).bytes,
+                    id=UUID(new_id()),
                     scope=scope,
-                    actor_id=UUID(new_id()).bytes,
+                    actor_id=UUID(new_id()),
                     actor_name="历史操作人",
                     action="history.fixture",
                     target_type="account",
-                    target_id=UUID(new_id()).bytes,
+                    target_id=UUID(new_id()),
                     result="success",
                     request_id=scope,
-                    created_at=datetime(2020, 1, 1),
+                    created_at=datetime(2020, 1, 1, tzinfo=UTC),
                     metadata=metadata,
                 )
             )

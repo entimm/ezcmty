@@ -1,20 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Generator, Iterator
-from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 import pytest
-from alembic import command
-from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 from redis import Redis
-from sqlalchemy import create_engine, event, inspect
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session, sessionmaker
 from tests.support.admin import NEW_PASSWORD, TEST_PASSWORD, Harness, admin, company
-from tests.support.paths import BACKEND_ROOT
 from tests.support.redis import MemoryRedis
 from tests.support.workspace import WorkspaceHarness, create_community
 
@@ -27,21 +23,15 @@ from backend_app.services.platform_admin.admin import PlatformAdminService
 
 
 @pytest.fixture
-def harness(tmp_path: Path, monkeypatch: MonkeyPatch) -> Iterator[Harness]:
-    url = f"sqlite:///{tmp_path / 'admin.sqlite'}"
+def harness(migrated_database_url: str, monkeypatch: MonkeyPatch) -> Iterator[Harness]:
+    url = migrated_database_url
     monkeypatch.setenv("APP_DATABASE_URL", url)
     monkeypatch.setenv("APP_ADMIN_LOGIN_LIMIT", "10000")
     get_settings.cache_clear()
     settings = get_settings()
-    command.upgrade(Config(str(BACKEND_ROOT / "alembic.ini")), "head")
-    engine = create_engine(url, connect_args={"check_same_thread": False})
+    engine = create_engine(url, connect_args={"options": "-c timezone=UTC"})
 
     try:
-
-        @event.listens_for(engine, "connect")
-        def enforce_foreign_keys(connection: Any, record: Any) -> None:
-            connection.execute("PRAGMA foreign_keys=ON")
-
         assert set(inspect(engine).get_table_names()) == {
             "alembic_version",
             "admin_accounts",

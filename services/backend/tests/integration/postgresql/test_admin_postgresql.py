@@ -10,9 +10,10 @@ import pytest
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from sqlalchemy import inspect, select, text
-from sqlalchemy.dialects.mysql import BINARY
+from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Session, sessionmaker
-from tests.support.mysql import PASSWORD
+from tests.support.admin_services import PASSWORD
 
 from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.errors import AppError
@@ -112,7 +113,7 @@ def test_real_redis_revocation_and_scope_separation(
     assert caught.value.code == "auth.rate_limited"
 
 
-def test_uuid_binary_storage_and_fresh_migration_schema(
+def test_native_types_and_fresh_migration_schema(
     real_admin: tuple[sessionmaker[Session], AdminSessionStore],
 ) -> None:
     factory, _ = real_admin
@@ -123,13 +124,13 @@ def test_uuid_binary_storage_and_fresh_migration_schema(
         account = db.scalar(select(AdminAccount))
         assert account is not None and UUID(account.id).version == 7
         account_id = account.id
-        company = PropertyCompany(code="uuid_company", name="UUID company")
+        company = PropertyCompany(code="UUID_COMPANY", name="UUID company")
         db.add(company)
         db.flush()
         db.add(
             Community(
                 property_company_id=company.id,
-                code="uuid_community",
+                code="UUID_COMMUNITY",
                 name="UUID community",
                 address="Address",
             )
@@ -186,33 +187,39 @@ def test_uuid_binary_storage_and_fresh_migration_schema(
         for table in Base.metadata.sorted_tables:
             columns = {column["name"]: column for column in inspector.get_columns(table.name)}
             assert columns["created_at"]["nullable"] is False
+            for column in columns.values():
+                if column["name"].endswith("_at"):
+                    timestamp = column["type"]
+                    assert isinstance(timestamp, TIMESTAMP) and timestamp.timezone
+                    assert timestamp.precision == 6
+            if table.name == "admin_audit_logs":
+                assert isinstance(columns["metadata"]["type"], JSONB)
             for name in uuid_columns & columns.keys():
                 uuid_type = columns[name]["type"]
-                assert isinstance(uuid_type, BINARY)
-                assert uuid_type.length == 16
+                assert isinstance(uuid_type, PGUUID)
             values: Sequence[datetime] = (
-                connection.execute(text(f"SELECT created_at FROM `{table.name}`")).scalars().all()
+                connection.execute(text(f"SELECT created_at FROM {table.name}")).scalars().all()
             )
             assert values and all(value is not None for value in values)
         for identifier in (account_id, legacy_id):
             row = (
                 connection.execute(
                     text(
-                        "SELECT id, BIN_TO_UUID(id) AS text_id FROM admin_accounts "
-                        "WHERE id = UUID_TO_BIN(:identifier)"
+                        "SELECT id, id::text AS text_id FROM admin_accounts "
+                        "WHERE id = CAST(:identifier AS uuid)"
                     ),
                     {"identifier": identifier},
                 )
                 .mappings()
                 .one()
             )
-            assert row["id"] == UUID(identifier).bytes and row["text_id"] == identifier
+            assert row["id"] == UUID(identifier) and row["text_id"] == identifier
             entity = db.get(AdminAccount, identifier)
             assert entity is not None and entity.id == identifier
         references = connection.execute(
             text("SELECT actor_id, target_id FROM admin_audit_logs WHERE action = 'uuid.test'")
         ).one()
-        assert references == (UUID(legacy_id).bytes, UUID(account_id).bytes)
+        assert references == (UUID(legacy_id), UUID(account_id))
         nullable = connection.execute(
             text("SELECT actor_id, target_id FROM admin_audit_logs WHERE action = 'uuid.null-test'")
         ).one()

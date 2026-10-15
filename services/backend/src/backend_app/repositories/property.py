@@ -1,8 +1,10 @@
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from backend_app.core.identifiers import normalize_property_code
 from backend_app.models.admin import AdminAccount
 from backend_app.models.property import Community, PropertyCompany
+from backend_app.repositories.pagination import page_statement, read_page
 
 
 class PropertyRepository:
@@ -12,11 +14,15 @@ class PropertyRepository:
     def company(self, company_id: str, *, lock: bool = False) -> PropertyCompany | None:
         query = select(PropertyCompany).where(PropertyCompany.id == company_id)
         if lock:
-            query = query.with_for_update().execution_options(populate_existing=True)
+            query = query.with_for_update(of=PropertyCompany).execution_options(
+                populate_existing=True
+            )
         return self.db.scalar(query)
 
     def company_by_code(self, code: str) -> PropertyCompany | None:
-        return self.db.scalar(select(PropertyCompany).where(PropertyCompany.code == code))
+        return self.db.scalar(
+            select(PropertyCompany).where(PropertyCompany.code == normalize_property_code(code))
+        )
 
     def companies(
         self,
@@ -29,19 +35,22 @@ class PropertyRepository:
         sort: str,
     ) -> tuple[list[PropertyCompany], int]:
         query = select(PropertyCompany)
-        for column, value in ((PropertyCompany.name, name), (PropertyCompany.code, code)):
-            if value:
-                query = query.where(column.contains(value, autoescape=True))
+        if name:
+            query = query.where(PropertyCompany.name.icontains(name, autoescape=True))
+        if code:
+            query = query.where(
+                PropertyCompany.code.contains(normalize_property_code(code), autoescape=True)
+            )
         if enabled is not None:
             query = query.where(PropertyCompany.enabled == enabled)
-        total = self.db.scalar(select(func.count()).select_from(query.subquery())) or 0
-        query = query.order_by(
-            PropertyCompany.created_at.desc()
-            if sort.startswith("-")
-            else PropertyCompany.created_at,
-            PropertyCompany.id,
+        return read_page(
+            self.db,
+            PropertyCompany,
+            query,
+            page=page,
+            page_size=page_size,
+            order=(("created_at", sort.startswith("-")), ("id", False)),
         )
-        return list(self.db.scalars(query.offset((page - 1) * page_size).limit(page_size))), total
 
     def community(
         self,
@@ -54,11 +63,13 @@ class PropertyRepository:
         if company_scope_id is not None:
             query = query.where(Community.property_company_id == company_scope_id)
         if lock:
-            query = query.with_for_update().execution_options(populate_existing=True)
+            query = query.with_for_update(of=Community).execution_options(populate_existing=True)
         return self.db.scalar(query)
 
     def community_by_code(self, code: str) -> Community | None:
-        return self.db.scalar(select(Community).where(Community.code == code))
+        return self.db.scalar(
+            select(Community).where(Community.code == normalize_property_code(code))
+        )
 
     def communities(
         self,
@@ -72,25 +83,32 @@ class PropertyRepository:
         sort: str,
         company_scope_id: str | None = None,
     ) -> tuple[list[tuple[Community, str]], int]:
-        query = select(Community, PropertyCompany.name).join(
+        query = select(Community, PropertyCompany.name.label("company_name")).join(
             PropertyCompany, Community.property_company_id == PropertyCompany.id
         )
-        for column, value in ((Community.name, name), (Community.code, code)):
-            if value:
-                query = query.where(column.contains(value, autoescape=True))
+        if name:
+            query = query.where(Community.name.icontains(name, autoescape=True))
+        if code:
+            query = query.where(
+                Community.code.contains(normalize_property_code(code), autoescape=True)
+            )
         if property_company_id is not None:
             query = query.where(Community.property_company_id == property_company_id)
         if company_scope_id is not None:
             query = query.where(Community.property_company_id == company_scope_id)
         if enabled is not None:
             query = query.where(Community.enabled == enabled)
-        total = self.db.scalar(select(func.count()).select_from(query.subquery())) or 0
-        query = query.order_by(
-            Community.created_at.desc() if sort.startswith("-") else Community.created_at,
-            Community.id,
-        )
-        rows = self.db.execute(query.offset((page - 1) * page_size).limit(page_size))
-        return [(row[0], row[1]) for row in rows], total
+        rows = self.db.execute(
+            page_statement(
+                Community,
+                query,
+                page=page,
+                page_size=page_size,
+                order=(("created_at", sort.startswith("-")), ("id", False)),
+                extra=("company_name",),
+            )
+        ).all()
+        return [(row[0], row[1]) for row in rows if row[0] is not None], rows[0][-1]
 
     def invalidate_company_accounts(self, company_id: str) -> None:
         self.db.execute(

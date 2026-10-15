@@ -337,7 +337,7 @@ def coordinate(registry: Registry, batch_id: str) -> int:
                 raise DevError(f"启动总超时（{timing.startup:g} 秒）：{details}")
             if not dependencies_ready:
                 if preflight is None and now >= next_preflight:
-                    announce("检查 services/backend/.env 配置及 MySQL、Redis（只读）。")
+                    announce("检查 services/backend/.env 配置及 PostgreSQL、Redis（只读）。")
                     preflight = Probe.start(
                         registry,
                         batch_id,

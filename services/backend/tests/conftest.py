@@ -39,8 +39,8 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         parts = item.path.relative_to(TESTS_ROOT).parts
         if parts[0] in {"unit", "integration", "contract"}:
             item.add_marker(getattr(pytest.mark, parts[0]))
-        if parts[:2] == ("integration", "mysql"):
-            item.add_marker(pytest.mark.mysql)
+        if parts[:2] == ("integration", "postgresql"):
+            item.add_marker(pytest.mark.postgresql)
         if parts[:2] == ("integration", "dev"):
             item.add_marker(pytest.mark.slow)
 
@@ -84,7 +84,7 @@ def pytest_terminal_summary(terminalreporter: TerminalReporter, config: pytest.C
 
 @pytest.fixture(autouse=True)
 def configure_test_environment(monkeypatch: MonkeyPatch) -> Iterator[None]:
-    monkeypatch.setenv("APP_DATABASE_URL", "mysql+pymysql://127.0.0.1/test")
+    monkeypatch.setenv("APP_DATABASE_URL", "postgresql+psycopg://127.0.0.1/test")
     monkeypatch.setenv("APP_REDIS_URL", "redis://127.0.0.1:6379/0")
     monkeypatch.setenv("APP_VERSION", CONTRACT_VERSION)
     get_settings.cache_clear()

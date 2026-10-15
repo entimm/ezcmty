@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 from sqlalchemy.orm import Session, sessionmaker
-from tests.support.mysql import PASSWORD, platform_token
+from tests.support.admin_services import PASSWORD, platform_token
 
 from backend_app.api.admin import get_admin_session_store
 from backend_app.app_factory import create_app
@@ -27,9 +27,9 @@ from backend_app.services.platform_admin.admin import PlatformAdminService
 from backend_app.services.platform_admin.property import PropertyOnboardingService
 from backend_app.services.property_admin.admin import PropertyAdminService
 
-NEW_PASSWORD = "mysql-property-new-password"
+NEW_PASSWORD = "postgresql-property-new-password"
 
-RESET_PASSWORD = "mysql-property-reset-password"
+RESET_PASSWORD = "postgresql-property-reset-password"
 
 ORIGIN = "http://127.0.0.1:5173"
 
@@ -99,7 +99,7 @@ def mutate(
 
 
 @pytest.mark.parametrize("mutation", ["company", "account", "password"])
-def test_mysql_login_rechecks_state_and_password_after_concurrent_platform_change(
+def test_postgresql_login_rechecks_state_and_password_after_concurrent_platform_change(
     real_admin: tuple[sessionmaker[Session], AdminSessionStore],
     monkeypatch: MonkeyPatch,
     mutation: Mutation,
@@ -142,7 +142,7 @@ def test_mysql_login_rechecks_state_and_password_after_concurrent_platform_chang
 
 
 @pytest.mark.parametrize("mutation", ["company", "account", "password"])
-def test_mysql_password_write_rejects_stale_context_after_platform_change(
+def test_postgresql_password_write_rejects_stale_context_after_platform_change(
     real_admin: tuple[sessionmaker[Session], AdminSessionStore],
     mutation: Mutation,
 ) -> None:
@@ -185,7 +185,7 @@ def test_mysql_password_write_rejects_stale_context_after_platform_change(
         )
 
 
-def test_mysql_http_platform_onboarding_property_password_company_scope_and_revocation(
+def test_postgresql_http_platform_onboarding_property_password_company_scope_and_revocation(
     real_admin: tuple[sessionmaker[Session], AdminSessionStore],
 ) -> None:
     factory, store = real_admin

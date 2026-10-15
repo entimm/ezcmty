@@ -121,7 +121,7 @@ def dependency_probe() -> dict[str, Any]:
     unavailable = [name for name, status in dependencies.items() if status != "ok"]
     return {
         "ok": not unavailable,
-        "reason": "MySQL、Redis 只读依赖检查通过"
+        "reason": "PostgreSQL、Redis 只读依赖检查通过"
         if not unavailable
         else f"依赖不可用：{', '.join(unavailable)}；请确认本机实例及已有数据库和账号配置。",
         "log_level": settings.log_level,
@@ -146,7 +146,7 @@ def http_probe(service: Service, timeout: float) -> dict[str, Any]:
             if document.get("service") != service.expected_service:
                 return {"ok": False, "reason": "/readyz 服务标识与目标不一致"}
             ready = document.get("status") == "ok" and document.get("dependencies") == {
-                "mysql": "ok",
+                "postgresql": "ok",
                 "redis": "ok",
             }
             return {"ok": ready, "reason": "API 及依赖已就绪" if ready else "/readyz 依赖未就绪"}

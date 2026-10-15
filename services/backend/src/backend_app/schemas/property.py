@@ -1,11 +1,23 @@
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from pydantic import Field, StringConstraints, field_validator
+from pydantic import AfterValidator, Field, StringConstraints, field_validator
 
-from backend_app.schemas.admin import AdminAccount, AdminSchema, Identifier, Name, Password
+from backend_app.core.identifiers import normalize_property_code
+from backend_app.schemas.admin import (
+    AdminAccount,
+    AdminSchema,
+    Identifier,
+    LoginName,
+    Name,
+    Password,
+)
 
-Code = Annotated[str, Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]*$")]
+Code = Annotated[
+    str,
+    Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]*$"),
+    AfterValidator(normalize_property_code),
+]
 CompanyName = Annotated[
     str, StringConstraints(strip_whitespace=True), Field(min_length=1, max_length=160)
 ]
@@ -47,7 +59,9 @@ class PropertyCompany(AdminSchema):
     @field_validator("created_at", "updated_at")
     @classmethod
     def normalize_time(cls, value: datetime) -> datetime:
-        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+        if value.tzinfo is None:
+            raise ValueError("Timestamp must include a timezone")
+        return value.astimezone(UTC)
 
 
 class CommunityCreate(AdminSchema):
@@ -77,13 +91,13 @@ class Community(AdminSchema):
     @field_validator("created_at", "updated_at")
     @classmethod
     def normalize_time(cls, value: datetime) -> datetime:
-        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+        if value.tzinfo is None:
+            raise ValueError("Timestamp must include a timezone")
+        return value.astimezone(UTC)
 
 
 class PropertyAdminCreate(AdminSchema):
-    login_name: Annotated[
-        str, Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.@-]*$")
-    ]
+    login_name: LoginName
     display_name: Name
     password: Password
 

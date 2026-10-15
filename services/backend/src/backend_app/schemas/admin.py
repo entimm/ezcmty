@@ -3,7 +3,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
-from backend_app.core.identifiers import UUID_PATTERN, normalize_uuid
+from backend_app.core.identifiers import UUID_PATTERN, normalize_login_name, normalize_uuid
 from backend_app.domain.admin.types import AdminScope as AdminScope
 
 Name = Annotated[str, Field(min_length=1, max_length=80)]
@@ -13,6 +13,11 @@ Identifier = Annotated[
     AfterValidator(normalize_uuid),
 ]
 Password = Annotated[str, Field(min_length=12, max_length=128)]
+LoginName = Annotated[
+    str,
+    Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.@-]*$"),
+    AfterValidator(normalize_login_name),
+]
 
 
 class AdminSchema(BaseModel):
@@ -20,9 +25,7 @@ class AdminSchema(BaseModel):
 
 
 class AdminLogin(AdminSchema):
-    login_name: Annotated[
-        str, Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.@-]*$")
-    ]
+    login_name: LoginName
     password: Annotated[str, Field(min_length=1, max_length=128)]
 
 
@@ -40,9 +43,7 @@ class ProfileUpdate(AdminSchema):
 
 
 class AccountCreate(AdminSchema):
-    login_name: Annotated[
-        str, Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.@-]*$")
-    ]
+    login_name: LoginName
     display_name: Name
     password: Password
     role_ids: list[Identifier] = Field(default_factory=list)
@@ -109,7 +110,9 @@ class AdminAccount(AdminSchema):
     @field_validator("created_at")
     @classmethod
     def normalize_time(cls, value: datetime) -> datetime:
-        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+        if value.tzinfo is None:
+            raise ValueError("Timestamp must include a timezone")
+        return value.astimezone(UTC)
 
 
 class AdminRole(RoleSummary):
@@ -139,7 +142,9 @@ class AuditEntry(AdminSchema):
     @field_validator("created_at")
     @classmethod
     def normalize_time(cls, value: datetime) -> datetime:
-        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+        if value.tzinfo is None:
+            raise ValueError("Timestamp must include a timezone")
+        return value.astimezone(UTC)
 
 
 class AccountPage(AdminSchema):

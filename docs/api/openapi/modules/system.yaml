@@ -25,7 +25,7 @@ readiness:
     x-runtimes: [platform_admin_api, property_admin_api, resident_api, webhook]
     tags: [system]
     summary: 检查依赖是否就绪
-    description: 公开运维接口，返回 MySQL 和 Redis 的连接状态，不返回连接地址或异常详情。
+    description: 公开运维接口，返回 PostgreSQL 和 Redis 的连接状态，依赖键为 postgresql 和 redis，不返回连接地址或异常详情。
     security: []
     responses:
       '200':

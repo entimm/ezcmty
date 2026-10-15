@@ -160,7 +160,7 @@ def test_scope_foreign_keys_and_hidden_resources(harness: Harness) -> None:
 
     harness.login()
     with harness.factory() as db:
-        company = PropertyCompany(code="scope_test", name="物业公司")
+        company = PropertyCompany(code="SCOPE_TEST", name="物业公司")
         db.add(company)
         db.flush()
         property_account = AdminAccount(

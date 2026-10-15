@@ -2,9 +2,9 @@
 
 DEV := uv run --project services/backend --no-sync python -m scripts.dev
 BACKEND := cd services/backend && uv run --no-sync
-MYSQL_TEST := cd services/backend && APP_RUN_MYSQL_TESTS=1 uv run --no-sync pytest --require-all-tests
+POSTGRESQL_TEST := cd services/backend && APP_RUN_POSTGRESQL_TESTS=1 uv run --no-sync pytest --require-all-tests
 
-.PHONY: install migrate dev dev-bg stop platform property resident webhook worker admin miniapp-build check check-backend check-frontend check-api test-unit test-integration test-contract test-mysql test-full help
+.PHONY: install migrate dev dev-bg stop platform property resident webhook worker admin miniapp-build check check-backend check-frontend check-api test-unit test-integration test-contract test-postgresql test-full help
 
 install: ## 安装前后端开发依赖
 	@printf '\n[安装] 后端开发依赖\n'
@@ -61,22 +61,22 @@ check-backend: ## 后端及仓库 scripts：Ruff、mypy、pytest
 	$(BACKEND) ruff check --config pyproject.toml src tests ../../scripts
 	$(BACKEND) ruff format --config pyproject.toml --check src tests ../../scripts
 	$(BACKEND) mypy
-	$(BACKEND) pytest -m "not mysql and not slow" --require-all-tests
+	$(BACKEND) pytest -m "not postgresql and not slow" --require-all-tests
 
 test-unit: ## 后端单元测试
 	$(BACKEND) pytest tests/unit --require-all-tests
 
-test-integration: ## 后端集成测试（排除 MySQL/Redis 和进程生命周期）
-	$(BACKEND) pytest tests/integration -m "not mysql and not slow" --require-all-tests
+test-integration: ## 后端集成测试（排除专用 PostgreSQL/Redis 并发测试和进程生命周期）
+	$(BACKEND) pytest tests/integration -m "not postgresql and not slow" --require-all-tests
 
 test-contract: ## 后端与权威 OpenAPI 的契约一致性测试
 	$(BACKEND) pytest tests/contract --require-all-tests
 
-test-mysql: ## 隔离 MySQL/Redis 集成测试（依赖缺失时失败）
-	$(MYSQL_TEST) tests/integration/mysql
+test-postgresql: ## 隔离 PostgreSQL/Redis 集成测试（依赖缺失时失败）
+	$(POSTGRESQL_TEST) tests/integration/postgresql
 
 test-full: ## 全部后端及管理后台测试，生成 JUnit 报告
-	$(MYSQL_TEST) --junitxml=../../build/test-results/backend.xml
+	$(POSTGRESQL_TEST) --junitxml=../../build/test-results/backend.xml
 	pnpm --filter admin-web test --reporter=default --reporter=junit --outputFile=../../build/test-results/admin-web.xml
 	uv run --project services/backend --no-sync python -m scripts.check_test_results build/test-results/backend.xml build/test-results/admin-web.xml
 

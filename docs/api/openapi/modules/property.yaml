@@ -55,6 +55,7 @@ companies:
           default: 20
       - &id006
         name: name
+        description: 名称使用 ILIKE 包含匹配，忽略大小写，通配符按普通字符处理。
         in: query
         required: false
         schema:
@@ -64,6 +65,7 @@ companies:
             - type: 'null'
       - &id007
         name: code
+        description: 输入转为大写后执行包含匹配，通配符按普通字符处理。
         in: query
         required: false
         schema:
@@ -513,6 +515,7 @@ companyAdmins:
       - *id004
       - *id005
       - name: login_name
+        description: 输入转为小写后执行包含匹配，通配符按普通字符处理。
         in: query
         required: false
         schema:

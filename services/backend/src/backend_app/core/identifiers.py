@@ -15,3 +15,11 @@ def normalize_uuid(value: str) -> str:
     if re.fullmatch(UUID_PATTERN, value) is None:
         raise ValueError("Expected a hyphenated UUIDv4 or UUIDv7")
     return str(UUID(value))
+
+
+def normalize_login_name(value: str) -> str:
+    return value.lower()
+
+
+def normalize_property_code(value: str) -> str:
+    return value.upper()

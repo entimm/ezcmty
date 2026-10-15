@@ -8,6 +8,14 @@ import pytest
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import Response, StreamingResponse
 from fastapi.testclient import TestClient
+from psycopg import OperationalError as DriverOperationalError
+from psycopg.errors import (
+    CannotConnectNow,
+    ConnectionFailure,
+    DeadlockDetected,
+    QueryCanceled,
+    TooManyConnections,
+)
 from pydantic import BaseModel, Field
 from pytest import LogCaptureFixture, MonkeyPatch
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -56,8 +64,22 @@ def app(monkeypatch: MonkeyPatch) -> FastAPI:
         match kind:
             case "connection":
                 raise RedisConnectionError(SECRET)
-            case "mysql":
-                raise OperationalError(SECRET, {}, RuntimeError(2003, SECRET))
+            case "postgresql":
+                raise OperationalError(SECRET, {}, CannotConnectNow(SECRET))
+            case "postgresql-connection":
+                raise OperationalError(SECRET, {}, ConnectionFailure(SECRET))
+            case "postgresql-connect-limit":
+                raise OperationalError(SECRET, {}, TooManyConnections(SECRET))
+            case "postgresql-libpq":
+                raise OperationalError(SECRET, {}, DriverOperationalError(SECRET))
+            case "postgresql-invalidated":
+                raise OperationalError(
+                    SECRET, {}, RuntimeError(SECRET), connection_invalidated=True
+                )
+            case "postgresql-deadlock":
+                raise OperationalError(SECRET, {}, DeadlockDetected(SECRET))
+            case "postgresql-canceled":
+                raise OperationalError(SECRET, {}, QueryCanceled(SECRET))
             case "pool":
                 raise DatabaseTimeoutError(SECRET)
             case "redis":
@@ -156,7 +178,13 @@ def test_http_error_type_is_stable_when_business_codes_share_status(
     ("kind", "status", "code"),
     [
         ("connection", 503, "system.dependency_unavailable"),
-        ("mysql", 503, "system.dependency_unavailable"),
+        ("postgresql", 503, "system.dependency_unavailable"),
+        ("postgresql-connection", 503, "system.dependency_unavailable"),
+        ("postgresql-connect-limit", 503, "system.dependency_unavailable"),
+        ("postgresql-libpq", 503, "system.dependency_unavailable"),
+        ("postgresql-invalidated", 503, "system.dependency_unavailable"),
+        ("postgresql-deadlock", 500, "INTERNAL_ERROR"),
+        ("postgresql-canceled", 500, "INTERNAL_ERROR"),
         ("pool", 503, "system.dependency_unavailable"),
         ("redis", 500, "INTERNAL_ERROR"),
         ("integrity", 500, "INTERNAL_ERROR"),
@@ -216,7 +244,7 @@ def test_readiness_keeps_state_response_and_safe_diagnostics(
     assert response.json() == {
         "status": "not_ready",
         "service": "test-errors",
-        "dependencies": {"mysql": "unavailable", "redis": "unavailable"},
+        "dependencies": {"postgresql": "unavailable", "redis": "unavailable"},
     }
     diagnostics = [record for record in caplog.records if "diagnostics=" in record.getMessage()]
     assert len(diagnostics) == 2

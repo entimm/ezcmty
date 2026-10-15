@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from backend_app.core.admin_security import hash_password
 from backend_app.core.errors import AppError
+from backend_app.db.errors import is_unique_violation
 from backend_app.domain.admin.identity import AdminIdentity
 from backend_app.models.admin import AdminAccount, AdminRole, utc_now
 from backend_app.models.property import Community, PropertyCompany
@@ -96,7 +97,7 @@ class PropertyOnboardingService:
             self.db.flush()
         except IntegrityError as exc:
             self.db.rollback()
-            if self.repo.company_by_code(data.code):
+            if is_unique_violation(exc, "uq_property_company_code"):
                 raise AppError("property.duplicate_company_code") from exc
             raise
         self._audit(
@@ -193,7 +194,7 @@ class PropertyOnboardingService:
             self.db.flush()
         except IntegrityError as exc:
             self.db.rollback()
-            if self.repo.community_by_code(data.code):
+            if is_unique_violation(exc, "uq_community_code"):
                 raise AppError("property.duplicate_community_code") from exc
             raise
         self._audit(
@@ -299,7 +300,7 @@ class PropertyOnboardingService:
             self.db.flush()
         except IntegrityError as exc:
             self.db.rollback()
-            if repo.identity_by_login(data.login_name):
+            if is_unique_violation(exc, "uq_admin_account_login"):
                 raise AppError("admin.duplicate_login") from exc
             raise
         repo.replace_roles(account.id, {role.id})

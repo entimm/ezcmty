@@ -11,7 +11,7 @@ from redis import Redis
 
 from backend_app.core.config import Settings
 from backend_app.core.errors import AppError
-from backend_app.core.identifiers import normalize_uuid
+from backend_app.core.identifiers import normalize_login_name, normalize_uuid
 from backend_app.core.session_store import RedisSessionStore
 from backend_app.domain.admin.types import AdminScope
 
@@ -74,7 +74,7 @@ class AdminSessionStore:
     def limit_login(self, scope: AdminScope, login_name: str, source_ip: str) -> None:
         keys = [
             f"app:admin-login:{scope}:{kind}:{sha256(value.encode()).hexdigest()}"
-            for kind, value in (("account", login_name), ("ip", source_ip))
+            for kind, value in (("account", normalize_login_name(login_name)), ("ip", source_ip))
         ]
         script = """
         local exceeded = 0

@@ -351,6 +351,7 @@ accounts:
           maximum: 100
           default: 20
       - name: login_name
+        description: 输入转为小写后执行包含匹配，通配符按普通字符处理。
         in: query
         required: false
         schema:
@@ -383,7 +384,7 @@ accounts:
     tags:
       - admin
     summary: 事务创建管理员及初始角色
-    description: 账号、可选初始角色关联和审计在同一 MySQL 事务内提交。初始密码要求改密；只能分配本后台启用角色。仅系统超级管理员可写入。
+    description: 账号、可选初始角色关联和审计在同一 PostgreSQL 事务内提交。初始密码要求改密；只能分配本后台启用角色。仅系统超级管理员可写入。
     security:
       - AdminSession: []
     responses:
@@ -714,6 +715,7 @@ roles:
           maximum: 100
           default: 20
       - name: name
+        description: 名称使用 ILIKE 包含匹配，忽略大小写，通配符按普通字符处理。
         in: query
         required: false
         schema:

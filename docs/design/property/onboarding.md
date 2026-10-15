@@ -23,35 +23,37 @@
 
 ### 数据库字段
 
-两张实体表使用应用生成的 UUIDv7 主键及 UTC 时间；`updated_at` 初始等于 `created_at`，资料或状态变更时更新。时间使用 `DATETIME(6)`，外键不级联删除。
+公司和小区编码按现有 ASCII 格式校验后统一转为大写，再执行匹配、唯一性检查、存储、列表筛选和接口返回；输入接受任意大小写，数据库通过 CHECK 约束保证大写形式。两类编码分别全平台唯一。名称原样保存，包含搜索采用 ILIKE，并转义通配符。
+
+两张实体表使用应用生成的 UUIDv7 主键及 UTC 时间；`updated_at` 初始等于 `created_at`，资料或状态变更时更新。时间使用 `timestamptz(6)`，外键不级联删除。
 
 `property_companies`：
 
-| 字段            | MySQL 类型     | 空值、默认值与约束                    |
-| --------------- | -------------- | ------------------------------------- |
-| `id`            | `BINARY(16)`   | 非空，主键。                          |
-| `code`          | `VARCHAR(64)`  | 非空，全平台唯一，创建后固定。        |
-| `name`          | `VARCHAR(160)` | 非空。                                |
-| `contact_name`  | `VARCHAR(80)`  | 可空，默认 `NULL`。                   |
-| `contact_phone` | `VARCHAR(32)`  | 可空，默认 `NULL`。                   |
-| `enabled`       | `TINYINT(1)`   | 非空，默认 `0`，CHECK 限定为 0 或 1。 |
-| `created_at`    | `DATETIME(6)`  | 非空，应用写入。                      |
-| `updated_at`    | `DATETIME(6)`  | 非空，应用写入。                      |
+| 字段            | PostgreSQL 类型  | 空值、默认值与约束             |
+| --------------- | ---------------- | ------------------------------ |
+| `id`            | `uuid`           | 非空，主键。                   |
+| `code`          | `VARCHAR(64)`    | 非空，全平台唯一，创建后固定。 |
+| `name`          | `VARCHAR(160)`   | 非空。                         |
+| `contact_name`  | `VARCHAR(80)`    | 可空，默认 `NULL`。            |
+| `contact_phone` | `VARCHAR(32)`    | 可空，默认 `NULL`。            |
+| `enabled`       | `boolean`        | 非空，默认 `false`。           |
+| `created_at`    | `timestamptz(6)` | 非空，应用写入。               |
+| `updated_at`    | `timestamptz(6)` | 非空，应用写入。               |
 
 除主键和 `code` 唯一索引外，建立 `(created_at, id)` 索引支持稳定分页。
 
 `communities`：
 
-| 字段                  | MySQL 类型     | 空值、默认值与约束                                   |
-| --------------------- | -------------- | ---------------------------------------------------- |
-| `id`                  | `BINARY(16)`   | 非空，主键。                                         |
-| `property_company_id` | `BINARY(16)`   | 非空，外键指向 `property_companies.id`，创建后固定。 |
-| `code`                | `VARCHAR(64)`  | 非空，全平台唯一，创建后固定。                       |
-| `name`                | `VARCHAR(160)` | 非空。                                               |
-| `address`             | `VARCHAR(255)` | 非空。                                               |
-| `enabled`             | `TINYINT(1)`   | 非空，默认 `1`，CHECK 限定为 0 或 1。                |
-| `created_at`          | `DATETIME(6)`  | 非空，应用写入。                                     |
-| `updated_at`          | `DATETIME(6)`  | 非空，应用写入。                                     |
+| 字段                  | PostgreSQL 类型  | 空值、默认值与约束                                   |
+| --------------------- | ---------------- | ---------------------------------------------------- |
+| `id`                  | `uuid`           | 非空，主键。                                         |
+| `property_company_id` | `uuid`           | 非空，外键指向 `property_companies.id`，创建后固定。 |
+| `code`                | `VARCHAR(64)`    | 非空，全平台唯一，创建后固定。                       |
+| `name`                | `VARCHAR(160)`   | 非空。                                               |
+| `address`             | `VARCHAR(255)`   | 非空。                                               |
+| `enabled`             | `boolean`        | 非空，默认 `true`。                                  |
+| `created_at`          | `timestamptz(6)` | 非空，应用写入。                                     |
+| `updated_at`          | `timestamptz(6)` | 非空，应用写入。                                     |
 
 除主键和 `code` 唯一索引外，建立 `(created_at, id)` 及 `(property_company_id, created_at, id)` 索引。
 
@@ -68,7 +70,7 @@
 
 开通操作以平台管理员身份执行，创建目标物业账号时固定后台为 `property_admin`，公司取自已授权的路径资源。平台操作者的身份、会话和权限上下文保持为 `platform_admin`。
 
-初始管理员开通时，公司系统角色、账号、角色关联和平台审计记录在同一 MySQL 事务内提交。并发开通不能重复创建同一公司的系统角色，失败不留下部分成功的关联。密码和首次登录改密要求沿用 [密码与登录](../admin/foundation.md#密码与登录)。
+初始管理员开通时，公司系统角色、账号、角色关联和平台审计记录在同一 PostgreSQL 事务内提交。并发开通不能重复创建同一公司的系统角色，失败不留下部分成功的关联。密码和首次登录改密要求沿用 [密码与登录](../admin/foundation.md#密码与登录)。
 
 公司管理员的公司归属固定。编辑只修改显示名称，账号启停和密码重置遵循共用认证与保护规则。平台可在公司停用期间继续管理其管理员；公司停用不解除 [最后一个有效超级管理员保护](../admin/foundation.md#角色与权限)。
 
@@ -125,7 +127,7 @@
 
 ## 审计与事务
 
-公司、小区和公司管理员的管理变更与对应审计记录在同一 MySQL 事务内提交。公司停用涉及的会话版本递增遵循基础框架的事务规则。
+公司、小区和公司管理员的管理变更与对应审计记录在同一 PostgreSQL 事务内提交。公司停用涉及的会话版本递增遵循基础框架的事务规则。
 
 接入管理操作归属平台后台审计，记录平台操作者和目标公司。审计规则见 [审计与代码组织](../admin/foundation.md#审计与代码组织)。
 

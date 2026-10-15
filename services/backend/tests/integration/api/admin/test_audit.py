@@ -34,7 +34,7 @@ def test_property_audit_http_isolates_companies_before_count_and_pagination(
     harness.login()
     first, _ = provision_company(harness, "first")
     second, _ = provision_company(harness, "second")
-    timestamp = datetime.now(UTC).replace(tzinfo=None)
+    timestamp = datetime.now(UTC)
     own_ids = [new_id(), new_id()]
     with harness.factory() as db:
         for identifier, scope, company_id, result, metadata in (
@@ -94,8 +94,8 @@ def test_property_audit_http_isolates_companies_before_count_and_pagination(
             **audit_filters(
                 page=page,
                 page_size=page_size,
-                from_time=from_time.astimezone(UTC).replace(tzinfo=None) if from_time else None,
-                to_time=to_time.astimezone(UTC).replace(tzinfo=None) if to_time else None,
+                from_time=from_time.astimezone(UTC) if from_time else None,
+                to_time=to_time.astimezone(UTC) if to_time else None,
                 action=action,
                 result=result,
                 request_id=request_id,

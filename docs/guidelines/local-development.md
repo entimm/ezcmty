@@ -8,7 +8,7 @@
 - `uv`
 - Node.js（默认使用 [.node-version](../../.node-version) 指定的 24.x，具体版本须满足 [package.json](../../package.json) 的 `engines.node`）
 - `pnpm`
-- MySQL 8.x 和 Redis（默认复用本机已安装实例）
+- PostgreSQL 18.x 和 Redis（默认复用本机已安装实例）
 - 微信开发者工具
 
 ## 初始化本地环境
@@ -22,35 +22,37 @@ cp services/backend/.env.example services/backend/.env
 
 `make install` 按现有锁文件安装后端开发依赖与整个 pnpm 工作区依赖。
 
-[services/backend/.env.example](../../services/backend/.env.example) 是本地后端配置模板，仅包含 `APP_*`，默认连接本机 MySQL 和 Redis。实际 `.env` 文件只在首次初始化时从对应模板复制，已有文件直接编辑。
+[services/backend/.env.example](../../services/backend/.env.example) 是本地后端配置模板，仅包含 `APP_*`，默认连接本机 PostgreSQL 和 Redis。实际 `.env` 文件只在首次初始化时从对应模板复制，已有文件直接编辑。
 
-启动前，使用你本机已有的管理方式启动 MySQL 和 Redis，并确认已有数据库、账号及访问权限满足应用配置。开发入口仅检查已有配置与依赖；检查范围及处理方式见 [启动流程](../architecture/local-development.md#启动流程)。
+启动前，使用你本机已有的管理方式启动 PostgreSQL 和 Redis，并确认已有数据库、账号及访问权限满足应用配置。开发入口仅检查已有配置与依赖；检查范围及处理方式见 [启动流程](../architecture/local-development.md#启动流程)。
 
 编辑 `services/backend/.env`：
 
 ```dotenv
-APP_DATABASE_URL=mysql+pymysql://你的账号:你的密码@127.0.0.1:3306/已有数据库?charset=utf8mb4
+APP_DATABASE_URL=postgresql+psycopg://你的账号:你的密码@127.0.0.1:5432/已有数据库
 APP_REDIS_URL=redis://127.0.0.1:6379/0
 APP_LOG_LEVEL=INFO
 ```
 
-URL 中的账号、密码须按 URL 规则编码。若 Redis 需要认证，配置对应凭据。模板中的数据库名和凭据仅为示例，需按本机已有实例填写。
+URL 中的账号、密码须按 URL 规则编码。若 Redis 需要认证，配置对应凭据。模板中的数据库名和凭据仅为示例，需按本机已有实例填写。数据库须使用 UTF8 及确定性、大小写敏感的排序规则；PostgreSQL 18 可使用 builtin `C.UTF-8` locale。应用与迁移连接会显式设置 UTC，连接、语句及锁超时见 [数据库规范](../database/conventions.md#连接事务与查询)。
 
 后端依赖检查及所有后端进程的工作目录固定为 `services/backend/`，沿用现有 Settings 读取该处 `.env`；**已有环境变量优先于 `.env`**。仓库根目录的 `.env` 不作为后端配置来源。包含 Worker 的启动批次需要 `APP_LOG_LEVEL=INFO` 或 `DEBUG`，以观察现有启动标记。配置及运行日志均不提交 Git。
 
-管理后台使用 Umi 环境配置，可按需参考 [apps/admin-web/.env.example](../../apps/admin-web/.env.example) 配置该目录的本地环境文件。`UMI_APP_NAME` 配置公开应用名称，`UMI_APP_PLATFORM_API_BASE` 和 `UMI_APP_PROPERTY_API_BASE` 分别配置同源 API 前缀，默认是 `/api/platform`、`/api/property`；这些 `UMI_APP_*` 值会进入浏览器构建产物，不得包含密钥。开发代理将对应前缀转发到本机 8001、8002 并移除端入口前缀。单独启动管理后台无需 MySQL、Redis 或后端配置。
+管理后台使用 Umi 环境配置，可按需参考 [apps/admin-web/.env.example](../../apps/admin-web/.env.example) 配置该目录的本地环境文件。`UMI_APP_NAME` 配置公开应用名称，`UMI_APP_PLATFORM_API_BASE` 和 `UMI_APP_PROPERTY_API_BASE` 分别配置同源 API 前缀，默认是 `/api/platform`、`/api/property`；这些 `UMI_APP_*` 值会进入浏览器构建产物，不得包含密钥。开发代理将对应前缀转发到本机 8001、8002 并移除端入口前缀。单独启动管理后台无需 PostgreSQL、Redis 或后端配置。
 
 ## 开发命令
 
 ### 平台后台初始化
 
-配置好已有 MySQL 和 Redis 后，在仓库根目录执行数据库迁移，再进入后端目录执行受控初始化：
+配置好已有 PostgreSQL 和 Redis 后，在仓库根目录执行数据库迁移，再进入后端目录执行受控初始化：
 
 ```bash
 make migrate
 cd services/backend
 uv run python -m backend_app.cli init-platform-admin --login-name your-admin --display-name 平台管理员
 ```
+
+登录名输入允许任意大小写，服务端统一为小写；公司和小区编码统一为大写，接口返回规范化后的形式。规范化与唯一性约束见 [数据库规范](../database/conventions.md#字符串与约束)。
 
 初始化命令交互输入并确认密码，密码长度为 12–128 字符。已有有效超级管理员或同名账号时拒绝初始化，不能覆盖现有密码或授权。首次登录必须修改密码。
 
@@ -91,9 +93,9 @@ uv run python -m backend_app.cli init-platform-admin --login-name your-admin --d
 | `make check-frontend`   | 管理后台 typecheck、lint、test、build；小程序 typecheck、lint、build  |
 | `make check-api`        | 现有 `pnpm api:check`：OpenAPI lint、bundle、contract                 |
 | `make test-unit`        | 后端单元测试                                                          |
-| `make test-integration` | 后端快速集成测试，排除 MySQL/Redis 和进程生命周期                     |
+| `make test-integration` | 后端快速集成测试，排除专用 PostgreSQL/Redis 并发测试和进程生命周期    |
 | `make test-contract`    | 后端与权威 OpenAPI 的契约一致性测试                                   |
-| `make test-mysql`       | 使用独立临时实例执行真实 MySQL/Redis 测试                             |
+| `make test-postgresql`  | 使用独立临时实例执行真实 PostgreSQL/Redis 测试                        |
 | `make test-full`        | 全部后端和管理后台测试，包含真实依赖与进程生命周期，生成 JUnit 报告   |
 | `make help`             | 显示全部命令及用途                                                    |
 
@@ -155,26 +157,26 @@ make stop
 make check
 ```
 
-`make check-backend` 执行全部单元测试、快速集成测试和契约测试，通过 `mysql`、`slow` 标记排除真实 MySQL/Redis 与进程生命周期测试。`make check` 还执行前端测试及其余质量检查。
+`make check-backend` 执行全部单元测试、快速集成测试和契约测试，通过 `postgresql`、`slow` 标记排除专用 PostgreSQL/Redis 并发测试与进程生命周期测试。`make check` 还执行前端测试及其余质量检查。
 
-管理员接口集成测试使用临时 SQLite 数据库验证迁移、事务和接口行为。合并前执行完整测试：
+数据库和管理员接口集成测试使用独立临时 PostgreSQL 实例及每用例独立数据库，验证原生类型、迁移、真实提交、回滚和接口行为；快速集成测试同样需要 `initdb`、`postgres` 和 `pg_ctl` 在 PATH 中。合并前执行完整测试：
 
 ```bash
 make test-full
 ```
 
-完整测试需要本机可用的 `mysqld`、`redis-server` 以及已安装的前端依赖，会创建独立的临时实例、随机端口和测试数据库，完成后关闭并清理所属资源。JUnit 报告写入 `build/test-results/backend.xml` 和 `build/test-results/admin-web.xml`，CI 应保留这些报告和失败日志。
+完整测试需要本机可用的 `initdb`、`postgres`、`pg_ctl`、`redis-server` 以及已安装的前端依赖，会创建独立的临时实例、随机端口和测试数据库，完成后关闭并清理所属资源。JUnit 报告写入 `build/test-results/backend.xml` 和 `build/test-results/admin-web.xml`，CI 应保留这些报告和失败日志。
 
 按模块、文件或用例运行时，在 `services/backend/` 下选择具体路径。例如：
 
 ```bash
 uv run pytest tests/integration/api/property/test_onboarding.py --require-all-tests
 uv run pytest tests/unit/core/test_admin_sessions.py::test_idle_session_expires --require-all-tests
-APP_RUN_MYSQL_TESTS=1 uv run pytest tests/integration/mysql --require-all-tests
+APP_RUN_POSTGRESQL_TESTS=1 uv run pytest tests/integration/postgresql --require-all-tests
 uv run pytest tests/integration/dev --require-all-tests --durations=20
 ```
 
-测试分类和 `mysql`、`slow` 标记按目录自动设置。直接运行 pytest 时，未启用 `APP_RUN_MYSQL_TESTS=1` 的 MySQL/Redis 测试会给出原因并跳过；显式启用后依赖缺失会失败。上述 Make 测试入口的后端检查均启用 `--require-all-tests`，选中测试出现跳过或预期失败时返回非零，未收集到测试沿用 pytest 的非零退出码。`make test-full` 还检查两端 JUnit 报告，拒绝空报告、跳过、失败及错误记录。
+测试分类和 `postgresql`、`slow` 标记按目录自动设置。直接运行 pytest 时，未启用 `APP_RUN_POSTGRESQL_TESTS=1` 的专用 PostgreSQL/Redis 测试会给出原因并跳过；显式启用后依赖缺失会失败。上述 Make 测试入口的后端检查均启用 `--require-all-tests`，选中测试出现跳过或预期失败时返回非零，未收集到测试沿用 pytest 的非零退出码。`make test-full` 还检查两端 JUnit 报告，拒绝空报告、跳过、失败及错误记录。
 
 任一检查失败返回非零。也可使用上表中的单项检查或构建命令。
 

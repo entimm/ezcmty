@@ -2,7 +2,7 @@
 
 面向 macOS 本地开发，统一管理安装、运行、构建和检查。服务批次包含四个 API、Worker、管理后台，单独目标只选择对应服务；小程序在微信开发者工具中运行。
 
-命令、配置、地址和日志位置见 [本地开发指南](../guidelines/local-development.md)。应用边界沿用 [系统架构](overview.md)，MySQL、Redis 默认复用本机实例，前提见 [部署约定](deployment.md#本地开发)。
+命令、配置、地址和日志位置见 [本地开发指南](../guidelines/local-development.md)。应用边界沿用 [系统架构](overview.md)，PostgreSQL、Redis 默认复用本机实例，前提见 [部署约定](deployment.md#本地开发)。
 
 ## 任务编排与模块职责
 
@@ -50,7 +50,7 @@ stateDiagram-v2
 
 | 服务     | 就绪条件                                                                                  |
 | -------- | ----------------------------------------------------------------------------------------- |
-| API      | `/readyz` 返回 200，服务标识匹配，`status=ok`，MySQL、Redis 均为 `ok`                     |
+| API      | `/readyz` 返回 200，服务标识匹配，`status=ok`，PostgreSQL、Redis 均为 `ok`                |
 | Worker   | 只读依赖检查通过，本批日志出现 `service=worker`、`message=worker_started task_handlers=0` |
 | 管理后台 | `/` 返回 200，`Content-Type` 包含 `text/html`，页面非空                                   |
 
@@ -112,4 +112,4 @@ sequenceDiagram
 - 正常重载、实际子进程故障、恢复超时及清理不影响已有独立批次。
 - 按批次和全仓库停止、强制终止、陈旧 PID 不误杀、子进程退出、端口释放与再次启动。
 
-完整应用另需连接已配置的本机 MySQL、Redis 验证；工程检查遵循 [开发规范](../guidelines/development.md#质量检查)。
+完整应用另需连接已配置的本机 PostgreSQL、Redis 验证；工程检查遵循 [开发规范](../guidelines/development.md#质量检查)。

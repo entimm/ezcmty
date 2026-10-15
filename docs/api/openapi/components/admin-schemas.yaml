@@ -4,6 +4,7 @@ AdminLogin:
   properties:
     login_name:
       type: string
+      description: 登录名统一使用小写；输入接受任意大小写，匹配、唯一性检查、限流和返回使用小写形式。
       minLength: 1
       maxLength: 64
       pattern: ^[A-Za-z0-9][A-Za-z0-9_.@-]*$
@@ -55,6 +56,7 @@ AccountCreate:
   properties:
     login_name:
       type: string
+      description: 登录名统一使用小写；输入接受任意大小写，匹配、唯一性检查、限流和返回使用小写形式。
       minLength: 1
       maxLength: 64
       pattern: ^[A-Za-z0-9][A-Za-z0-9_.@-]*$
@@ -153,6 +155,7 @@ AdminSession:
       $ref: './schemas.yaml#/UUIDIdentifier'
     login_name:
       type: string
+      description: 登录名统一使用小写；输入接受任意大小写，匹配、唯一性检查、限流和返回使用小写形式。
     display_name:
       type: string
     permissions:
@@ -184,6 +187,7 @@ AdminProfile:
         - property_admin
     login_name:
       type: string
+      description: 登录名统一使用小写；输入接受任意大小写，匹配、唯一性检查、限流和返回使用小写形式。
     display_name:
       type: string
   required:
@@ -224,6 +228,7 @@ AdminAccount:
         - property_admin
     login_name:
       type: string
+      description: 登录名统一使用小写；输入接受任意大小写，匹配、唯一性检查、限流和返回使用小写形式。
     display_name:
       type: string
     enabled:

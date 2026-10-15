@@ -6,10 +6,11 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from psycopg import OperationalError as DriverOperationalError
 from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import RedisError
 from redis.exceptions import TimeoutError as RedisTimeoutError
-from sqlalchemy.exc import DisconnectionError, OperationalError, SQLAlchemyError
+from sqlalchemy.exc import DBAPIError, DisconnectionError, OperationalError, SQLAlchemyError
 from sqlalchemy.exc import TimeoutError as DatabaseTimeoutError
 from starlette.exceptions import HTTPException
 
@@ -37,12 +38,14 @@ def is_dependency_unavailable(exc: Exception) -> bool:
         exc, (RedisConnectionError, RedisTimeoutError, DisconnectionError, DatabaseTimeoutError)
     ):
         return True
-    if isinstance(exc, OperationalError):
-        # MySQL connection limits, connection failures and lost connections only.
-        code = exc.orig.args[0] if exc.orig is not None and exc.orig.args else None
-        return exc.connection_invalidated or (
-            type(code) is int and code in {1040, 1203, 2002, 2003, 2006, 2013}
-        )
+    if isinstance(exc, DBAPIError) and exc.connection_invalidated:
+        return True
+    if isinstance(exc, OperationalError) and isinstance(exc.orig, DriverOperationalError):
+        state = exc.orig.sqlstate
+        if state is None:
+            # libpq connection failures may have no server SQLSTATE.
+            return type(exc.orig) is DriverOperationalError
+        return state.startswith("08") or state in {"53300", "57P01", "57P02", "57P03"}
     return False
 
 
