@@ -43,7 +43,10 @@ export function CompanyActions({
                     }),
                   security: true,
                 })
-                .then(() => undefined),
+                .then(() => undefined)
+                .catch(() => {
+                  // 页面通过 OperationError 展示失败，关闭确认框以显示提示。
+                }),
           })
         }
       >

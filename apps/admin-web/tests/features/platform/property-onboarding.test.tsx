@@ -11,6 +11,74 @@ beforeEach(() => mockApi());
 afterEach(() => vi.unstubAllGlobals());
 
 describe('property-onboarding', () => {
+  it.each([
+    ['company list', '/platform/property/companies'],
+    ['company detail', `/platform/property/companies/${companyId}`],
+  ])(
+    'shows an activation conflict without an unhandled rejection on the %s',
+    async (_, route) => {
+      const fetcher = mockApi();
+      const fallback = fetcher.getMockImplementation()!;
+      const detail = '启用公司需要至少一名有效超级管理员';
+      fetcher.mockImplementation(async (url, init) => {
+        const path = new URL(String(url)).pathname;
+        if (
+          path.endsWith(`/property-companies/${companyId}`) &&
+          init?.method === 'PATCH'
+        )
+          return Response.json(
+            {
+              type: 'urn:problem:property.company_admin_required',
+              title: detail,
+              status: 409,
+              detail,
+              instance: 'urn:request:company-enable',
+              code: 'property.company_admin_required',
+              request_id: 'company-enable',
+            },
+            {
+              status: 409,
+              headers: { 'Content-Type': 'application/problem+json' },
+            },
+          );
+        if (path.endsWith(`/${companyId}/admin-accounts`))
+          return Response.json({ items: [], total: 0, page: 1, page_size: 20 });
+        return fallback(url, init);
+      });
+      renderRoutes(route);
+      fireEvent.click(await screen.findByRole('button', { name: '启用' }));
+      const dialog = await screen.findByRole('dialog');
+      const confirm = within(dialog);
+      fireEvent.click(confirm.getByRole('button', { name: '确 定' }));
+
+      expect(await screen.findByText(detail)).toBeInTheDocument();
+      // jsdom 不运行 CSS 动画，在确认框开始关闭后补发过渡结束事件。
+      await waitFor(() => expect(dialog).toHaveClass('ant-zoom-leave-active'));
+      fireEvent.transitionEnd(dialog);
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+      );
+      expect(screen.getByRole('button', { name: '启用' })).toBeEnabled();
+      const writes = fetcher.mock.calls.filter(
+        ([, init]) => init?.method === 'PATCH',
+      );
+      expect(writes).toHaveLength(1);
+      expect(JSON.parse(String(writes[0][1]?.body))).toEqual({ enabled: true });
+      await waitFor(() =>
+        expect(
+          fetcher.mock.calls.filter(
+            ([url, init]) =>
+              new URL(String(url)).pathname.endsWith(
+                route.endsWith(companyId)
+                  ? `/property-companies/${companyId}`
+                  : '/property-companies',
+              ) && !init?.method,
+          ).length,
+        ).toBeGreaterThanOrEqual(2),
+      );
+    },
+  );
+
   it('guards company detail and only loads independently permitted sections', async () => {
     const fetcher = mockApi({
       ...session,
