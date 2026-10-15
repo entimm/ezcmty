@@ -121,6 +121,24 @@ ProblemDetails:
       property.company_admin_required:
         status: 409
         title: 启用公司需要至少一名有效超级管理员
+      property.duplicate_space_name:
+        status: 409
+        title: 同级空间名称已存在
+      property.invalid_space_parent:
+        status: 409
+        title: 不允许的空间父子关系
+      property.invalid_house_parent:
+        status: 409
+        title: 房屋必须属于楼栋或单元
+      property.duplicate_room_no:
+        status: 409
+        title: 所属位置的房号已存在
+      property.duplicate_house_owner:
+        status: 409
+        title: 该房屋的业主登记已存在
+      property.housing_disabled:
+        status: 409
+        title: 所属小区、空间或房屋已停用
 ValidationIssue:
   type: object
   required:

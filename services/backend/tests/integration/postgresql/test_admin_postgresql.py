@@ -19,6 +19,7 @@ from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.errors import AppError
 from backend_app.db.base import Base
 from backend_app.models.admin import AdminAccount, AdminAuditLog, AdminRole, AdminRolePermission
+from backend_app.models.housing import House, HouseOwner, SpaceNode
 from backend_app.models.property import Community, PropertyCompany
 from backend_app.schemas import admin as schema
 from backend_app.services.platform_admin.admin import PlatformAdminService
@@ -127,14 +128,21 @@ def test_native_types_and_fresh_migration_schema(
         company = PropertyCompany(code="UUID_COMPANY", name="UUID company")
         db.add(company)
         db.flush()
-        db.add(
-            Community(
-                property_company_id=company.id,
-                code="UUID_COMMUNITY",
-                name="UUID community",
-                address="Address",
-            )
+        community = Community(
+            property_company_id=company.id,
+            code="UUID_COMMUNITY",
+            name="UUID community",
+            address="Address",
         )
+        db.add(community)
+        db.flush()
+        node = SpaceNode(community_id=community.id, node_type="building", name="A")
+        db.add(node)
+        db.flush()
+        house = House(community_id=community.id, space_node_id=node.id, room_no="101")
+        db.add(house)
+        db.flush()
+        db.add(HouseOwner(house_id=house.id, name="Owner", phone="13800000000"))
         role = AdminRole(scope="platform_admin", code="uuid_reader", name="Reader")
         db.add(role)
         db.add(
@@ -183,6 +191,10 @@ def test_native_types_and_fresh_migration_schema(
             "actor_id",
             "target_id",
             "property_company_id",
+            "community_id",
+            "parent_id",
+            "space_node_id",
+            "house_id",
         }
         for table in Base.metadata.sorted_tables:
             columns = {column["name"]: column for column in inspector.get_columns(table.name)}

@@ -18,6 +18,15 @@ def permission_catalog(scope: AdminScope) -> list[PermissionDefinition]:
             for c, n, g in (
                 ("property.company.read", "查看本公司资料", "物业公司"),
                 ("property.community.read", "查看本公司小区", "小区"),
+                ("property.space.read", "查看空间节点", "空间管理"),
+                ("property.space.create", "创建空间节点", "空间管理"),
+                ("property.space.update", "编辑及启停空间节点", "空间管理"),
+                ("property.house.read", "查看房屋", "房屋管理"),
+                ("property.house.create", "创建房屋", "房屋管理"),
+                ("property.house.update", "编辑及启停房屋", "房屋管理"),
+                ("property.house_owner.read", "查看房屋业主", "业主资料"),
+                ("property.house_owner.create", "登记房屋业主", "业主资料"),
+                ("property.house_owner.update", "编辑及启停房屋业主", "业主资料"),
             )
         ]
     definitions = [

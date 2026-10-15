@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from '@umijs/max';
 import {
   PageContainer,
   ProTable,
@@ -14,6 +15,7 @@ import { useListState } from '../../shared/hooks/use-list-state';
 import { parseEnabled } from '../../shared/filters';
 import { usePropertyWorkspaceApi } from './hooks';
 import { ResourceSearch } from '../../components/ResourceSearch';
+import { useAdminApp } from '../../shared/admin-app-context';
 
 function CommunityDetails({ id, close }: { id: string; close: () => void }) {
   const api = usePropertyWorkspaceApi();
@@ -65,6 +67,7 @@ function CommunityDetails({ id, close }: { id: string; close: () => void }) {
 }
 
 export default function CommunitiesPage() {
+  const { path } = useAdminApp();
   const api = usePropertyWorkspaceApi();
   const state = useListState();
   const { status, hasPermission } = usePropertySession();
@@ -99,9 +102,16 @@ export default function CommunitiesPage() {
       title: '操作',
       valueType: 'option',
       render: (_, row) => (
-        <Button type="link" onClick={() => setDetailId(row.id)}>
-          查看详情
-        </Button>
+        <>
+          <Button type="link" onClick={() => setDetailId(row.id)}>
+            查看详情
+          </Button>
+          {hasPermission('property.house.read') && (
+            <Link to={path(`/property/communities/${row.id}/houses`)}>
+              房屋管理
+            </Link>
+          )}
+        </>
       ),
     },
   ];

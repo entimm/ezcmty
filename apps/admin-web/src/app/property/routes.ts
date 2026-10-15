@@ -34,4 +34,18 @@ export const propertyRoutes: AdminRoute[] = [
     permission: 'property.community.read',
     states: ['authenticated'],
   },
+  {
+    path: '/property/communities/:community_id/houses',
+    component: '@/features/property/housing/HousesPage',
+    title: '房屋管理',
+    permission: 'property.house.read',
+    states: ['authenticated'],
+  },
+  {
+    path: '/property/communities/:community_id/houses/:house_id',
+    component: '@/features/property/housing/HouseDetailPage',
+    title: '房屋详情',
+    permission: 'property.house.read',
+    states: ['authenticated'],
+  },
 ];

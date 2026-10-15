@@ -1,0 +1,789 @@
+spaceNodes:
+  get:
+    operationId: listSpaceNodes
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.space.read
+    tags:
+      - housing
+    summary: 查询空间子节点
+    description: 要求物业完整会话及声明权限，公司和路径资源由服务端限定，越界返回404。读取可安全重试。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: parent_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - $ref: ../components/schemas.yaml#/UUIDIdentifier
+            - type: 'null'
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/housing-schemas.yaml#/SpaceNodePage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+  post:
+    operationId: createSpaceNode
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.space.create
+    tags:
+      - housing
+    summary: 创建空间节点
+    description: 要求物业完整会话及声明权限，公司和路径资源由服务端限定，越界返回404。读取可安全重试。写请求校验Origin和CSRF，固定归属字段拒绝修改；创建重复返回409，PATCH相同字段重复提交保持业务结果，不自动重试未知写入结果。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    responses:
+      '201':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/housing-schemas.yaml#/SpaceNode
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/housing-schemas.yaml#/SpaceNodeCreate
+spaceNode:
+  get:
+    operationId: getSpaceNode
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.space.read
+    tags:
+      - housing
+    summary: 读取空间节点
+    description: 要求物业完整会话及声明权限，公司和路径资源由服务端限定，越界返回404。读取可安全重试。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: node_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/housing-schemas.yaml#/SpaceNode
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+  patch:
+    operationId: updateSpaceNode
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.space.update
+    tags:
+      - housing
+    summary: 修改及启停空间节点
+    description: 要求物业完整会话及声明权限，公司和路径资源由服务端限定，越界返回404。读取可安全重试。写请求校验Origin和CSRF，固定归属字段拒绝修改；创建重复返回409，PATCH相同字段重复提交保持业务结果，不自动重试未知写入结果。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: node_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/housing-schemas.yaml#/SpaceNode
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/housing-schemas.yaml#/SpaceNodeUpdate
+houses:
+  get:
+    operationId: listHouses
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.house.read
+    tags:
+      - housing
+    summary: 查询小区房屋
+    description: 要求物业完整会话及声明权限，公司和路径资源由服务端限定，越界返回404。读取可安全重试。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: space_node_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - $ref: ../components/schemas.yaml#/UUIDIdentifier
+            - type: 'null'
+      - name: room_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 32
+            - type: 'null'
+      - name: external_code
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 64
+            - type: 'null'
+      - name: floor_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: integer
+              minimum: -32768
+              maximum: 32767
+            - type: 'null'
+      - name: enabled
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - created_at
+            - -created_at
+          default: -created_at
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/housing-schemas.yaml#/HousePage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+  post:
+    operationId: createHouse
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.house.create
+    tags:
+      - housing
+    summary: 创建房屋及初始业主
+    description: 要求物业完整会话及声明权限，公司和路径资源由服务端限定，越界返回404。读取可安全重试。写请求校验Origin和CSRF，固定归属字段拒绝修改；创建重复返回409，PATCH相同字段重复提交保持业务结果，不自动重试未知写入结果。附带业主还要求property.house_owner.create，房屋、初始业主和审计原子提交；响应仅含房屋。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    responses:
+      '201':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/housing-schemas.yaml#/House
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/housing-schemas.yaml#/HouseCreate
+house:
+  get:
+    operationId: getHouse
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.house.read
+    tags:
+      - housing
+    summary: 读取房屋详情
+    description: 要求物业完整会话及声明权限，公司和路径资源由服务端限定，越界返回404。读取可安全重试。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: house_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/housing-schemas.yaml#/House
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+  patch:
+    operationId: updateHouse
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.house.update
+    tags:
+      - housing
+    summary: 修改及启停房屋
+    description: 要求物业完整会话及声明权限，公司和路径资源由服务端限定，越界返回404。读取可安全重试。写请求校验Origin和CSRF，固定归属字段拒绝修改；创建重复返回409，PATCH相同字段重复提交保持业务结果，不自动重试未知写入结果。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: house_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/housing-schemas.yaml#/House
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/housing-schemas.yaml#/HouseUpdate
+houseOwners:
+  get:
+    operationId: listHouseOwners
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.house_owner.read
+    tags:
+      - housing
+    summary: 查询房屋业主
+    description: 要求物业完整会话及声明权限，公司和路径资源由服务端限定，越界返回404。读取可安全重试。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: house_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - created_at
+            - -created_at
+          default: -created_at
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/housing-schemas.yaml#/HouseOwnerPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+  post:
+    operationId: createHouseOwner
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.house_owner.create
+    tags:
+      - housing
+    summary: 新增房屋业主
+    description: 要求物业完整会话及声明权限，公司和路径资源由服务端限定，越界返回404。读取可安全重试。写请求校验Origin和CSRF，固定归属字段拒绝修改；创建重复返回409，PATCH相同字段重复提交保持业务结果，不自动重试未知写入结果。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: house_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    responses:
+      '201':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/housing-schemas.yaml#/HouseOwner
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/housing-schemas.yaml#/HouseOwnerCreate
+houseOwner:
+  get:
+    operationId: getHouseOwner
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.house_owner.read
+    tags:
+      - housing
+    summary: 读取房屋业主
+    description: 要求物业完整会话及声明权限，公司和路径资源由服务端限定，越界返回404。读取可安全重试。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: house_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: owner_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/housing-schemas.yaml#/HouseOwner
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+  patch:
+    operationId: updateHouseOwner
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.house_owner.update
+    tags:
+      - housing
+    summary: 修改及启停房屋业主
+    description: 要求物业完整会话及声明权限，公司和路径资源由服务端限定，越界返回404。读取可安全重试。写请求校验Origin和CSRF，固定归属字段拒绝修改；创建重复返回409，PATCH相同字段重复提交保持业务结果，不自动重试未知写入结果。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: house_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: owner_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/housing-schemas.yaml#/HouseOwner
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/housing-schemas.yaml#/HouseOwnerUpdate

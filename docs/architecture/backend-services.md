@@ -11,17 +11,19 @@
 | 模块                          | 职责                                                                                                  |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `api/platform_admin/`         | 组装平台认证、管理员管理和物业接入接口。                                                              |
-| `api/property_admin/`         | 组装物业认证、本人操作和工作台读取接口。                                                              |
+| `api/property_admin/`         | 组装物业认证、本人操作、工作台和房屋业主资料管理接口。                                                |
 | `api/admin.py`                | 公共认证与本人接口的 HTTP 处理、权限依赖、Origin、CSRF 和 Cookie 机制，绑定调用方提供的应用 Service。 |
 | `services/platform_admin/`    | 平台认证与本人操作、平台管理员与角色管理、物业公司及账号接入管理。                                    |
-| `services/property_admin/`    | 物业认证与本人操作、本公司资料和小区查询。                                                            |
+| `services/property_admin/`    | 物业认证与本人操作、本公司资料和小区查询、空间房屋及业主资料维护。                                    |
 | `services/contracts/admin.py` | 共用认证应用接口和携带 Redis 会话数据的应用上下文。                                                   |
 | `domain/admin/types.py`       | 后台作用域和普通数据类型的授权上下文。                                                                |
 | `domain/admin/identity.py`    | 账号状态、会话版本、密码变更和 RBAC 规则。                                                            |
 | `domain/admin/permissions.py` | 按后台定义的权限目录。                                                                                |
 | `domain/admin/audit.py`       | 审计写入归属、读取权限与数据范围，返回业务记录。                                                      |
+| `domain/housing.py`           | 空间父子类型、所属路径有效状态和业主手机号规范化规则。                                                |
 | `schemas/mappers/admin.py`    | 会话、管理员、角色、权限和审计的纯响应转换。                                                          |
 | `schemas/mappers/property.py` | 小区和公司管理员的纯响应转换。                                                                        |
+| `schemas/mappers/housing.py`  | 空间、房屋及业主资料的纯响应转换。                                                                    |
 | `core/readiness.py`           | 各运行端共用的数据库和 Redis 就绪检查。                                                               |
 
 各端路由工厂和应用 Service 固定所属后台，不接受切换后台或启用其他后台管理能力的开关。公共 HTTP 处理通过统一的认证与本人操作接口调用各端 Service；接口相同不表示业务编排相同。
@@ -33,6 +35,8 @@
 读操作在各端 Service 校验后台、权限及数据范围后调用公共 Repository；公司过滤必须同时应用到记录、总数及分页。拥有相同权限码不能改变后台和公司边界。
 
 物业登录、本人资料修改和改密由物业 Service 按公司、账号顺序锁定，并重新校验公司启停、账号状态和会话版本。平台接入管理继续按对应业务流程锁定公司及目标账号，遵循 [物业工作台设计](../design/property/workbench.md#登录密码与事务) 和 [物业接入设计](../design/property/onboarding.md)。公共身份能力处理密码、版本和审计记录，各端应用 Service 提交完整用例事务。
+
+空间、房屋及业主维护沿用公司、账号锁定和身份复核，再按小区、空间祖先、房屋、业主的顺序协调资源；状态、范围和原子提交规则见 [房屋资料管理设计](../design/property/housing.md)。
 
 公共审计和 Repository 使用明确的后台、公司归属；未知账号登录失败的归属及审计字段遵循 [管理后台基础框架设计](../design/admin/foundation.md#审计与代码组织)。Cookie、Redis 会话和权限目录按所属后台隔离。
 

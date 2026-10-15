@@ -9,6 +9,8 @@ import LoginPage from '@/features/auth/LoginPage';
 import ChangePasswordPage from '@/features/auth/ChangePasswordPage';
 import ProfilePage from '@/features/profile/ProfilePage';
 import WorkspaceCommunitiesPage from '@/features/property/CommunitiesPage';
+import HousesPage from '@/features/property/housing/HousesPage';
+import HouseDetailPage from '@/features/property/housing/HouseDetailPage';
 import type { SessionResponse } from '@/shared/api/admin';
 import { safeReturnTarget } from '@/app/admin-routes';
 import HomePage from '@/features/property/HomePage';
@@ -123,6 +125,8 @@ const pages = {
   '@/features/auth/ChangePasswordPage': ChangePasswordPage,
   '@/features/profile/ProfilePage': ProfilePage,
   '@/features/property/CommunitiesPage': WorkspaceCommunitiesPage,
+  '@/features/property/housing/HousesPage': HousesPage,
+  '@/features/property/housing/HouseDetailPage': HouseDetailPage,
   '@/components/NotFoundPage': NotFoundPage,
 };
 

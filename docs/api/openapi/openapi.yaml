@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Community Property Platform API
-  version: 0.6.0
+  version: 0.7.0
   description: 社区物业消费返利与物业费抵扣平台 API 契约。
 servers:
   - url: '/'
@@ -13,6 +13,8 @@ tags:
     description: 后台认证、账号、角色与审计
   - name: property
     description: 物业公司、小区与公司管理员接入管理
+  - name: housing
+    description: 小区空间、房屋和业主资料管理
 paths:
   '/healthz':
     '$ref': './modules/system.yaml#/health'
@@ -60,6 +62,18 @@ paths:
     '$ref': './modules/property.yaml#/companyAdmin'
   '/v1/property-companies/{company_id}/admin-accounts/{account_id}/password-resets':
     '$ref': './modules/property.yaml#/companyAdminPasswordReset'
+  '/v1/communities/{community_id}/space-nodes':
+    '$ref': './modules/housing.yaml#/spaceNodes'
+  '/v1/communities/{community_id}/space-nodes/{node_id}':
+    '$ref': './modules/housing.yaml#/spaceNode'
+  '/v1/communities/{community_id}/houses':
+    '$ref': './modules/housing.yaml#/houses'
+  '/v1/communities/{community_id}/houses/{house_id}':
+    '$ref': './modules/housing.yaml#/house'
+  '/v1/communities/{community_id}/houses/{house_id}/owners':
+    '$ref': './modules/housing.yaml#/houseOwners'
+  '/v1/communities/{community_id}/houses/{house_id}/owners/{owner_id}':
+    '$ref': './modules/housing.yaml#/houseOwner'
 components:
   schemas:
     RequestId:
@@ -136,6 +150,32 @@ components:
       '$ref': './components/property-schemas.yaml#/CommunityPage'
     PropertyAdminPage:
       '$ref': './components/property-schemas.yaml#/PropertyAdminPage'
+    SpaceAncestor:
+      '$ref': './components/housing-schemas.yaml#/SpaceAncestor'
+    SpaceNodeCreate:
+      '$ref': './components/housing-schemas.yaml#/SpaceNodeCreate'
+    SpaceNodeUpdate:
+      '$ref': './components/housing-schemas.yaml#/SpaceNodeUpdate'
+    SpaceNode:
+      '$ref': './components/housing-schemas.yaml#/SpaceNode'
+    HouseOwnerCreate:
+      '$ref': './components/housing-schemas.yaml#/HouseOwnerCreate'
+    HouseOwnerUpdate:
+      '$ref': './components/housing-schemas.yaml#/HouseOwnerUpdate'
+    HouseCreate:
+      '$ref': './components/housing-schemas.yaml#/HouseCreate'
+    HouseUpdate:
+      '$ref': './components/housing-schemas.yaml#/HouseUpdate'
+    House:
+      '$ref': './components/housing-schemas.yaml#/House'
+    HouseOwner:
+      '$ref': './components/housing-schemas.yaml#/HouseOwner'
+    SpaceNodePage:
+      '$ref': './components/housing-schemas.yaml#/SpaceNodePage'
+    HousePage:
+      '$ref': './components/housing-schemas.yaml#/HousePage'
+    HouseOwnerPage:
+      '$ref': './components/housing-schemas.yaml#/HouseOwnerPage'
   responses:
     InternalError:
       '$ref': './components/responses.yaml#/InternalError'

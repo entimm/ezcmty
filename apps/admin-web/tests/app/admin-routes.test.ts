@@ -91,6 +91,30 @@ describe('domain routes', () => {
     expect(scopeForHostname('platform.xlife.test.example.org')).toBeUndefined();
     expect(scopeForHostname('other.xlife.test')).toBeUndefined();
   });
+
+  it('resolves housing pages and deep links only on the property domain', () => {
+    const property = clientRoutes(),
+      platform = clientRoutes();
+    patchAdminClientRoutes(property, 'property.xlife.test');
+    patchAdminClientRoutes(platform, 'platform.xlife.test');
+    const houses = `/communities/${companyId}/houses`;
+    expect(matchRoutes(property, houses)?.at(-1)?.route.element).toBe(
+      '@/features/property/housing/HousesPage',
+    );
+    expect(
+      matchRoutes(property, `${houses}/${companyId}`)?.at(-1)?.route.element,
+    ).toBe('@/features/property/housing/HouseDetailPage');
+    expect(matchRoutes(platform, houses)?.at(-1)?.route.element).toBe(
+      '@/components/NotFoundPage',
+    );
+    expect(
+      safeReturnTarget(
+        'property_admin',
+        `${houses}?space_node_id=${companyId}`,
+        'property.xlife.test',
+      ),
+    ).toBe(`${houses}?space_node_id=${companyId}`);
+  });
 });
 
 describe('domain login return targets', () => {

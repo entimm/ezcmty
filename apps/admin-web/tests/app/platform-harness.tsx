@@ -41,6 +41,8 @@ import CompanyDetailPage from '@/features/platform/property/CompanyDetailPage';
 import CommunitiesPage from '@/features/platform/property/CommunitiesPage';
 
 import WorkspaceCommunitiesPage from '@/features/property/CommunitiesPage';
+import HousesPage from '@/features/property/housing/HousesPage';
+import HouseDetailPage from '@/features/property/housing/HouseDetailPage';
 
 import type { SessionResponse } from '@/shared/api/admin';
 
@@ -61,6 +63,8 @@ const pages = {
   '@/features/platform/property/CompanyDetailPage': CompanyDetailPage,
   '@/features/platform/property/CommunitiesPage': CommunitiesPage,
   '@/features/property/CommunitiesPage': WorkspaceCommunitiesPage,
+  '@/features/property/housing/HousesPage': HousesPage,
+  '@/features/property/housing/HouseDetailPage': HouseDetailPage,
 };
 
 export const session: SessionResponse = {

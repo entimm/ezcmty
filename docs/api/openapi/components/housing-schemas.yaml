@@ -1,0 +1,339 @@
+SpaceAncestor:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    node_type:
+      type: string
+      enum:
+        - phase
+        - building
+        - unit
+    name:
+      type: string
+  required:
+    - id
+    - node_type
+    - name
+SpaceNodeCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    parent_id:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    node_type:
+      type: string
+      enum:
+        - phase
+        - building
+        - unit
+    name:
+      type: string
+      minLength: 1
+      maxLength: 80
+    external_code:
+      anyOf:
+        - type: string
+          maxLength: 64
+        - type: 'null'
+    sort_order:
+      type: integer
+      minimum: 0
+      maximum: 2147483647
+      default: 0
+  required:
+    - node_type
+    - name
+SpaceNodeUpdate:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 80
+    external_code:
+      anyOf:
+        - type: string
+          maxLength: 64
+        - type: 'null'
+    sort_order:
+      type: integer
+      minimum: 0
+      maximum: 2147483647
+    enabled:
+      type: boolean
+  minProperties: 1
+SpaceNode:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    enabled:
+      type: boolean
+    effective_enabled:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    community_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    parent_id:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    node_type:
+      type: string
+      enum:
+        - phase
+        - building
+        - unit
+    name:
+      type: string
+    external_code:
+      anyOf:
+        - type: string
+        - type: 'null'
+    sort_order:
+      type: integer
+    has_children:
+      type: boolean
+    ancestors:
+      type: array
+      items:
+        $ref: '#/SpaceAncestor'
+  required:
+    - id
+    - enabled
+    - effective_enabled
+    - created_at
+    - updated_at
+    - community_id
+    - parent_id
+    - node_type
+    - name
+    - external_code
+    - sort_order
+    - has_children
+    - ancestors
+HouseOwnerCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 80
+    phone:
+      type: string
+      minLength: 11
+      maxLength: 15
+      pattern: ^(?:(?:\+86|0086))?1[3-9][0-9]{9}$
+  required:
+    - name
+    - phone
+HouseOwnerUpdate:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 80
+    phone:
+      type: string
+      minLength: 11
+      maxLength: 15
+      pattern: ^(?:(?:\+86|0086))?1[3-9][0-9]{9}$
+    enabled:
+      type: boolean
+  minProperties: 1
+HouseCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    space_node_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    room_no:
+      type: string
+      minLength: 1
+      maxLength: 32
+    floor_no:
+      anyOf:
+        - type: integer
+          minimum: -32768
+          maximum: 32767
+        - type: 'null'
+    external_code:
+      anyOf:
+        - type: string
+          maxLength: 64
+        - type: 'null'
+    owners:
+      type: array
+      items:
+        $ref: '#/HouseOwnerCreate'
+  required:
+    - space_node_id
+    - room_no
+HouseUpdate:
+  type: object
+  additionalProperties: false
+  properties:
+    room_no:
+      type: string
+      minLength: 1
+      maxLength: 32
+    floor_no:
+      anyOf:
+        - type: integer
+          minimum: -32768
+          maximum: 32767
+        - type: 'null'
+    external_code:
+      anyOf:
+        - type: string
+          maxLength: 64
+        - type: 'null'
+    enabled:
+      type: boolean
+  minProperties: 1
+House:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    enabled:
+      type: boolean
+    effective_enabled:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    community_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    space_node_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    room_no:
+      type: string
+    floor_no:
+      anyOf:
+        - type: integer
+        - type: 'null'
+    external_code:
+      anyOf:
+        - type: string
+        - type: 'null'
+    display_address:
+      type: string
+  required:
+    - id
+    - enabled
+    - effective_enabled
+    - created_at
+    - updated_at
+    - community_id
+    - space_node_id
+    - room_no
+    - floor_no
+    - external_code
+    - display_address
+HouseOwner:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    enabled:
+      type: boolean
+    effective_enabled:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    house_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    name:
+      type: string
+    phone:
+      type: string
+  required:
+    - id
+    - enabled
+    - effective_enabled
+    - created_at
+    - updated_at
+    - house_id
+    - name
+    - phone
+SpaceNodePage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/SpaceNode'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+HousePage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/House'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+HouseOwnerPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/HouseOwner'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size

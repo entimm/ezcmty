@@ -29,6 +29,8 @@ def test_platform_provisioning_to_restricted_login_password_change_and_workspace
         "/property-companies/current",
         "/communities",
         f"/communities/{w.community_id}",
+        f"/communities/{w.community_id}/space-nodes",
+        f"/communities/{w.community_id}/houses",
         "/admin-accounts/me",
     ):
         response = w.client.get(PREFIX + path)
@@ -53,7 +55,19 @@ def test_platform_provisioning_to_restricted_login_password_change_and_workspace
     assert w.platform.store.read("property_admin", cookie) is None
     full = w.login(NEW_PASSWORD)
     assert not full["must_change_password"]
-    assert set(full["permissions"]) == {"property.company.read", "property.community.read"}
+    assert set(full["permissions"]) == {
+        "property.company.read",
+        "property.community.read",
+        "property.space.read",
+        "property.space.create",
+        "property.space.update",
+        "property.house.read",
+        "property.house.create",
+        "property.house.update",
+        "property.house_owner.read",
+        "property.house_owner.create",
+        "property.house_owner.update",
+    }
     own = w.client.get(f"{PREFIX}/property-companies/current")
     assert own.status_code == 200 and own.json()["id"] == w.company_id
     assert own.json()["contact_name"] == "联系人"
