@@ -33,7 +33,7 @@ where = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-src = ["src", "tests"]
+src = ["src", "tests", "devtools"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -56,4 +56,4 @@ markers = [
 [tool.mypy]
 python_version = "3.14"
 strict = true
-files = ["src", "tests", "../../scripts"]
+files = ["src", "tests", "devtools", "../../scripts"]

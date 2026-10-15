@@ -23,10 +23,11 @@ class StoredAdminSession(BaseModel):
 
 
 class AdminSessionStore:
-    def __init__(self, client: Redis[str], settings: Settings):
+    def __init__(self, client: Redis[str], settings: Settings, *, key_prefix: str = "app"):
         self.client = client
         self.settings = settings
-        self.store = RedisSessionStore(client)
+        self.key_prefix = key_prefix
+        self.store = RedisSessionStore(client, key_prefix=f"{key_prefix}:session")
 
     def create(
         self, scope: AdminScope, account_id: str, version: int
@@ -73,7 +74,7 @@ class AdminSessionStore:
 
     def limit_login(self, scope: AdminScope, login_name: str, source_ip: str) -> None:
         keys = [
-            f"app:admin-login:{scope}:{kind}:{sha256(value.encode()).hexdigest()}"
+            f"{self.key_prefix}:admin-login:{scope}:{kind}:{sha256(value.encode()).hexdigest()}"
             for kind, value in (("account", normalize_login_name(login_name)), ("ip", source_ip))
         ]
         script = """

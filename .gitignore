@@ -3,7 +3,7 @@
 .env.*
 !.env.example
 
-# Local development process ownership, readiness state and logs
+# Local development process state, seed contexts, credentials and logs
 .dev/
 
 # Python

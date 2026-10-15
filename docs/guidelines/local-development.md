@@ -74,32 +74,89 @@ uv run python -m backend_app.cli init-platform-admin --login-name your-admin --d
 
 全部命令在仓库根目录执行；`make` 默认显示帮助。
 
-| 命令                    | 用途                                                                  |
-| ----------------------- | --------------------------------------------------------------------- |
-| `make install`          | 安装后端及前端工作区开发依赖                                          |
-| `make migrate`          | 执行 Alembic 数据库迁移，升级到 `head`                                |
-| `make dev`              | 前台同时启动四个 API、Worker 和管理后台                               |
-| `make dev-bg`           | 后台同时启动同样六个服务，全部就绪后返回                              |
-| `make stop`             | 停止本仓库所有开发入口登记的批次                                      |
-| `make platform`         | 前台启动平台管理 API，8001                                            |
-| `make property`         | 前台启动物业管理 API，8002                                            |
-| `make resident`         | 前台启动居民 API，8003                                                |
-| `make webhook`          | 前台启动 Webhook，8004                                                |
-| `make worker`           | 前台启动占位 Worker                                                   |
-| `make admin`            | 前台启动管理后台，5173                                                |
-| `make miniapp-build`    | 构建小程序到 `apps/miniapp/dist/`，通过微信开发者工具打开小程序项目   |
-| `make check`            | 先运行根目录 Prettier，再依次运行后端、前端和 OpenAPI 检查            |
-| `make check-backend`    | 后端源码、测试及仓库 scripts 的 Ruff lint、format check、mypy、pytest |
-| `make check-frontend`   | 管理后台 typecheck、lint、test、build；小程序 typecheck、lint、build  |
-| `make check-api`        | 现有 `pnpm api:check`：OpenAPI lint、bundle、contract                 |
-| `make test-unit`        | 后端单元测试                                                          |
-| `make test-integration` | 后端快速集成测试，排除专用 PostgreSQL/Redis 并发测试和进程生命周期    |
-| `make test-contract`    | 后端与权威 OpenAPI 的契约一致性测试                                   |
-| `make test-postgresql`  | 使用独立临时实例执行真实 PostgreSQL/Redis 测试                        |
-| `make test-full`        | 全部后端和管理后台测试，包含真实依赖与进程生命周期，生成 JUnit 报告   |
-| `make help`             | 显示全部命令及用途                                                    |
+| 命令                    | 用途                                                                 |
+| ----------------------- | -------------------------------------------------------------------- |
+| `make install`          | 安装后端及前端工作区开发依赖                                         |
+| `make migrate`          | 执行 Alembic 数据库迁移，升级到 `head`                               |
+| `make dev`              | 前台同时启动四个 API、Worker 和管理后台                              |
+| `make dev-bg`           | 后台同时启动同样六个服务，全部就绪后返回                             |
+| `make stop`             | 停止本仓库所有开发入口登记的批次                                     |
+| `make platform`         | 前台启动平台管理 API，8001                                           |
+| `make property`         | 前台启动物业管理 API，8002                                           |
+| `make resident`         | 前台启动居民 API，8003                                               |
+| `make webhook`          | 前台启动 Webhook，8004                                               |
+| `make worker`           | 前台启动占位 Worker                                                  |
+| `make admin`            | 前台启动管理后台，5173                                               |
+| `make miniapp-build`    | 构建小程序到 `apps/miniapp/dist/`，通过微信开发者工具打开小程序项目  |
+| `make check`            | 先运行根目录 Prettier，再依次运行后端、前端和 OpenAPI 检查           |
+| `make check-backend`    | 后端源码、devtools、测试及仓库 scripts 的 Ruff、mypy、pytest         |
+| `make check-frontend`   | 管理后台 typecheck、lint、test、build；小程序 typecheck、lint、build |
+| `make check-api`        | 现有 `pnpm api:check`：OpenAPI lint、bundle、contract                |
+| `make test-unit`        | 后端单元测试                                                         |
+| `make test-integration` | 后端快速集成测试，排除专用 PostgreSQL/Redis 并发测试和进程生命周期   |
+| `make test-contract`    | 后端与权威 OpenAPI 的契约一致性测试                                  |
+| `make test-postgresql`  | 使用独立临时实例执行真实 PostgreSQL/Redis 测试                       |
+| `make test-full`        | 全部后端和管理后台测试，包含真实依赖与进程生命周期，生成 JUnit 报告  |
+| `make help`             | 显示全部命令及用途                                                   |
 
 小程序不作为常驻进程；构建后使用微信开发者工具运行。
+
+## 开发数据填充
+
+seed 的场景、恢复与生产隔离规则见[开发数据填充设计](../architecture/development-seed.md)。工具只在源码检出中可用，所有业务数据通过现有 Service 写入。
+
+先准备已迁移的开发 PostgreSQL 和 Redis，在 `services/backend/.env` 中显式配置 `APP_ENV=local`（隔离测试环境可以为 `test`）及 `SEED_ENABLED=1`。未配置环境、staging、production 或未启用开关时拒绝写入。已有环境变量仍优先于 `.env`。
+
+```bash
+make seed-list
+make seed-plan SCENARIOS="property housing" SEED_ARGS="--set property.companies=3 --set housing.houses_per_unit=20"
+make seed SCENARIOS="property housing" SEED_ARGS="--set property.companies=3 --set housing.houses_per_unit=20 --workers=2"
+make seed                         # 默认全部场景；每次新增一批
+make seed-resume RUN_ID=<批次标识> # 固定原批次参数续跑
+make seed-coverage                # 只读核对实际数据库的表覆盖
+```
+
+`seed-plan` 和 `seed-list` 不连接数据库。写入前会打印数量估算，并检查迁移版本、表覆盖和 Redis。命令失败返回非零，保留已经提交的数据与上下文；重复执行 `seed` 是新批次，修复失败原因后应使用 `seed-resume` 完成原批次。
+
+数量配置优先级为场景默认值、TOML 文件、`--set`。配置文件路径相对于 `services/backend/`；完整示例为 [example.toml](../../services/backend/devtools/seed/example.toml)：
+
+```bash
+make seed-plan SEED_ARGS="--config devtools/seed/example.toml"
+make seed SEED_ARGS="--config devtools/seed/example.toml --set housing.houses_per_unit=50 --workers=2"
+```
+
+`SCENARIOS` 支持 `admin`、`property`、`housing`，多个名称用空格分隔；`all` 选择全部。仅选择 `housing` 时，默认准备一家物业、一个小区和一个物业管理员；可以覆盖其 `property.*` 前置参数。单独运行 `admin` 不生成物业数据。配置不得包含未选择且不属于依赖的场景。
+
+| 场景     | 数量参数                | 默认值与范围                                                      |
+| -------- | ----------------------- | ----------------------------------------------------------------- |
+| admin    | accounts                | 新增平台演示账号 3 个，允许 0–100000；空库初始化执行账号另计      |
+| admin    | roles                   | 新增自定义角色 2 个，允许 1–10000；系统角色另计                   |
+| property | companies               | 新增物业公司 2 家，允许 1–10000                                   |
+| property | communities_per_company | 每公司 2 个小区，允许 1–10000                                     |
+| property | admins_per_company      | 每公司 3 个账号，允许 1–10000                                     |
+| housing  | phases_per_community    | 每小区 1 个分期，允许 0–100                                       |
+| housing  | buildings_per_community | 每小区总共 2 栋楼，允许 1–10000；有分期时交替覆盖根楼栋和分期楼栋 |
+| housing  | units_per_building      | 每栋 2 个单元，允许 0–100                                         |
+| housing  | houses_per_unit         | 每单元 3 套房，允许 0–100000                                      |
+| housing  | houses_per_building     | 每栋直接挂载 1 套房，允许 0–100000，与单元房屋相加                |
+| housing  | owners_per_house        | 每套房 2 条业主记录，允许 0–100                                   |
+
+每组演示账号按顺序循环生成正常、待首次改密、停用账号；每家公司第一个账号保持可用于填充。多个角色时停用最后一个角色；多个小区或公司时在房屋填充完成后停用最后一个。房屋场景在创建子数据后停用末尾分期，以及存在多个同类记录时的末尾楼栋、单元、房屋和业主，以覆盖直接停用和祖先停用状态。数量少时不能覆盖所有状态；`report.json` 列出实际表记录、启停状态与未覆盖项目。
+
+空库自动调用现有初始化 Service 建立开发执行账号，并完成首次改密。工具创建的执行账号凭据存储在 `.dev/seed/operator-<数据库指纹>.json`，后续批次复用。若数据库已有平台账号且没有工具凭据，配置已完成首次改密的平台超级管理员 `SEED_LOGIN_NAME` 和 `SEED_PASSWORD`；不要把密码放进命令参数或提交的配置。已有账号不会被重置。CLI 的会话与两类登录限流使用独立 Redis 键前缀，命名和隔离边界见[Redis 隔离](../architecture/development-seed.md#redis-隔离)。CLI 登录沿用账号与来源限流，来源按执行账号区分；触发限流时保留批次，等待窗口恢复或调整开发环境已有的登录限制后续跑。
+
+每次运行输出 `.dev/seed/<run_id>/`。`accounts.md` 和 `accounts.json` 只包含所属批次、场景、登录端、登录名、显示名称、密码、所属物业公司七项；平台公司的值为空，登录端使用 `platform_admin`、`property_admin`。清单包含创建成功的正常、待改密和停用账号；密码为工具最后确认设置的值，人工改密后不会自动更新。失败时也导出已确认账号，未确认的改密结果需续跑核对后再使用。
+
+`state.json` 保存参数和批次状态，`context.sqlite3` 增量保存步骤、结果及凭据。保存整个批次目录才能续跑，不手工编辑上下文。同一批次不能并发执行；数据库身份、迁移版本、场景版本或已生成数据发生不兼容变化时停止恢复。目录权限为 0700，文件为 0600，`.dev/` 不进入 Git。账号文件由受限上下文导出，普通日志不输出密码。
+
+`--workers` 为并发填充房屋的公司数，默认 1，范围 1–8；同公司有序执行，物业接入顺序执行。所有操作保持 Service 原有事务与审计，参数按需生成，本地上下文逐步持久化；运行中约每 5 秒报告完成步骤与速度。生产数据库的持久化、网络延迟和数据规模会影响速度，测试环境的吞吐不能直接作为部署环境指标。
+
+验证命令（在 `services/backend/` 执行，使用独立临时 PostgreSQL/Redis，不访问开发业务数据库）：
+
+```bash
+APP_RUN_POSTGRESQL_TESTS=1 uv run pytest tests/unit/seed tests/integration/postgresql/test_seed.py --require-all-tests
+APP_RUN_POSTGRESQL_TESTS=1 uv run pytest tests/integration/postgresql/test_seed.py::test_thousand_houses_have_exact_counts_and_resume_without_growth --require-all-tests -s
+```
 
 ## 运行、地址与日志
 

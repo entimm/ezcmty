@@ -1,10 +1,14 @@
 .DEFAULT_GOAL := help
 
 DEV := uv run --project services/backend --no-sync python -m scripts.dev
+SEED := cd services/backend && uv run --no-sync python -m devtools.seed
+SCENARIOS ?= all
+SEED_ARGS ?=
+
 BACKEND := cd services/backend && uv run --no-sync
 POSTGRESQL_TEST := cd services/backend && APP_RUN_POSTGRESQL_TESTS=1 uv run --no-sync pytest --require-all-tests
 
-.PHONY: install migrate dev dev-bg stop platform property resident webhook worker admin miniapp-build check check-backend check-frontend check-api test-unit test-integration test-contract test-postgresql test-full help
+.PHONY: seed seed-resume seed-list seed-plan seed-coverage install migrate dev dev-bg stop platform property resident webhook worker admin miniapp-build check check-backend check-frontend check-api test-unit test-integration test-contract test-postgresql test-full help
 
 install: ## 安装前后端开发依赖
 	@printf '\n[安装] 后端开发依赖\n'
@@ -12,6 +16,21 @@ install: ## 安装前后端开发依赖
 	@printf '\n[安装] 前端工作区依赖\n'
 	pnpm install --frozen-lockfile
 	@printf '\n[完成] 依赖已安装；配置方式见 docs/guidelines/local-development.md\n'
+
+seed: ## 追加开发数据；SCENARIOS="property housing"，SEED_ARGS="--set housing.houses_per_unit=20"
+	@$(SEED) run $(if $(filter all,$(SCENARIOS)),--all,$(foreach scene,$(SCENARIOS),--scenario $(scene))) $(SEED_ARGS)
+
+seed-resume: ## 续跑批次；RUN_ID=<批次标识>
+	@$(SEED) resume "$(RUN_ID)"
+
+seed-list: ## 列出填充场景与数量参数
+	@$(SEED) list
+
+seed-plan: ## 估算填充规模，不连接数据库
+	@$(SEED) plan $(if $(filter all,$(SCENARIOS)),--all,$(foreach scene,$(SCENARIOS),--scenario $(scene))) $(SEED_ARGS)
+
+seed-coverage: ## 只读检查已迁移数据库的 seed 表覆盖
+	@$(SEED) coverage
 
 migrate: ## 执行数据库迁移到最新版本（Alembic head）
 	@printf '\n[迁移] 升级数据库到最新版本\n'
@@ -58,8 +77,8 @@ check: ## 顺序执行 Prettier 和全部质量检查
 
 check-backend: ## 后端及仓库 scripts：Ruff、mypy、pytest
 	@printf '\n[检查] 后端与仓库 scripts\n'
-	$(BACKEND) ruff check --config pyproject.toml src tests ../../scripts
-	$(BACKEND) ruff format --config pyproject.toml --check src tests ../../scripts
+	$(BACKEND) ruff check --config pyproject.toml src tests devtools ../../scripts
+	$(BACKEND) ruff format --config pyproject.toml --check src tests devtools ../../scripts
 	$(BACKEND) mypy
 	$(BACKEND) pytest -m "not postgresql and not slow" --require-all-tests
 

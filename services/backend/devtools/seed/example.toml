@@ -1,0 +1,17 @@
+# 参数仅在选择所属场景或其依赖时生效。
+[admin]
+accounts = 3
+roles = 2
+
+[property]
+companies = 2
+communities_per_company = 2
+admins_per_company = 3
+
+[housing]
+phases_per_community = 1
+buildings_per_community = 2
+units_per_building = 2
+houses_per_unit = 3
+houses_per_building = 1
+owners_per_house = 2
