@@ -97,7 +97,8 @@ test-postgresql: ## 隔离 PostgreSQL/Redis 集成测试（依赖缺失时失败
 test-full: ## 全部后端及管理后台测试，生成 JUnit 报告
 	$(POSTGRESQL_TEST) --junitxml=../../build/test-results/backend.xml
 	pnpm --filter admin-web test --reporter=default --reporter=junit --outputFile=../../build/test-results/admin-web.xml
-	uv run --project services/backend --no-sync python -m scripts.check_test_results build/test-results/backend.xml build/test-results/admin-web.xml
+	pnpm --filter resident-miniapp test --reporter=default --reporter=junit --outputFile=../../build/test-results/miniapp.xml
+	uv run --project services/backend --no-sync python -m scripts.check_test_results build/test-results/backend.xml build/test-results/admin-web.xml build/test-results/miniapp.xml
 
 check-frontend: ## 管理后台与小程序：类型、Lint、测试及构建
 	@printf '\n[检查] 管理后台\n'
@@ -108,6 +109,7 @@ check-frontend: ## 管理后台与小程序：类型、Lint、测试及构建
 	@printf '\n[检查] 居民小程序\n'
 	pnpm --filter resident-miniapp typecheck
 	pnpm --filter resident-miniapp lint
+	pnpm --filter resident-miniapp test
 	pnpm --filter resident-miniapp build
 
 check-api: ## OpenAPI lint、bundle、contract

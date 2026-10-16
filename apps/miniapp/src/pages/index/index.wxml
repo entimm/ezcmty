@@ -1,4 +1,1 @@
-<view class="container">
-  <view class="title">{{title}}</view>
-  <view class="description">消费返利，抵扣物业费</view>
-</view>
+<view class="screen"><screen-state loading="{{true}}"/></view>

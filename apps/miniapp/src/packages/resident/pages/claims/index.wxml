@@ -1,0 +1,5 @@
+<view class="screen"><view class="eyebrow">MY COMMUNITY</view><view class="row"><view class="title">认领申请</view><button size="mini" class="secondary" bindtap="claim">＋ 认领</button></view><view class="subtitle">每一次家的连接，都有迹可循。</view>
+<view class="section-title">全部记录 <text class="count">{{total}}</text></view>
+<screen-state loading="{{loading && !items.length}}" error="{{error}}" empty="{{!loading && !error && !items.length}}" message="提交申请后，可以在这里查看审核进度" bind:retry="retry"/>
+<view wx:for="{{items}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="open"><view class="row"><text class="badge {{item.status}}">{{item.label}}</text><text class="chevron">›</text></view><view class="address" style="margin-top:20rpx">{{item.house_label_snapshot}}</view><view class="hint">{{item.display_time}}</view></view>
+<button wx:if="{{items.length < total}}" class="quiet" bindtap="more" loading="{{loading}}">加载更多</button></view>

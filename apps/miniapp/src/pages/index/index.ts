@@ -1,5 +1,6 @@
+import { residentHome } from '../../shared/wechat/ui';
 Page({
-  data: {
-    title: '社区物业平台',
+  onLoad() {
+    wx.redirectTo({ url: residentHome });
   },
 });

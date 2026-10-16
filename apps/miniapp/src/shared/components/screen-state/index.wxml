@@ -1,0 +1,3 @@
+<view wx:if="{{loading}}" class="skeleton" aria-label="正在加载"><view/><view/><view/></view>
+<view wx:elif="{{error}}" class="state" role="alert"><text class="state-title">暂时无法加载</text><text>{{error}}</text><button size="mini" bindtap="retry">重新加载</button></view>
+<view wx:elif="{{empty}}" class="state"><text class="state-icon">⌂</text><text>{{message}}</text></view>

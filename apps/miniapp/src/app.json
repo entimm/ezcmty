@@ -1,9 +1,29 @@
 {
-  "pages": ["pages/index/index"],
+  "pages": ["pages/index/index", "pages/login/index", "pages/phones/index"],
+  "subPackages": [
+    {
+      "root": "packages/resident",
+      "name": "resident",
+      "pages": [
+        "pages/home/index",
+        "pages/houses/index",
+        "pages/claims/index",
+        "pages/claim-detail/index",
+        "pages/house-detail/index",
+        "pages/claim/index",
+        "pages/profile/index"
+      ]
+    }
+  ],
   "window": {
-    "navigationBarTitleText": "社区物业平台",
-    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTitleText": "邻里生活",
+    "navigationBarBackgroundColor": "#f5f7fb",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#f5f5f5"
-  }
+    "backgroundColor": "#f5f7fb"
+  },
+  "usingComponents": {
+    "screen-state": "/shared/components/screen-state/index"
+  },
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents"
 }
