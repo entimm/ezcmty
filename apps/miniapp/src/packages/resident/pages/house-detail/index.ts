@@ -22,16 +22,19 @@ Page({
   id: '',
   off: () => {},
   epoch: 0,
+  writeEpoch: 0,
   onLoad(options) {
     this.id = options.id || '';
     this.off = onSessionReset(() => {
       this.epoch++;
-      this.setData({ item: null, loading: false, busy: false });
+      this.writeEpoch++;
+      this.setData({ item: null, error: '', loading: false, busy: false });
     });
   },
   onUnload() {
     this.off();
     this.epoch++;
+    this.writeEpoch++;
   },
   onShow() {
     void this.load();
@@ -62,24 +65,32 @@ Page({
   },
   async release() {
     const item = this.data.item;
+    if (!item || this.data.busy || this.data.loading || this.data.error) return;
+    const epoch = ++this.writeEpoch;
     if (
-      !item ||
-      this.data.busy ||
       !(await confirm(
         '解绑房屋',
         '解绑后将失去此房屋的服务权限。如需再次绑定，需要重新提交物业审核。',
-      ))
+      )) ||
+      epoch !== this.writeEpoch ||
+      this.data.busy
     )
       return;
     this.setData({ busy: true });
     try {
       await releaseBinding(item);
+      if (epoch !== this.writeEpoch) return;
       await this.load();
     } catch (error) {
+      if (epoch !== this.writeEpoch) return;
       toastError(error);
-      if (error instanceof ApiError && error.status === 409) await this.load();
+      if (
+        error instanceof ApiError &&
+        (error.status === 409 || error.status === 0 || error.status >= 500)
+      )
+        await this.load();
     } finally {
-      this.setData({ busy: false });
+      if (epoch === this.writeEpoch) this.setData({ busy: false });
     }
   },
   again() {

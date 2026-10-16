@@ -132,3 +132,57 @@ it('discards a partially accumulated phone list after account reset', async () =
   await loading;
   expect(page.data.phones).toEqual([]);
 });
+
+it('keeps a new account submission intact when an old submission rejects late', async () => {
+  page.onLoad({});
+  const house = {
+    id: 'house',
+    community_id: 'community',
+    space_node_id: 'building',
+    room_no: '101',
+    display_address: '101',
+  };
+  Object.assign(page.data, {
+    house,
+    name: '旧申请人',
+    phoneId: 'old-phone',
+    step: 3,
+  });
+  let rejectOld!: (error: Error) => void;
+  let finishNew!: (result: object) => void;
+  api.createClaim
+    .mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectOld = reject;
+        }),
+    )
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishNew = resolve;
+        }),
+    );
+  const old = page.submit();
+  auth.reset();
+  Object.assign(page.data, {
+    house,
+    name: '新申请人',
+    phoneId: 'new-phone',
+    step: 3,
+  });
+  const current = page.submit();
+  const submission = page.operation;
+  const { StaleSessionError } = await import('../src/shared/http/client');
+  rejectOld(new StaleSessionError());
+  await old;
+  expect(page.operation).toBe(submission);
+  expect(page.data.busy).toBe(true);
+  expect(page.data.name).toBe('新申请人');
+  expect(page.data.error).toBe('');
+  finishNew({ id: 'new-claim' });
+  await current;
+  expect(wx.redirectTo).toHaveBeenCalledExactlyOnceWith({
+    url: '/packages/resident/pages/claim-detail/index?id=new-claim',
+  });
+});

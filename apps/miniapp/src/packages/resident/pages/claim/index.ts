@@ -42,11 +42,13 @@ Page({
   initialCommunity: '',
   off: () => {},
   epoch: 0,
+  writeEpoch: 0,
   onLoad(options) {
     this.initialHouse = options.house_id || '';
     this.initialCommunity = options.community_id || '';
     this.off = onSessionReset(() => {
       this.epoch++;
+      this.writeEpoch++;
       this.operation = undefined;
       this.setData({
         house: null,
@@ -56,6 +58,7 @@ Page({
         phoneId: '',
         phoneDisplay: '',
         unknown: false,
+        error: '',
         step: 1,
         loading: false,
         busy: false,
@@ -65,6 +68,7 @@ Page({
   onUnload() {
     this.off();
     this.epoch++;
+    this.writeEpoch++;
     this.operation = undefined;
   },
   onShow() {
@@ -280,7 +284,7 @@ Page({
   },
   async submit() {
     if (this.data.busy || !this.data.house) return;
-    const epoch = this.epoch;
+    const epoch = ++this.writeEpoch;
     if (!this.operation)
       this.operation = {
         key: newKey(),
@@ -297,7 +301,7 @@ Page({
         this.operation.data,
         this.operation.key,
       );
-      if (epoch !== this.epoch) return;
+      if (epoch !== this.writeEpoch) return;
       this.operation = undefined;
       this.setData({
         name: '',
@@ -309,6 +313,7 @@ Page({
       });
       wx.redirectTo({ url: detailUrl('claim', result.id) });
     } catch (error) {
+      if (epoch !== this.writeEpoch) return;
       const unknown =
         error instanceof ApiError &&
         (error.status === 0 || error.status >= 500);
@@ -320,7 +325,7 @@ Page({
           : errorText(error),
       });
     } finally {
-      this.setData({ busy: false });
+      if (epoch === this.writeEpoch) this.setData({ busy: false });
     }
   },
   applications() {

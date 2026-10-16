@@ -38,13 +38,19 @@ Page({
   operation: undefined as Pending | undefined,
   off: () => {},
   epoch: 0,
+  writeEpoch: 0,
   onLoad() {
     this.off = onSessionReset(() => {
       this.epoch++;
+      this.writeEpoch++;
       this.operation = undefined;
       this.setData({
         phones: [],
+        total: 0,
+        page: 1,
         input: '',
+        inputValid: true,
+        error: '',
         pending: false,
         loading: false,
         busy: false,
@@ -54,6 +60,7 @@ Page({
   onUnload() {
     this.off();
     this.epoch++;
+    this.writeEpoch++;
     this.operation = undefined;
   },
   onShow() {
@@ -120,7 +127,7 @@ Page({
   },
   async verify() {
     if (!this.operation || this.data.busy) return;
-    const epoch = this.epoch;
+    const epoch = ++this.writeEpoch;
     this.setData({ busy: true, error: '' });
     try {
       await bindPhone(
@@ -128,12 +135,13 @@ Page({
         this.operation.key,
         this.operation.expected,
       );
-      if (epoch !== this.epoch) return;
+      if (epoch !== this.writeEpoch) return;
       this.operation = undefined;
       this.setData({ input: '', pending: false });
       wx.showToast({ title: '手机号已验证', icon: 'success' });
       await this.load();
     } catch (error) {
+      if (epoch !== this.writeEpoch) return;
       const unknown =
         error instanceof ApiError &&
         (error.status === 0 || error.status >= 500);
@@ -145,31 +153,40 @@ Page({
           : errorText(error),
       });
     } finally {
-      this.setData({ busy: false });
+      if (epoch === this.writeEpoch) this.setData({ busy: false });
     }
   },
   async unbind(event: WechatMiniprogram.TouchEvent) {
     const phone = this.data.phones.find(
       (item) => item.id === event.currentTarget.dataset.id,
     );
+    if (!phone || this.data.busy || this.data.loading || this.data.pending)
+      return;
+    const epoch = ++this.writeEpoch;
     if (
-      !phone ||
-      this.data.busy ||
       !(await confirm(
         '解绑手机号',
         '此号码将不再用于新申请，已有房屋和申请仍然保留。',
-      ))
+      )) ||
+      epoch !== this.writeEpoch ||
+      this.data.busy
     )
       return;
     this.setData({ busy: true });
     try {
       await unbindPhone(phone);
+      if (epoch !== this.writeEpoch) return;
       await this.load();
     } catch (error) {
+      if (epoch !== this.writeEpoch) return;
       toastError(error);
-      if (error instanceof ApiError && error.status === 409) await this.load();
+      if (
+        error instanceof ApiError &&
+        (error.status === 409 || error.status === 0 || error.status >= 500)
+      )
+        await this.load();
     } finally {
-      this.setData({ busy: false });
+      if (epoch === this.writeEpoch) this.setData({ busy: false });
     }
   },
 });
