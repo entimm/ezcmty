@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import tomllib
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from backend_app.domain.billing import MAX_CENTS, business_today
+from backend_app.schemas.billing import Month
 
 
 class SeedError(Exception):
@@ -34,6 +38,59 @@ class HousingParameters(Parameters):
     houses_per_unit: int = Field(default=3, ge=0, le=100_000)
     houses_per_building: int = Field(default=1, ge=0, le=100_000)
     owners_per_house: int = Field(default=2, ge=0, le=100)
+
+
+def shifted_month(offset: int) -> str:
+    today = business_today()
+    number = today.year * 12 + today.month - 1 + offset
+    return f"{number // 12:04d}-{number % 12 + 1:02d}"
+
+
+class BillingParameters(Parameters):
+    start_month: Month = Field(default_factory=lambda: shifted_month(-2))
+    end_month: Month = Field(default_factory=lambda: shifted_month(2))
+    basis_versions_per_house: int = Field(default=4, ge=0, le=100)
+    bill_months_per_house: int | None = Field(default=None, ge=0, le=120)
+    min_receivable_cents: int = Field(default=10_000, ge=2, le=MAX_CENTS)
+    max_receivable_cents: int = Field(default=50_000, ge=2, le=MAX_CENTS)
+    unpaid_weight: int = Field(default=4, ge=0, le=100)
+    partially_settled_weight: int = Field(default=2, ge=0, le=100)
+    settled_weight: int = Field(default=3, ge=0, le=100)
+    voided_weight: int = Field(default=1, ge=0, le=100)
+    additional_receipts_per_bill: int = Field(default=2, ge=0, le=20)
+    amount_corrections_per_bill: int = Field(default=1, ge=0, le=20)
+    date_corrections_per_bill: int = Field(default=1, ge=0, le=20)
+    reversals_per_bill: int = Field(default=1, ge=0, le=20)
+    rebuilds_per_bill: int = Field(default=1, ge=0, le=10)
+
+    def months(self) -> list[str]:
+        start = date.fromisoformat(self.start_month + "-01")
+        end = date.fromisoformat(self.end_month + "-01")
+        first = start.year * 12 + start.month - 1
+        last = end.year * 12 + end.month - 1
+        return [f"{i // 12:04d}-{i % 12 + 1:02d}" for i in range(first, last + 1)]
+
+    @model_validator(mode="after")
+    def valid_distribution(self) -> Self:
+        months = self.months()
+        if not 1 <= len(months) <= 120:
+            raise ValueError("账单月份范围必须按先后顺序包含 1–120 个月")
+        if self.bill_months_per_house is not None and self.bill_months_per_house > len(months):
+            raise ValueError("每房账单月份数不能超过月份范围")
+        if self.min_receivable_cents > self.max_receivable_cents:
+            raise ValueError("最小金额不能超过最大金额")
+        if self.min_receivable_cents < 4 * (self.additional_receipts_per_bill + 1):
+            raise ValueError("最小正金额不足以分配指定次数的收款与金额纠错")
+        if not sum(
+            (
+                self.unpaid_weight,
+                self.partially_settled_weight,
+                self.settled_weight,
+                self.voided_weight,
+            )
+        ):
+            raise ValueError("账单状态权重不能全部为零")
+        return self
 
 
 @dataclass(frozen=True)
@@ -82,19 +139,28 @@ REGISTRY = {
         ),
         ("property",),
     ),
+    "billing": Scenario(
+        BillingParameters,
+        frozenset(
+            {
+                "property_fee_basis_versions",
+                "bills",
+                "bill_operations",
+                "bill_settlement_entries",
+                "admin_audit_logs",
+            }
+        ),
+        ("housing",),
+    ),
 }
 EXCLUDED_TABLES = {
     "alembic_version": "Alembic migration bookkeeping",
-    "property_fee_basis_versions": "Billing versions are maintained through the billing workflow",
-    "bills": "Billing scenarios are entered through the billing workflow",
-    "bill_operations": "Immutable results are created atomically by billing operations",
-    "bill_settlement_entries": "Immutable entries are created atomically by billing operations",
 }
 
 
 class Plan(Parameters):
     scenarios: list[str]
-    parameters: dict[str, dict[str, int]]
+    parameters: dict[str, dict[str, Any]]
     versions: dict[str, int]
     workers: int = Field(default=1, ge=1, le=8)
 
@@ -112,7 +178,7 @@ class Plan(Parameters):
                 communities=communities,
                 property_accounts=companies * p["admins_per_company"],
             )
-            if "housing" in self.scenarios:
+            if "housing" in self.parameters:
                 h = self.parameters["housing"]
                 buildings = communities * h["buildings_per_community"]
                 units = buildings * h["units_per_building"]
@@ -124,6 +190,10 @@ class Plan(Parameters):
                     houses=houses,
                     owners=houses * h["owners_per_house"],
                 )
+                if "billing" in self.parameters:
+                    from devtools.seed.billing_plan import estimate
+
+                    result.update(estimate(BillingParameters(**self.parameters["billing"]), houses))
         return result
 
 
@@ -172,9 +242,17 @@ def resolve_plan(
             name, key = qualified.split(".", 1)
             if name not in needed or key not in REGISTRY[name].parameters.model_fields:
                 raise ValueError
-            raw.setdefault(name, {})[key] = int(value)
+            if name == "billing" and key in {"start_month", "end_month"}:
+                parsed: Any = value
+            elif name == "billing" and key == "bill_months_per_house" and value == "all":
+                parsed = None
+            else:
+                parsed = int(value)
+            raw.setdefault(name, {})[key] = parsed
         except ValueError, TypeError:
-            raise SeedError("--set 必须为已选择场景的 scene.parameter=整数") from None
+            raise SeedError(
+                "--set 必须为 scene.parameter=整数；月份用 YYYY-MM，月份数量可用 all"
+            ) from None
     parameters = {
         name: REGISTRY[name].parameters.model_validate(raw.get(name, {})).model_dump()
         for name in REGISTRY
@@ -203,7 +281,7 @@ def validate_plan(plan: Plan) -> None:
     resolved = resolve_plan(
         plan.scenarios,
         overrides=[
-            f"{name}.{key}={value}"
+            f"{name}.{key}={'all' if value is None else value}"
             for name, values in plan.parameters.items()
             for key, value in values.items()
         ],

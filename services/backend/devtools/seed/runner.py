@@ -4,8 +4,10 @@ import json
 import secrets
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.config import Settings
+from backend_app.domain.billing import business_today
 from backend_app.models.admin import (
     AdminAccount,
     AdminAccountRole,
@@ -24,10 +27,10 @@ from backend_app.models.admin import (
 )
 from backend_app.models.property import PropertyCompany
 from devtools.seed.bootstrap import SeedSettings, platform_actor
-from devtools.seed.config import REGISTRY, Plan, SeedError, validate_plan
+from devtools.seed.config import REGISTRY, BillingParameters, Plan, SeedError, validate_plan
 from devtools.seed.repository import MODELS, coverage, database_fingerprint
 from devtools.seed.runtime import Actor, Executor
-from devtools.seed.scenarios import admin, housing
+from devtools.seed.scenarios import admin, billing, housing
 from devtools.seed.scenarios import property as property_scenario
 from devtools.seed.scenarios.property import Company
 from devtools.seed.state import State, file_lock, private_directory, run_directory, save_json
@@ -65,6 +68,11 @@ def guard(settings: Settings, seed: SeedSettings) -> None:
 
 def reconcile(executor: Executor) -> None:
     for key, spec, data in executor.state.pending():
+        if spec["action"].startswith("property.bill."):
+            payload = executor.repo.recover_bill(spec, data, executor.request_id(key))
+            if payload is not None:
+                executor.confirm_bill(key, payload)
+            continue
         identifier = executor.repo.recover(spec, spec.get("request_id", executor.request_id(key)))
         if identifier:
             executor.repo.verify(spec["model"], identifier, data["expected"])
@@ -123,8 +131,46 @@ def execute(
                     try:
                         with factory() as housing_db:
                             worker = Executor(state, housing_db, store, stop, progress.tick)
+                            on_house: Callable[[str, str, str, int], None] | None = None
+                            if "billing" in plan.parameters:
+                                parameters = BillingParameters(**plan.parameters["billing"])
+                                clock = state.get("billing_clock")
+                                if clock is None:
+                                    raise SeedError("缺少账单批次业务日期")
+                                today = date.fromisoformat(clock["today"])
+                                h = plan.parameters["housing"]
+                                per_company = (
+                                    len(company.communities)
+                                    * h["buildings_per_community"]
+                                    * (
+                                        h["houses_per_building"]
+                                        + h["units_per_building"] * h["houses_per_unit"]
+                                    )
+                                )
+
+                                def bill_house(
+                                    house_key: str, community: str, house: str, number: int
+                                ) -> None:
+                                    billing.populate_house(
+                                        worker,
+                                        resident_actor,
+                                        company.id,
+                                        community,
+                                        house,
+                                        house_key,
+                                        company.index * per_company + number,
+                                        parameters,
+                                        today,
+                                    )
+
+                                on_house = bill_house
+
                             housing.populate(
-                                worker, resident_actor, company, plan.parameters["housing"]
+                                worker,
+                                resident_actor,
+                                company,
+                                plan.parameters["housing"],
+                                on_house=on_house,
                             )
                         state.mark(key)
                     except BaseException:
@@ -133,7 +179,7 @@ def execute(
                     finally:
                         resident_actor.close(store)
 
-                if "housing" in plan.scenarios:
+                if "housing" in plan.parameters:
                     if plan.workers == 1:
                         for index in range(p["companies"]):
                             populate(index)
@@ -222,6 +268,9 @@ def report(
                         AdminAuditLog.request_id.startswith(
                             "seed:" + state.run_id + ":", autoescape=True
                         ),
+                        AdminAuditLog.request_id.startswith(
+                            "seed_" + state.run_id + "_", autoescape=True
+                        ),
                         (AdminAuditLog.action == "account.initialize")
                         & (AdminAuditLog.target_id == bootstrap_id)
                         if bootstrap_id
@@ -237,7 +286,7 @@ def report(
         for table, values in conditions.items()
         if {"enabled", "disabled"} - values
     }
-    return {
+    result: dict[str, Any] = {
         "run_id": state.run_id,
         "scenarios": plan.scenarios,
         "expected": plan.counts(),
@@ -251,6 +300,19 @@ def report(
         "steps_this_execution": progress.completed,
         "elapsed_seconds": round(time.monotonic() - progress.started, 3),
     }
+    if "billing" in plan.parameters:
+        from devtools.seed.billing_report import billing_report
+
+        clock = state.get("billing_clock")
+        if clock is None:
+            raise SeedError("缺少账单批次业务日期")
+        with factory() as db:
+            result["billing"] = billing_report(db, state, plan, date.fromisoformat(clock["today"]))
+        counts.update(result["billing"]["tables"])
+        result["unpopulated_tables"] = sorted(
+            declared - {table for table, count in counts.items() if count}
+        )
+    return result
 
 
 def run(
@@ -298,6 +360,8 @@ def run(
                 "plan": plan.model_dump(),
                 "status": "pending",
             }
+            if "billing" in plan.parameters:
+                metadata["business_date"] = business_today().isoformat()
             save_json(metadata_path, metadata)
         assert plan is not None
         initializing = metadata["status"] == "pending"
@@ -319,6 +383,15 @@ def run(
                 state.put("identity", identity)
             elif saved_identity != identity:
                 raise SeedError("批次参数或数据库身份被修改，不能续跑")
+            if "billing" in plan.parameters:
+                clock = {"today": metadata.get("business_date")}
+                if clock["today"] is None:
+                    raise SeedError("缺少账单批次业务日期")
+                saved_clock = state.get("billing_clock")
+                if saved_clock is None and initializing:
+                    state.put("billing_clock", clock)
+                elif saved_clock != clock:
+                    raise SeedError("账单批次业务日期被修改，不能续跑")
             metadata["status"] = "running"
             save_json(metadata_path, metadata)
             result = execute(state, plan, factory, store, seed, root, fingerprint)

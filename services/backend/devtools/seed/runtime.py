@@ -12,13 +12,16 @@ from sqlalchemy.orm import Session
 from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.errors import AppError
 from backend_app.domain.admin.types import AdminScope
+from backend_app.domain.billing import Action
 from backend_app.schemas import admin as a
+from backend_app.schemas import billing as b
 from backend_app.schemas import housing as h
 from backend_app.schemas import property as p
 from backend_app.services.contracts.admin import AdminContext
 from backend_app.services.platform_admin.admin import PlatformAdminService
 from backend_app.services.platform_admin.property import PropertyOnboardingService
 from backend_app.services.property_admin.admin import PropertyAdminService
+from backend_app.services.property_admin.billing import PropertyBillingService
 from backend_app.services.property_admin.housing import PropertyHousingService
 from devtools.seed.config import SeedError
 from devtools.seed.repository import SeedRepository
@@ -159,6 +162,18 @@ def invoke(
                 h.HouseOwnerUpdate(**values),
                 request_id,
             )
+        case "property.fee_basis.create":
+            return (
+                PropertyBillingService(db)
+                .create_basis(
+                    context,
+                    data["community_id"],
+                    data["house_id"],
+                    b.FeeBasisCreate(**values),
+                    request_id,
+                )
+                .id
+            )
         case _:
             raise SeedError("未注册的业务步骤")
     return cast(str, identifier)
@@ -181,7 +196,122 @@ class Executor:
         self.progress = progress or (lambda: None)
 
     def request_id(self, key: str) -> str:
+        if key.startswith("billing/"):
+            return "seed_" + self.state.run_id + "_" + hashlib.sha256(key.encode()).hexdigest()[:24]
         return "seed:" + self.state.run_id + ":" + hashlib.sha256(key.encode()).hexdigest()[:24]
+
+    def confirm_bill(self, key: str, payload: dict[str, Any]) -> b.BillWriteResult:
+        result = b.BillWriteResult.model_validate(payload)
+        expected = result.bill.model_dump(
+            mode="json",
+            exclude={
+                "basis",
+                "billing_month",
+                "is_overdue",
+                "house_effective_enabled",
+                "created_at",
+                "updated_at",
+            },
+        )
+        self.state.complete(
+            key,
+            {
+                "model": "bill",
+                "id": result.bill.id,
+                "expected": expected,
+                "payload": payload,
+            },
+        )
+        self.progress()
+        return result
+
+    def bill(
+        self,
+        key: str,
+        actor: Actor,
+        company_id: str,
+        community_id: str,
+        action: Action,
+        values: dict[str, Any],
+        *,
+        bill_id: str | None = None,
+        entry_id: str | None = None,
+    ) -> b.BillWriteResult:
+        if self.stop.is_set():
+            raise SeedError("批次停止，未开始的步骤保留待续跑")
+        request_id = self.request_id(key)
+        spec = {
+            "action": "property.bill." + action,
+            "model": "bill",
+            "scope": "property_admin",
+            "id": bill_id,
+            "company_id": company_id,
+            "community_id": community_id,
+            "values": values,
+            "entry_id": entry_id,
+            "key": request_id,
+        }
+        schemas: dict[Action, type[a.AdminSchema]] = {
+            "create": b.BillCreate,
+            "update": b.BillUpdate,
+            "receipt": b.ReceiptCreate,
+            "correct_receipt": b.ReceiptCorrection,
+            "reverse_receipt": b.BillReasonAction,
+            "void": b.BillReasonAction,
+        }
+        request = schemas[action].model_validate(values)
+
+        def prepare() -> dict[str, Any]:
+            context = actor.get(self.db, self.store)
+            if context.property_company_id != company_id:
+                raise SeedError("账单步骤公司与执行账号不匹配")
+            if (
+                action == "create"
+                and isinstance(request, b.BillCreate)
+                and request.amount_source == "basis"
+            ):
+                preview = PropertyBillingService(self.db).calculate(
+                    context,
+                    community_id,
+                    request.house_id,
+                    b.FeeCalculationRequest(billing_month=request.billing_month),
+                )
+                if (
+                    not preview.basis
+                    or preview.basis.id != request.basis_version_id
+                    or preview.receivable_cents != request.expected_receivable_cents
+                ):
+                    raise SeedError("账单试算与本批次依据不一致")
+            return {
+                "actor_id": context.account_id,
+                "fingerprint": PropertyBillingService._fingerprint(
+                    context,
+                    community_id,
+                    action,
+                    bill_id,
+                    entry_id,
+                    request,
+                ),
+            }
+
+        data, result, existed = self.state.prepare(key, spec, prepare)
+        if result is not None:
+            return b.BillWriteResult.model_validate(result["payload"])
+        if existed:
+            recovered = self.repo.recover_bill(spec, data, request_id)
+            if recovered is not None:
+                return self.confirm_bill(key, recovered)
+        payload = PropertyBillingService(self.db).write(
+            actor.get(self.db, self.store),
+            community_id,
+            action,
+            request,
+            request_id,
+            request_id,
+            bill_id=bill_id,
+            entry_id=entry_id,
+        )
+        return self.confirm_bill(key, payload.model_dump(mode="json"))
 
     def confirm(self, key: str, spec: dict[str, Any], data: dict[str, Any], identifier: str) -> str:
         result = {"model": spec["model"], "id": identifier, "expected": data["expected"]}

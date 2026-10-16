@@ -1,10 +1,19 @@
+from collections.abc import Callable
+
 from devtools.seed.runtime import Actor, Executor
 from devtools.seed.scenarios.property import Company
 
 
 def populate(
-    executor: Executor, actor: Actor, company: Company, parameters: dict[str, int]
+    executor: Executor,
+    actor: Actor,
+    company: Company,
+    parameters: dict[str, int],
+    *,
+    on_house: Callable[[str, str, str, int], None] | None = None,
 ) -> None:
+    house_index = 0
+
     def node(key: str, community: str, kind: str, name: str, parent: str | None = None) -> str:
         values = {"node_type": kind, "name": name, "parent_id": parent}
         identity = {"community_id": community, **values}
@@ -37,6 +46,7 @@ def populate(
         )
 
     def houses(key: str, community: str, parent: str, count: int) -> None:
+        nonlocal house_index
         for number in range(count):
             house_key = key + f"/house/{number}"
             values = {
@@ -75,6 +85,9 @@ def populate(
                     disable(
                         owner_key, "owner", "property.house_owner.update", owner, community, house
                     )
+            if on_house:
+                on_house(house_key, community, house, house_index)
+            house_index += 1
             if count > 1 and number == count - 1:
                 disable(house_key, "house", "property.house.update", house, community)
 

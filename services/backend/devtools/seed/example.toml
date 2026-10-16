@@ -15,3 +15,23 @@ units_per_building = 2
 houses_per_unit = 3
 houses_per_building = 1
 owners_per_house = 2
+
+[billing]
+# 默认月份为运行时的历史两月、当月与未来两月；也可显式指定闭区间。
+# start_month = "2026-08"
+# end_month = "2026-12"
+basis_versions_per_house = 4
+# 省略时为范围内全部月份；0 表示只生成依据。不能超过月份范围。
+# bill_months_per_house = 5
+min_receivable_cents = 10000
+max_receivable_cents = 50000
+unpaid_weight = 4
+partially_settled_weight = 2
+settled_weight = 3
+voided_weight = 1
+# 以下均为每张适用账单的操作次数，允许为 0；具体适用条件见本地开发指南。
+additional_receipts_per_bill = 2
+amount_corrections_per_bill = 1
+date_corrections_per_bill = 1
+reversals_per_bill = 1
+rebuilds_per_bill = 1

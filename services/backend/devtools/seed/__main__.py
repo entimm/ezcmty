@@ -31,7 +31,7 @@ def parser() -> argparse.ArgumentParser:
         selection.add_argument("--all", action="store_true")
         selection.add_argument("--scenario", action="append")
         command.add_argument("--config", type=Path, help="TOML 场景数量配置")
-        command.add_argument("--set", action="append", default=[], metavar="SCENE.PARAMETER=COUNT")
+        command.add_argument("--set", action="append", default=[], metavar="SCENE.PARAMETER=VALUE")
         command.add_argument("--workers", type=int, default=1, help="房屋场景并发公司数，1–8")
     resume = commands.add_parser("resume", help="恢复原批次，参数保持不变")
     resume.add_argument("run_id")

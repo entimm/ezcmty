@@ -1,57 +1,22 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import pytest
-from devtools.seed.bootstrap import SeedSettings
-from devtools.seed.config import EXCLUDED_TABLES, Plan, SeedError, resolve_plan
+from devtools.seed.config import EXCLUDED_TABLES, SeedError, resolve_plan
 from devtools.seed.repository import coverage
-from devtools.seed.runner import run
 from devtools.seed.state import COLUMNS, State, file_lock
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session, sessionmaker
 from tests.support.paths import BACKEND_ROOT
+from tests.support.seed import SeedRun, totals
 
 from backend_app.core.admin_security import verify_password
 from backend_app.core.admin_sessions import AdminSessionStore
-from backend_app.db.base import Base
 from backend_app.models.admin import AdminAccount, AdminAuditLog
 from backend_app.models.housing import House, HouseOwner
-
-SeedRun = Callable[..., Path]
-
-
-@pytest.fixture
-def seed_run(
-    real_admin: tuple[sessionmaker[Session], AdminSessionStore], tmp_path: Path
-) -> SeedRun:
-    factory, original_store = real_admin
-    settings = original_store.settings.model_copy(update={"env": "test", "admin_login_limit": 1000})
-
-    def start(plan: Plan | None = None, resume: str | None = None) -> Path:
-        return run(
-            plan=plan,
-            resume=resume,
-            root=tmp_path / "seed",
-            backend_root=BACKEND_ROOT,
-            factory=factory,
-            client=original_store.client,
-            settings=settings,
-            seed=SeedSettings(enabled=True, login_name=None, password=None),
-        )
-
-    return start
-
-
-def totals(factory: sessionmaker[Session]) -> dict[str, int]:
-    with factory() as db:
-        return {
-            table.name: int(db.scalar(select(func.count()).select_from(table)) or 0)
-            for table in Base.metadata.sorted_tables
-        }
 
 
 def test_all_scenarios_cover_tables_append_and_export_usable_credentials(
@@ -59,7 +24,7 @@ def test_all_scenarios_cover_tables_append_and_export_usable_credentials(
     real_admin: tuple[sessionmaker[Session], AdminSessionStore],
 ) -> None:
     factory, _ = real_admin
-    plan = resolve_plan(["admin", "property", "housing"], workers=2)
+    plan = resolve_plan(["admin", "property", "housing", "billing"], workers=2)
     directory = seed_run(plan)
     first = totals(factory)
     assert all(count > 0 for table, count in first.items() if table not in EXCLUDED_TABLES)
@@ -315,8 +280,9 @@ def test_cli_survives_process_exit_after_password_commit(
         "SEED_ENABLED": "1",
         "SEED_TEST_ROOT": str(tmp_path),
     }
-    environment.pop("SEED_LOGIN_NAME", None)
-    environment.pop("SEED_PASSWORD", None)
+    # Empty overrides also isolate the child from credentials in the developer's .env.
+    environment["SEED_LOGIN_NAME"] = ""
+    environment["SEED_PASSWORD"] = ""
     script = """
 import os
 import sys

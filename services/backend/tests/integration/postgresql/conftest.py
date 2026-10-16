@@ -6,15 +6,21 @@ import subprocess
 import time
 from collections.abc import Iterator
 from contextlib import ExitStack
+from pathlib import Path
 
 import pytest
+from devtools.seed.bootstrap import SeedSettings
+from devtools.seed.config import Plan
+from devtools.seed.runner import run
 from pytest import MonkeyPatch
 from redis import Redis
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from tests.support.billing_services import BillingSetup
 from tests.support.housing_services import provision_housing
+from tests.support.paths import BACKEND_ROOT
 from tests.support.postgresql import free_port, stop_service
+from tests.support.seed import SeedRun
 
 from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.config import get_settings
@@ -102,3 +108,25 @@ def billing_setup(real_admin: tuple[sessionmaker[Session], AdminSessionStore]) -
             "house",
         )
     return BillingSetup(factory, setup, house.id)
+
+
+@pytest.fixture
+def seed_run(
+    real_admin: tuple[sessionmaker[Session], AdminSessionStore], tmp_path: Path
+) -> SeedRun:
+    factory, original_store = real_admin
+    settings = original_store.settings.model_copy(update={"env": "test", "admin_login_limit": 1000})
+
+    def start(plan: Plan | None = None, resume: str | None = None) -> Path:
+        return run(
+            plan=plan,
+            resume=resume,
+            root=tmp_path / "seed",
+            backend_root=BACKEND_ROOT,
+            factory=factory,
+            client=original_store.client,
+            settings=settings,
+            seed=SeedSettings(enabled=True, login_name=None, password=None),
+        )
+
+    return start
