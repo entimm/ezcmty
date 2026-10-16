@@ -1,0 +1,451 @@
+HouseClaimCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    house_id: &id001
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    applicant_name:
+      type: string
+      minLength: 1
+      maxLength: 80
+    phone_binding_id: *id001
+    applicant_remark:
+      anyOf: &id003
+        - type: string
+          minLength: 1
+          maxLength: 1000
+        - type: 'null'
+  required:
+    - house_id
+    - applicant_name
+    - phone_binding_id
+ClaimCancellation:
+  type: object
+  additionalProperties: false
+  properties:
+    expected_row_version: &id002
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+  required:
+    - expected_row_version
+ClaimReview:
+  type: object
+  additionalProperties: false
+  properties:
+    expected_row_version: *id002
+    decision:
+      type: string
+      enum:
+        - approved
+        - rejected
+    reason:
+      anyOf: *id003
+  required:
+    - expected_row_version
+    - decision
+HouseRelease:
+  type: object
+  additionalProperties: false
+  properties:
+    expected_row_version: *id002
+    reason:
+      anyOf: *id003
+  required:
+    - expected_row_version
+HouseRevocation:
+  type: object
+  additionalProperties: false
+  properties:
+    expected_row_version: *id002
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 1000
+  required:
+    - expected_row_version
+    - reason
+ResidentHouseClaim:
+  type: object
+  additionalProperties: false
+  properties:
+    id: *id001
+    community_id: *id001
+    house_id: *id001
+    house_label_snapshot: &id005
+      type: string
+    applicant_name: &id006
+      type: string
+    applicant_phone: &id007
+      type: string
+    applicant_remark: &id008
+      anyOf:
+        - type: string
+        - type: 'null'
+    status: &id009
+      type: string
+      enum:
+        - pending
+        - approved
+        - rejected
+        - cancelled
+    review_reason: &id010
+      anyOf:
+        - type: string
+        - type: 'null'
+    reviewed_at: &id011
+      anyOf:
+        - &id004
+          type: string
+          format: date-time
+        - type: 'null'
+    cancelled_at: &id012
+      anyOf:
+        - *id004
+        - type: 'null'
+    row_version: *id002
+    created_at: *id004
+    updated_at: *id004
+  required:
+    - id
+    - community_id
+    - house_id
+    - house_label_snapshot
+    - applicant_name
+    - applicant_phone
+    - applicant_remark
+    - status
+    - review_reason
+    - reviewed_at
+    - cancelled_at
+    - row_version
+    - created_at
+    - updated_at
+PropertyHouseClaim:
+  type: object
+  additionalProperties: false
+  properties:
+    id: *id001
+    community_id: *id001
+    house_id: *id001
+    house_label_snapshot: *id005
+    applicant_name: *id006
+    applicant_phone: *id007
+    applicant_remark: *id008
+    status: *id009
+    review_reason: *id010
+    reviewed_at: *id011
+    cancelled_at: *id012
+    row_version: *id002
+    created_at: *id004
+    updated_at: *id004
+    property_company_id: *id001
+    user_id: *id001
+    match_status:
+      type: string
+      enum:
+        - matched
+        - unmatched
+    matched_owner_id:
+      anyOf:
+        - *id001
+        - type: 'null'
+    reviewed_by_admin_id:
+      anyOf:
+        - *id001
+        - type: 'null'
+  required:
+    - id
+    - community_id
+    - house_id
+    - house_label_snapshot
+    - applicant_name
+    - applicant_phone
+    - applicant_remark
+    - status
+    - review_reason
+    - reviewed_at
+    - cancelled_at
+    - row_version
+    - created_at
+    - updated_at
+    - property_company_id
+    - user_id
+    - match_status
+    - matched_owner_id
+    - reviewed_by_admin_id
+ResidentHouseBinding:
+  type: object
+  additionalProperties: false
+  properties:
+    id: *id001
+    community_id: *id001
+    house_id: *id001
+    claim_application_id: *id001
+    house_label_snapshot: &id013
+      type: string
+    status: &id014
+      type: string
+      enum:
+        - active
+        - released
+        - revoked
+    effective_enabled: &id015
+      type: boolean
+    granted_at: *id004
+    ended_at: &id016
+      anyOf:
+        - *id004
+        - type: 'null'
+    end_reason: &id017
+      anyOf:
+        - type: string
+        - type: 'null'
+    row_version: *id002
+    created_at: *id004
+    updated_at: *id004
+  required:
+    - id
+    - community_id
+    - house_id
+    - claim_application_id
+    - house_label_snapshot
+    - status
+    - effective_enabled
+    - granted_at
+    - ended_at
+    - end_reason
+    - row_version
+    - created_at
+    - updated_at
+PropertyHouseBinding:
+  type: object
+  additionalProperties: false
+  properties:
+    id: *id001
+    community_id: *id001
+    house_id: *id001
+    claim_application_id: *id001
+    house_label_snapshot: *id013
+    status: *id014
+    effective_enabled: *id015
+    granted_at: *id004
+    ended_at: *id016
+    end_reason: *id017
+    row_version: *id002
+    created_at: *id004
+    updated_at: *id004
+    property_company_id: *id001
+    user_id: *id001
+    applicant_name:
+      type: string
+    applicant_phone:
+      type: string
+  required:
+    - id
+    - community_id
+    - house_id
+    - claim_application_id
+    - house_label_snapshot
+    - status
+    - effective_enabled
+    - granted_at
+    - ended_at
+    - end_reason
+    - row_version
+    - created_at
+    - updated_at
+    - property_company_id
+    - user_id
+    - applicant_name
+    - applicant_phone
+ClaimableCommunity:
+  type: object
+  additionalProperties: false
+  properties:
+    id: *id001
+    name:
+      type: string
+    address:
+      type: string
+  required:
+    - id
+    - name
+    - address
+ClaimableSpaceNode:
+  type: object
+  additionalProperties: false
+  properties:
+    id: *id001
+    community_id: *id001
+    parent_id:
+      anyOf:
+        - *id001
+        - type: 'null'
+    name:
+      type: string
+    node_type:
+      type: string
+      enum:
+        - phase
+        - building
+        - unit
+    has_children:
+      type: boolean
+  required:
+    - id
+    - community_id
+    - parent_id
+    - name
+    - node_type
+    - has_children
+ClaimableHouse:
+  type: object
+  additionalProperties: false
+  properties:
+    id: *id001
+    community_id: *id001
+    space_node_id: *id001
+    room_no:
+      type: string
+    display_address:
+      type: string
+  required:
+    - id
+    - community_id
+    - space_node_id
+    - room_no
+    - display_address
+ResidentHouseClaimPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ResidentHouseClaim'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+PropertyHouseClaimPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/PropertyHouseClaim'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+ResidentHouseBindingPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ResidentHouseBinding'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+PropertyHouseBindingPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/PropertyHouseBinding'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+ClaimableCommunityPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ClaimableCommunity'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+ClaimableSpaceNodePage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ClaimableSpaceNode'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+ClaimableHousePage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ClaimableHouse'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size

@@ -110,6 +110,7 @@ class HouseOwner(Base):
     __table_args__ = (
         ForeignKeyConstraint(["house_id"], ["houses.id"], name="fk_house_owner_house"),
         UniqueConstraint("house_id", "name", "phone", name="uq_house_owner_contact"),
+        UniqueConstraint("house_id", "id", name="uq_house_owner_house_id"),
         CheckConstraint("name <> '' AND name = btrim(name)", name="ck_house_owner_name"),
         CheckConstraint("phone ~ '^1[3-9][0-9]{9}$'", name="ck_house_owner_phone"),
         Index("ix_house_owner_time", "house_id", "created_at", "id"),

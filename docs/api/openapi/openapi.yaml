@@ -112,6 +112,38 @@ paths:
     $ref: ./modules/miniapp-identity.yaml#/phones
   /v1/miniapp-users/me/phone-bindings/{phone_binding_id}:
     $ref: ./modules/miniapp-identity.yaml#/phone
+  /v1/claimable-communities:
+    $ref: ./modules/house-claims.yaml#/communities
+  /v1/claimable-communities/{community_id}/space-nodes:
+    $ref: ./modules/house-claims.yaml#/nodes
+  /v1/claimable-communities/{community_id}/houses:
+    $ref: ./modules/house-claims.yaml#/houses
+  /v1/claimable-communities/{community_id}/houses/{house_id}:
+    $ref: ./modules/house-claims.yaml#/house
+  /v1/miniapp-users/me/house-claims:
+    $ref: ./modules/house-claims.yaml#/myClaims
+  /v1/miniapp-users/me/house-claims/{claim_id}:
+    $ref: ./modules/house-claims.yaml#/myClaim
+  /v1/miniapp-users/me/house-claims/{claim_id}/cancellations:
+    $ref: ./modules/house-claims.yaml#/cancellations
+  /v1/miniapp-users/me/house-bindings:
+    $ref: ./modules/house-claims.yaml#/myBindings
+  /v1/miniapp-users/me/house-bindings/{binding_id}:
+    $ref: ./modules/house-claims.yaml#/myBinding
+  /v1/miniapp-users/me/house-bindings/{binding_id}/releases:
+    $ref: ./modules/house-claims.yaml#/releases
+  /v1/house-claims:
+    $ref: ./modules/house-claims.yaml#/claims
+  /v1/house-claims/{claim_id}:
+    $ref: ./modules/house-claims.yaml#/claim
+  /v1/house-claims/{claim_id}/reviews:
+    $ref: ./modules/house-claims.yaml#/reviews
+  /v1/resident-house-bindings:
+    $ref: ./modules/house-claims.yaml#/bindings
+  /v1/resident-house-bindings/{binding_id}:
+    $ref: ./modules/house-claims.yaml#/binding
+  /v1/resident-house-bindings/{binding_id}/revocations:
+    $ref: ./modules/house-claims.yaml#/revocations
 components:
   schemas:
     RequestId:

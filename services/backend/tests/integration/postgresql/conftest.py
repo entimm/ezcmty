@@ -17,6 +17,7 @@ from redis import Redis
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from tests.support.billing_services import BillingSetup
+from tests.support.house_claims import ClaimSetup, provision_claim
 from tests.support.housing_services import provision_housing
 from tests.support.paths import BACKEND_ROOT
 from tests.support.postgresql import free_port, stop_service
@@ -108,6 +109,11 @@ def billing_setup(real_admin: tuple[sessionmaker[Session], AdminSessionStore]) -
             "house",
         )
     return BillingSetup(factory, setup, house.id)
+
+
+@pytest.fixture
+def claim_setup(real_admin: tuple[sessionmaker[Session], AdminSessionStore]) -> ClaimSetup:
+    return provision_claim(*real_admin)
 
 
 @pytest.fixture

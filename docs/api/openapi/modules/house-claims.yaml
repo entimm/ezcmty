@@ -1,0 +1,799 @@
+communities:
+  get:
+    operationId: listClaimableCommunities
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 查找可认领小区
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': &id002
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403': &id003
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404': &id004
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409': &id005
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422': &id006
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500': &id007
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503': &id008
+        $ref: ../components/responses.yaml#/AdminProblem
+      '429': &id009
+        description: 操作过于频繁
+        headers:
+          X-Request-ID: &id001
+            $ref: ../components/headers.yaml#/RequestId
+          Retry-After:
+            schema:
+              type: integer
+              minimum: 1
+        content:
+          application/problem+json:
+            schema:
+              $ref: ../components/errors.yaml#/ProblemDetails
+      '200':
+        description: 操作成功
+        headers: &id010
+          X-Request-ID: *id001
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/ClaimableCommunityPage
+    parameters:
+      - name: name
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 160
+            - type: 'null'
+      - &id011
+        name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - &id012
+        name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+nodes:
+  get:
+    operationId: listClaimableSpaceNodes
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 逐级选择空间
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/ClaimableSpaceNodePage
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: parent_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - &id013
+              $ref: ../components/schemas.yaml#/UUIDIdentifier
+            - type: 'null'
+      - *id011
+      - *id012
+houses:
+  get:
+    operationId: listClaimableHouses
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 选择当前空间直接房屋
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/ClaimableHousePage
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: space_node_id
+        in: query
+        required: true
+        schema: *id013
+      - name: room_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 32
+            - type: 'null'
+      - *id011
+      - *id012
+house:
+  get:
+    operationId: getClaimableHouse
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 读取房屋选项
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/ClaimableHouse
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: house_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+myClaims:
+  get:
+    operationId: listMyHouseClaims
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 查询本人申请
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/ResidentHouseClaimPage
+    parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              enum:
+                - pending
+                - approved
+                - rejected
+                - cancelled
+            - type: 'null'
+      - *id011
+      - *id012
+      - &id015
+        name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - created_at
+            - -created_at
+          default: -created_at
+  post:
+    operationId: createHouseClaim
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 提交房屋认领
+    description:
+      按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+      创建首次201，同键同输入重放返回原记录当前状态200；同键不同输入409。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '201':
+        description: 操作成功
+        headers: *id010
+        content: &id014
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/ResidentHouseClaim
+      '200':
+        description: 操作成功
+        headers: *id010
+        content: *id014
+    parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Za-z0-9_-]{1,128}$
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/house-claim-schemas.yaml#/HouseClaimCreate
+myClaim:
+  get:
+    operationId: getMyHouseClaim
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 读取本人申请
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/ResidentHouseClaim
+    parameters:
+      - name: claim_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+cancellations:
+  post:
+    operationId: cancelHouseClaim
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 撤回待审申请
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/ResidentHouseClaim
+    parameters:
+      - name: claim_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/house-claim-schemas.yaml#/ClaimCancellation
+myBindings:
+  get:
+    operationId: listMyHouseBindings
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 查询本人房屋
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/ResidentHouseBindingPage
+    parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              enum:
+                - active
+                - released
+                - revoked
+            - type: 'null'
+      - *id011
+      - *id012
+      - *id015
+myBinding:
+  get:
+    operationId: getMyHouseBinding
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 读取本人房屋
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/ResidentHouseBinding
+    parameters:
+      - name: binding_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+releases:
+  post:
+    operationId: releaseHouseBinding
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 主动解绑房屋
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/ResidentHouseBinding
+    parameters:
+      - name: binding_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/house-claim-schemas.yaml#/HouseRelease
+claims:
+  get:
+    operationId: listPropertyHouseClaims
+    x-runtimes:
+      - property_admin_api
+    tags:
+      - miniapp
+    summary: 查询本公司认领申请
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - AdminSession: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/PropertyHouseClaimPage
+    x-permissions:
+      - property.house_claim.read
+    parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              enum:
+                - pending
+                - approved
+                - rejected
+                - cancelled
+            - type: 'null'
+      - name: match_status
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              enum:
+                - matched
+                - unmatched
+            - type: 'null'
+      - &id017
+        name: community_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - *id013
+            - type: 'null'
+      - &id018
+        name: house_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - *id013
+            - type: 'null'
+      - &id019
+        name: created_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - &id016
+              type: string
+              format: date-time
+            - type: 'null'
+      - &id020
+        name: created_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - *id016
+            - type: 'null'
+      - *id011
+      - *id012
+      - *id015
+claim:
+  get:
+    operationId: getPropertyHouseClaim
+    x-runtimes:
+      - property_admin_api
+    tags:
+      - miniapp
+    summary: 读取本公司申请
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - AdminSession: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/PropertyHouseClaim
+    x-permissions:
+      - property.house_claim.read
+    parameters:
+      - name: claim_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+reviews:
+  post:
+    operationId: reviewHouseClaim
+    x-runtimes:
+      - property_admin_api
+    tags:
+      - miniapp
+    summary: 审核待审认领申请
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - AdminSession: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/PropertyHouseClaim
+    x-permissions:
+      - property.house_claim.read
+      - property.house_claim.review
+    parameters:
+      - name: claim_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/house-claim-schemas.yaml#/ClaimReview
+bindings:
+  get:
+    operationId: listPropertyHouseBindings
+    x-runtimes:
+      - property_admin_api
+    tags:
+      - miniapp
+    summary: 查询本公司居民房屋授权
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - AdminSession: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/PropertyHouseBindingPage
+    x-permissions:
+      - property.resident_house_binding.read
+    parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              enum:
+                - active
+                - released
+                - revoked
+            - type: 'null'
+      - *id017
+      - *id018
+      - *id019
+      - *id020
+      - *id011
+      - *id012
+      - *id015
+binding:
+  get:
+    operationId: getPropertyHouseBinding
+    x-runtimes:
+      - property_admin_api
+    tags:
+      - miniapp
+    summary: 读取本公司房屋授权
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - AdminSession: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/PropertyHouseBinding
+    x-permissions:
+      - property.resident_house_binding.read
+    parameters:
+      - name: binding_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+revocations:
+  post:
+    operationId: revokeHouseBinding
+    x-runtimes:
+      - property_admin_api
+    tags:
+      - miniapp
+    summary: 物业撤销房屋授权
+    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    security:
+      - AdminSession: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/house-claim-schemas.yaml#/PropertyHouseBinding
+    x-permissions:
+      - property.resident_house_binding.read
+      - property.resident_house_binding.revoke
+    parameters:
+      - name: binding_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/house-claim-schemas.yaml#/HouseRevocation

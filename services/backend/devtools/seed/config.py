@@ -155,6 +155,8 @@ REGISTRY = {
 }
 EXCLUDED_TABLES = {
     "alembic_version": "Alembic migration bookkeeping",
+    "house_claim_applications": "认领与审核需由授权用户发起，不在后台开发数据场景中伪造",
+    "resident_house_bindings": "房屋授权来源于认领审批，不在后台开发数据场景中伪造",
     "miniapp_users": "微信账号必须经真实授权创建，不在后台开发数据场景中伪造",
     "miniapp_phone_bindings": "手机号授权事实不由开发数据填充生成",
     "miniapp_phone_verifications": "微信成功验证凭据不由开发数据填充生成",

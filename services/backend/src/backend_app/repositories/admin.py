@@ -236,6 +236,8 @@ class AdminRepository:
     ) -> None:
         # Only these non-secret fields may enter the audit JSON.
         allowed = {"changed_fields", "role_ids", "permissions"}
+        if action in {"property.house_claim.review", "property.resident_house_binding.revoke"}:
+            allowed |= {"status", "match_status", "house_id"}
         safe = {key: value for key, value in (metadata or {}).items() if key in allowed}
         self.db.add(
             AdminAuditLog(

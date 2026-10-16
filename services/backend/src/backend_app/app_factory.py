@@ -30,8 +30,10 @@ def create_app(service_name: str) -> FastAPI:
 
         app.include_router(create_property_admin_router())
     elif runtime == "resident_api":
+        from backend_app.api.resident.house_claims import create_resident_house_claim_router
         from backend_app.api.resident.identity import create_resident_identity_router
 
         app.include_router(create_resident_identity_router())
+        app.include_router(create_resident_house_claim_router())
     configure_openapi(app)
     return app
