@@ -1,0 +1,120 @@
+MiniappLogin:
+  type: object
+  additionalProperties: false
+  properties:
+    code:
+      type: string
+      maxLength: 512
+      minLength: 1
+  required:
+    - code
+PhoneBindingCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    code:
+      type: string
+      maxLength: 512
+      minLength: 1
+    expected_phone:
+      anyOf:
+        - type: string
+          minLength: 11
+          maxLength: 15
+          pattern: ^(?:(?:\+86|0086))?1[3-9][0-9]{9}$
+        - type: 'null'
+  required:
+    - code
+MiniappUser:
+  type: object
+  additionalProperties: false
+  properties:
+    id: &id002
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    enabled:
+      type: boolean
+    created_at: &id001
+      type: string
+      format: date-time
+    last_login_at: *id001
+  required:
+    - id
+    - enabled
+    - created_at
+    - last_login_at
+ResidentSession:
+  type: object
+  additionalProperties: false
+  properties:
+    token:
+      type: string
+    expires_at: *id001
+    user:
+      $ref: '#/MiniappUser'
+  required:
+    - token
+    - expires_at
+    - user
+ResidentSessionState:
+  type: object
+  additionalProperties: false
+  properties:
+    expires_at: *id001
+    user:
+      $ref: '#/MiniappUser'
+  required:
+    - expires_at
+    - user
+PhoneBinding:
+  type: object
+  additionalProperties: false
+  properties:
+    id: *id002
+    phone:
+      type: string
+    status:
+      type: string
+      enum:
+        - active
+        - unbound
+    first_verified_at: *id001
+    last_verified_at: *id001
+    unbound_at:
+      anyOf:
+        - *id001
+        - type: 'null'
+    row_version:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    created_at: *id001
+    updated_at: *id001
+  required:
+    - id
+    - phone
+    - status
+    - first_verified_at
+    - last_verified_at
+    - unbound_at
+    - row_version
+    - created_at
+    - updated_at
+PhoneBindingPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/PhoneBinding'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size

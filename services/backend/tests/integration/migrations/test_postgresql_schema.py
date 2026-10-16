@@ -33,7 +33,11 @@ def test_fresh_schema_matches_models_and_native_timestamp_precision(
                     timestamp_count += 1
                 if table.name == "admin_audit_logs" and column["name"] == "metadata":
                     assert isinstance(column["type"], JSONB)
-        assert timestamp_count == 21
+        assert timestamp_count == sum(
+            column.name.endswith("_at")
+            for table in Base.metadata.sorted_tables
+            for column in table.columns
+        )
 
 
 def test_connection_settings_and_timestamp_roundtrip_preserve_utc_microseconds(

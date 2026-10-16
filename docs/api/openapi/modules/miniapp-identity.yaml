@@ -1,0 +1,248 @@
+sessions:
+  post:
+    operationId: createResidentSession
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 微信登录
+    description: 独立居民会话；仅操作本人资源。敏感结果不缓存，状态或幂等冲突返回409。
+    security: []
+    responses:
+      '401': &id002
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403': &id003
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404': &id004
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409': &id005
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422': &id006
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500': &id007
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503': &id008
+        $ref: ../components/responses.yaml#/AdminProblem
+      '429': &id009
+        description: 操作过于频繁
+        headers:
+          X-Request-ID: &id001
+            $ref: ../components/headers.yaml#/RequestId
+          Retry-After:
+            schema:
+              type: integer
+              minimum: 1
+        content:
+          application/problem+json:
+            schema:
+              $ref: ../components/errors.yaml#/ProblemDetails
+      '201':
+        description: 操作成功
+        headers: &id010
+          X-Request-ID: *id001
+        content:
+          application/json:
+            schema:
+              $ref: ../components/miniapp-schemas.yaml#/ResidentSession
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/miniapp-schemas.yaml#/MiniappLogin
+currentSession:
+  get:
+    operationId: getResidentSession
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 恢复居民会话
+    description: 独立居民会话；仅操作本人资源。敏感结果不缓存，状态或幂等冲突返回409。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/miniapp-schemas.yaml#/ResidentSessionState
+  delete:
+    operationId: deleteResidentSession
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 退出居民会话
+    description: 独立居民会话；仅操作本人资源。敏感结果不缓存，状态或幂等冲突返回409。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '204':
+        description: 操作成功
+        headers: *id010
+me:
+  get:
+    operationId: getMiniappUser
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 获取本人账号
+    description: 独立居民会话；仅操作本人资源。敏感结果不缓存，状态或幂等冲突返回409。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/miniapp-schemas.yaml#/MiniappUser
+phones:
+  get:
+    operationId: listPhoneBindings
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 查询本人手机号
+    description: 独立居民会话；仅操作本人资源。敏感结果不缓存，状态或幂等冲突返回409。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '200':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/miniapp-schemas.yaml#/PhoneBindingPage
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+  post:
+    operationId: createPhoneBinding
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 微信快速验证并绑定手机号
+    description: 微信快速验证成功后直接保存绑定与成功记录；多号码可复用。Idempotency-Key同键同输入返回当前绑定，包括已解绑状态；同键不同输入409。手填号码须与微信结果一致。新建与重放均201。Redis不保存临时手机号凭证或结果。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '201':
+        description: 操作成功
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/miniapp-schemas.yaml#/PhoneBinding
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/miniapp-schemas.yaml#/PhoneBindingCreate
+    parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Za-z0-9_-]{1,128}$
+phone:
+  delete:
+    operationId: deletePhoneBinding
+    x-runtimes:
+      - resident_api
+    tags:
+      - miniapp
+    summary: 解绑手机号
+    description: 独立居民会话；仅操作本人资源。敏感结果不缓存，状态或幂等冲突返回409。
+    security:
+      - ResidentToken: []
+    responses:
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '409': *id005
+      '422': *id006
+      '500': *id007
+      '503': *id008
+      '429': *id009
+      '204':
+        description: 操作成功
+        headers: *id010
+    parameters:
+      - name: phone_binding_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: expected_row_version
+        in: query
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991

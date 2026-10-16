@@ -182,6 +182,42 @@ ProblemDetails:
       billing.amount_out_of_range:
         status: 409
         title: 计费金额超过支持范围
+    resident:
+      resident.state_changed:
+        status: 409
+        title: 状态已变化，请刷新后重试
+      resident.phone_unavailable:
+        status: 409
+        title: 请选择本人有效的手机号
+      resident.already_claimed:
+        status: 409
+        title: 已绑定该房屋
+      resident.duplicate_claim:
+        status: 409
+        title: 该房屋已有待审核申请
+      resident.idempotency_conflict:
+        status: 409
+        title: 请求标识已被其他操作使用
+      resident.housing_unavailable:
+        status: 409
+        title: 房屋或所属物业暂不可用
+      resident.reason_required:
+        status: 422
+        title: 请填写核实或处理说明
+      resident.rate_limited:
+        status: 429
+        title: 操作过于频繁，请稍后再试
+    wechat:
+      wechat.invalid_code:
+        status: 422
+        title: 微信授权已失效，请重新授权
+      wechat.phone_mismatch:
+        status: 409
+        title: 微信授权号码与填写号码不一致
+      wechat.unsupported_phone:
+        status: 422
+        title: 暂仅支持中国大陆手机号
+
 ValidationIssue:
   type: object
   required:

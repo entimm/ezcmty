@@ -17,7 +17,7 @@ def create_app(service_name: str) -> FastAPI:
         version=settings.version,
         description=f"{service_name} API",
     )
-    app.add_middleware(RequestIdMiddleware)
+    app.add_middleware(RequestIdMiddleware, no_store=service_name == "resident-api")
     register_exception_handlers(app)
     app.include_router(create_system_router(service_name))
     runtime = service_name.replace("-", "_")
@@ -29,5 +29,9 @@ def create_app(service_name: str) -> FastAPI:
         from backend_app.api.property_admin.router import create_property_admin_router
 
         app.include_router(create_property_admin_router())
+    elif runtime == "resident_api":
+        from backend_app.api.resident.identity import create_resident_identity_router
+
+        app.include_router(create_resident_identity_router())
     configure_openapi(app)
     return app

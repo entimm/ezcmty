@@ -88,7 +88,12 @@ async def handle_app_error(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, AppError)
     if exc.status_code >= 500:
         log_exception(exc, code=exc.code)
-    return create_problem_response(request, exc.code, public_detail=exc.public_detail)
+    return create_problem_response(
+        request,
+        exc.code,
+        public_detail=exc.public_detail,
+        headers={"Retry-After": str(exc.retry_after)} if exc.retry_after is not None else None,
+    )
 
 
 async def handle_validation_error(request: Request, exc: Exception) -> JSONResponse:

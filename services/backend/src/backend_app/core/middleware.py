@@ -12,8 +12,9 @@ from backend_app.core.logging import log_exception, request_id_context
 
 
 class RequestIdMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
+    def __init__(self, app: ASGIApp, *, no_store: bool = False) -> None:
         self.app = app
+        self.no_store = no_store
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -45,6 +46,12 @@ class RequestIdMiddleware:
                     if key.lower() != b"x-request-id"
                 ]
                 headers.append((b"x-request-id", request_id.encode()))
+                route_path = getattr(scope.get("route"), "path", "")
+                if self.no_store or route_path.startswith(
+                    ("/v1/house-claims", "/v1/resident-house-bindings")
+                ):
+                    headers = [(k, v) for k, v in headers if k.lower() != b"cache-control"]
+                    headers.append((b"cache-control", b"no-store"))
                 message["headers"] = headers
             await send(message)
 

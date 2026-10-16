@@ -7,6 +7,7 @@ class AppError(Exception):
         code: str,
         *,
         public_detail: str | None = None,
+        retry_after: int | None = None,
     ) -> None:
         if code not in ERROR_CATALOG:
             raise ValueError("Business errors must use a registered error code")
@@ -19,3 +20,4 @@ class AppError(Exception):
         self.code = code
         self.status_code = status
         self.public_detail = public_detail
+        self.retry_after = retry_after

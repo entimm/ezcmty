@@ -12,12 +12,15 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session, sessionmaker
 from tests.support.admin import NEW_PASSWORD, TEST_PASSWORD, Harness, admin, company
 from tests.support.redis import MemoryRedis
+from tests.support.resident import FakeWechat, ResidentHarness
 from tests.support.workspace import WorkspaceHarness, create_community
 
 from backend_app.api.admin import get_admin_session_store
+from backend_app.api.resident.identity import get_resident_session_store, get_wechat_miniapp
 from backend_app.app_factory import create_app
 from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.config import get_settings
+from backend_app.core.resident_sessions import ResidentSessionStore
 from backend_app.db.session import get_database_session
 from backend_app.services.platform_admin.admin import PlatformAdminService
 
@@ -34,6 +37,9 @@ def harness(migrated_database_url: str, monkeypatch: MonkeyPatch) -> Iterator[Ha
     try:
         assert set(inspect(engine).get_table_names()) == {
             "alembic_version",
+            "miniapp_users",
+            "miniapp_phone_bindings",
+            "miniapp_phone_verifications",
             "admin_accounts",
             "admin_roles",
             "admin_account_roles",
@@ -119,3 +125,23 @@ def workspace(harness: Harness) -> Iterator[WorkspaceHarness]:
             account_id=account_data["id"],
             community_id=community_data["id"],
         )
+
+
+@pytest.fixture
+def resident(harness: Harness, monkeypatch: MonkeyPatch) -> Iterator[ResidentHarness]:
+    store = ResidentSessionStore(cast("Redis[str]", harness.redis), harness.store.settings)
+    monkeypatch.setattr("backend_app.core.resident_sessions.time", lambda: harness.redis.now)
+    wechat = FakeWechat()
+    app = create_app("resident-api")
+
+    def database() -> Generator[Session]:
+        with harness.factory() as db:
+            yield db
+
+    app.dependency_overrides[get_database_session] = database
+    app.dependency_overrides[get_resident_session_store] = lambda: store
+    app.dependency_overrides[get_wechat_miniapp] = lambda: wechat
+    with TestClient(app) as client:
+        value = ResidentHarness(client, store, wechat)
+        value.login()
+        yield value
