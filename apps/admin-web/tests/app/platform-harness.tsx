@@ -45,6 +45,10 @@ import HousesPage from '@/features/property/housing/HousesPage';
 import HouseDetailPage from '@/features/property/housing/HouseDetailPage';
 import BillsPage from '@/features/property/billing/BillsPage';
 import BillDetailPage from '@/features/property/billing/BillDetailPage';
+import ClaimsPage from '@/features/property/house-claims/ClaimsPage';
+import ClaimDetailPage from '@/features/property/house-claims/ClaimDetailPage';
+import BindingsPage from '@/features/property/house-claims/BindingsPage';
+import BindingDetailPage from '@/features/property/house-claims/BindingDetailPage';
 
 import type { SessionResponse } from '@/shared/api/admin';
 
@@ -69,6 +73,10 @@ const pages = {
   '@/features/property/housing/HouseDetailPage': HouseDetailPage,
   '@/features/property/billing/BillsPage': BillsPage,
   '@/features/property/billing/BillDetailPage': BillDetailPage,
+  '@/features/property/house-claims/ClaimsPage': ClaimsPage,
+  '@/features/property/house-claims/ClaimDetailPage': ClaimDetailPage,
+  '@/features/property/house-claims/BindingsPage': BindingsPage,
+  '@/features/property/house-claims/BindingDetailPage': BindingDetailPage,
 };
 
 export const session: SessionResponse = {
