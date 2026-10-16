@@ -4,7 +4,7 @@
 
 - 使用 PostgreSQL 18.x，数据库编码为 UTF8，字符串使用确定性、大小写敏感的排序规则。
 - 使用 SQLAlchemy 2.x 同步 Session 和 Psycopg 3，连接协议为 `postgresql+psycopg`。
-- 金额统一使用整数分，禁止浮点数；需要大范围整数时使用 `BIGINT`，正值范围通过 CHECK 约束表达。
+- 金额统一使用整数分，禁止浮点数；需要大范围整数时使用 `BIGINT`，正值范围通过 CHECK 约束表达。金额字段名称必须以 `_cents` 结尾，例如 `amount_cents`、`balance_cents`、`rebate_cents`、`property_fee_cents`。费率、比例及数量字段不适用此后缀。
 - 所有表示时间点的字段统一使用 `timestamptz(6)`，应用生成带时区的 UTC 时间，应用和迁移连接均显式设置 UTC。日期字段使用 `date`。
 - JSON 文档使用 `jsonb`，索引按实际查询需求建立。
 - 数据库结构变更统一通过 Alembic 迁移，利用 PostgreSQL 事务性 DDL；不在应用启动时自动执行结构变更。
