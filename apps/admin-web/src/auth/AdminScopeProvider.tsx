@@ -15,6 +15,7 @@ import type {
   AuthStatus,
 } from '../shared/admin-types';
 import { createAdminAuthApi } from './api';
+import { clearPendingRequests } from '../shared/pending-requests';
 import { AdminSessionContext } from './session-context';
 
 interface ProviderProps {
@@ -70,6 +71,11 @@ function ScopedState({
   function setSession(value: AdminSession | null) {
     if (value && value.scope !== scope)
       throw new Error('Session scope does not match this application');
+    if (
+      sessionRef.current &&
+      (!value || sessionRef.current.subjectId !== value.subjectId)
+    )
+      clearPendingRequests(scope, sessionRef.current.subjectId);
     requestClient.cancel();
     void queryClient.cancelQueries();
     queryClient.clear();
@@ -95,6 +101,11 @@ function ScopedState({
         sessionRef.current?.csrfToken !== value.csrfToken ||
         sessionRef.current?.mustChangePassword !== value.mustChangePassword
       ) {
+        if (
+          sessionRef.current &&
+          sessionRef.current.subjectId !== value.subjectId
+        )
+          clearPendingRequests(scope, sessionRef.current.subjectId);
         requestClient.cancel();
         void queryClient.cancelQueries();
         queryClient.clear();
@@ -126,6 +137,8 @@ function ScopedState({
         requestClient.cancel();
         void queryClient.cancelQueries();
         queryClient.clear();
+        if (sessionRef.current)
+          clearPendingRequests(scope, sessionRef.current.subjectId);
         sessionRef.current = null;
         setState((previous) => ({
           session: null,

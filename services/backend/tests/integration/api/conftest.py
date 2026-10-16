@@ -44,6 +44,10 @@ def harness(migrated_database_url: str, monkeypatch: MonkeyPatch) -> Iterator[Ha
             "community_space_nodes",
             "houses",
             "house_owners",
+            "property_fee_basis_versions",
+            "bills",
+            "bill_settlement_entries",
+            "bill_operations",
         }
         factory = sessionmaker(bind=engine, autoflush=False)
         with factory() as db:

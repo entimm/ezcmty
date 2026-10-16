@@ -67,6 +67,14 @@ def test_platform_provisioning_to_restricted_login_password_change_and_workspace
         "property.house_owner.read",
         "property.house_owner.create",
         "property.house_owner.update",
+        "property.fee_basis.read",
+        "property.fee_basis.create",
+        "property.bill.read",
+        "property.bill.create",
+        "property.bill.update",
+        "property.bill.void",
+        "property.bill_receipt.create",
+        "property.bill_receipt.correct",
     }
     own = w.client.get(f"{PREFIX}/property-companies/current")
     assert own.status_code == 200 and own.json()["id"] == w.company_id

@@ -125,6 +125,8 @@ make seed-plan SEED_ARGS="--config devtools/seed/example.toml"
 make seed SEED_ARGS="--config devtools/seed/example.toml --set housing.houses_per_unit=50 --workers=2"
 ```
 
+计费依据、账单、收款明细和账单操作不属于现有 seed 场景，覆盖检查明确排除；可通过物业后台按 [账单设计](../design/property/billing.md#页面与交互) 维护。
+
 `SCENARIOS` 支持 `admin`、`property`、`housing`，多个名称用空格分隔；`all` 选择全部。仅选择 `housing` 时，默认准备一家物业、一个小区和一个物业管理员；可以覆盖其 `property.*` 前置参数。单独运行 `admin` 不生成物业数据。配置不得包含未选择且不属于依赖的场景。
 
 | 场景     | 数量参数                | 默认值与范围                                                      |

@@ -6,7 +6,7 @@ import {
   type ProColumns,
 } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Card, Descriptions, Space, Spin } from 'antd';
+import { Alert, Button, Card, Descriptions, Space, Spin, Tabs } from 'antd';
 import { useAdminApp } from '../../../shared/admin-app-context';
 import { useListState } from '../../../shared/hooks/use-list-state';
 import {
@@ -20,6 +20,8 @@ import type { House, HouseOwner } from './api';
 import { HousingStatus } from './HousingStatus';
 import { HouseEditor, OwnerEditor } from './HousingEditors';
 import { StatusAction } from './StatusAction';
+import { FeeBasisPanel } from '../billing/FeeBasisPanel';
+import { BillsTable } from '../billing/BillsTable';
 
 function Owners({ communityId, house }: { communityId: string; house: House }) {
   const api = useHousingApi();
@@ -133,6 +135,14 @@ export default function HouseDetailPage() {
   const api = useHousingApi();
   const { status, hasPermission } = usePropertySession();
   const [editing, setEditing] = useState(false);
+  const tabs = useListState();
+  const tab = tabs.params.get('tab');
+  const activeTab =
+    tab === 'basis' && hasPermission('property.fee_basis.read')
+      ? 'basis'
+      : tab === 'bills' && hasPermission('property.bill.read')
+        ? 'bills'
+        : 'owners';
   const operation = useHousingOperation();
   const query = useQuery({
     queryKey: ['houses', 'detail', communityId, houseId],
@@ -234,7 +244,48 @@ export default function HouseDetailPage() {
                 ]}
               />
             </Card>
-            <Owners communityId={communityId} house={house} />
+            <Tabs
+              activeKey={activeTab}
+              onChange={(key) =>
+                tabs.update({ tab: key === 'owners' ? undefined : key })
+              }
+              items={[
+                {
+                  key: 'owners',
+                  label: '业主登记',
+                  children: <Owners communityId={communityId} house={house} />,
+                },
+                ...(hasPermission('property.fee_basis.read')
+                  ? [
+                      {
+                        key: 'basis',
+                        label: '计费依据',
+                        children: (
+                          <FeeBasisPanel
+                            communityId={communityId}
+                            house={house}
+                          />
+                        ),
+                      },
+                    ]
+                  : []),
+                ...(hasPermission('property.bill.read')
+                  ? [
+                      {
+                        key: 'bills',
+                        label: '账单',
+                        children: (
+                          <BillsTable
+                            communityId={communityId}
+                            house={house}
+                            enabled={house.effective_enabled}
+                          />
+                        ),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           </Space>
         )
       )}

@@ -58,4 +58,28 @@ export const propertyRoutes: AdminRoute[] = [
     permission: 'property.house.read',
     states: ['authenticated'],
   },
+  {
+    path: '/property/bills',
+    component: '@/features/property/billing/BillsPage',
+    title: '账单管理',
+    menu: true,
+    permission: 'property.bill.read',
+    states: ['authenticated'],
+  },
+  {
+    path: '/property/communities/:community_id/bills',
+    component: '@/features/property/billing/BillsPage',
+    title: '账单管理',
+    menuParent: '/property/bills',
+    permission: 'property.bill.read',
+    states: ['authenticated'],
+  },
+  {
+    path: '/property/communities/:community_id/bills/:bill_id',
+    component: '@/features/property/billing/BillDetailPage',
+    title: '账单详情',
+    menuParent: '/property/bills',
+    permission: 'property.bill.read',
+    states: ['authenticated'],
+  },
 ];

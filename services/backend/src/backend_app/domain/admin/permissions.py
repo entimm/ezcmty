@@ -17,6 +17,14 @@ def permission_catalog(scope: AdminScope) -> list[PermissionDefinition]:
             PermissionDefinition(code=c, name=n, group=g, assignable=True)
             for c, n, g in (
                 ("property.company.read", "查看本公司资料", "物业公司"),
+                ("property.fee_basis.read", "查看物业费计费依据及试算", "计费依据"),
+                ("property.fee_basis.create", "新增计费依据版本", "计费依据"),
+                ("property.bill.read", "查看账单及收款历史", "账单"),
+                ("property.bill.create", "建立账单", "账单"),
+                ("property.bill.update", "修改账单资料", "账单"),
+                ("property.bill.void", "作废账单", "账单"),
+                ("property.bill_receipt.create", "登记线下收款", "收款"),
+                ("property.bill_receipt.correct", "纠正及撤销收款登记", "收款"),
                 ("property.community.read", "查看本公司小区", "小区"),
                 ("property.space.read", "查看空间节点", "空间管理"),
                 ("property.space.create", "创建空间节点", "空间管理"),

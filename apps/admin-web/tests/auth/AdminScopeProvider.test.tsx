@@ -9,8 +9,12 @@ import { AdminScopeProvider } from '@/auth/AdminScopeProvider';
 import type { AdminScope } from '@/shared/admin-types';
 import type { AdminSessionContextValue } from '@/auth/session-context';
 import { useAdminSession } from '@/auth/use-admin-session';
+import { pendingSnapshot, savePending } from '@/shared/pending-requests';
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  localStorage.clear();
+  vi.unstubAllGlobals();
+});
 
 function renderScopes(withOptions = false) {
   const sessions = {} as Record<AdminScope, AdminSessionContextValue>;
@@ -87,6 +91,26 @@ describe('admin scope isolation', () => {
         csrfToken: 'test-csrf',
       }),
     ).toThrow('Session scope');
+  });
+
+  it('clears submitted billing recovery records on logout only for that identity', () => {
+    const { sessions } = renderScopes();
+    act(() => {
+      login(sessions.property_admin);
+      login(sessions.platform_admin);
+    });
+    savePending('property_admin', 'property_admin-user', 'bill-key', {
+      kind: 'bill',
+      key: 'bill-key',
+    });
+    savePending('platform_admin', 'platform_admin-user', 'platform-key', {
+      key: 'platform-key',
+    });
+    act(() => sessions.property_admin.setSession(null));
+    expect(pendingSnapshot('property_admin', 'property_admin-user')).toBe('[]');
+    expect(pendingSnapshot('platform_admin', 'platform_admin-user')).toContain(
+      'platform-key',
+    );
   });
 
   it('uses the permission context of the current scope', () => {

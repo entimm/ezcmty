@@ -73,6 +73,7 @@ class House(Base):
             name="fk_house_space_node",
         ),
         UniqueConstraint("space_node_id", "room_no", name="uq_house_room_no"),
+        UniqueConstraint("community_id", "id", name="uq_house_community_id"),
         CheckConstraint("room_no <> '' AND room_no = btrim(room_no)", name="ck_house_room_no"),
         CheckConstraint(
             "external_code IS NULL OR "

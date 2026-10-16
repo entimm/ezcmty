@@ -195,6 +195,12 @@ def test_native_types_and_fresh_migration_schema(
             "parent_id",
             "space_node_id",
             "house_id",
+            "bill_id",
+            "basis_version_id",
+            "operation_id",
+            "reverses_entry_id",
+            "created_by",
+            "voided_by",
         }
         for table in Base.metadata.sorted_tables:
             columns = {column["name"]: column for column in inspector.get_columns(table.name)}
@@ -212,7 +218,14 @@ def test_native_types_and_fresh_migration_schema(
             values: Sequence[datetime] = (
                 connection.execute(text(f"SELECT created_at FROM {table.name}")).scalars().all()
             )
-            assert values and all(value is not None for value in values)
+            if table.name not in {
+                "bills",
+                "property_fee_basis_versions",
+                "bill_operations",
+                "bill_settlement_entries",
+            }:
+                assert values
+            assert all(value is not None for value in values)
         for identifier in (account_id, legacy_id):
             row = (
                 connection.execute(

@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 from devtools.seed.bootstrap import SeedSettings
-from devtools.seed.config import Plan, SeedError, resolve_plan
+from devtools.seed.config import EXCLUDED_TABLES, Plan, SeedError, resolve_plan
 from devtools.seed.repository import coverage
 from devtools.seed.runner import run
 from devtools.seed.state import COLUMNS, State, file_lock
@@ -62,7 +62,7 @@ def test_all_scenarios_cover_tables_append_and_export_usable_credentials(
     plan = resolve_plan(["admin", "property", "housing"], workers=2)
     directory = seed_run(plan)
     first = totals(factory)
-    assert all(count > 0 for count in first.values())
+    assert all(count > 0 for table, count in first.items() if table not in EXCLUDED_TABLES)
     assert first["houses"] == plan.counts()["houses"]
     assert first["house_owners"] == plan.counts()["owners"]
     client = real_admin[1].client

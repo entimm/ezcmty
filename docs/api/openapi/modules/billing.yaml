@@ -1,0 +1,1104 @@
+basisVersions:
+  get:
+    operationId: listFeeBasisVersions
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.fee_basis.read
+    tags:
+      - billing
+    summary: 查询房屋计费依据历史
+    description: 按版本号倒序分页，仅返回当前公司、指定小区和房屋的不可变完整版本。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: house_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/FeeBasisPage
+  post:
+    operationId: createFeeBasisVersion
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.fee_basis.create
+    tags:
+      - billing
+    summary: 新增计费依据版本
+    description:
+      房屋及上级必须启用。携带 expected_latest_version_no（无历史为 0），锁定房屋后核对最新版本并分配下一版本号。版本按整月生效，同月更正只追加版本，不修改旧账单。固定金额非空时优先采用，包括
+      0；否则面积乘每平方米月单价并最终四舍五入到分。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: house_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '201':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/FeeBasisVersion
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/billing-schemas.yaml#/FeeBasisCreate
+basisVersion:
+  get:
+    operationId: getFeeBasisVersion
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.fee_basis.read
+    tags:
+      - billing
+    summary: 读取确切计费依据版本
+    description: 按公司、小区、房屋和版本共同限定数据范围，越界返回 404。历史版本不可修改或删除。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: house_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/FeeBasisVersion
+calculation:
+  post:
+    operationId: calculatePropertyFee
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.fee_basis.read
+    tags:
+      - billing
+    summary: 按月份试算物业费
+    description: 只读 POST，仍校验 Origin 和 CSRF。选择生效月份不晚于账单月的最近月份，再取该月份最大版本号。缺失依据返回 available=false。试算不锁定价格，建账时重新解析版本及金额。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: house_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/FeeCalculation
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/billing-schemas.yaml#/FeeCalculationRequest
+bills:
+  get:
+    operationId: listBills
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.bill.read
+    tags:
+      - billing
+    summary: 分页查询账单
+    description:
+      公司范围来自认证上下文。默认查询全部月份的有效账单；outstanding_only=true 查询待缴账单。空间筛选包含后代；外部编号区分大小写且精确匹配。is_overdue
+      按 Asia/Shanghai 的业务日、到期日早于今天且仍有待缴计算。记录与总数使用同一语句快照，空页仍返回总数。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: house_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - $ref: ../components/schemas.yaml#/UUIDIdentifier
+            - type: 'null'
+      - name: space_node_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - $ref: ../components/schemas.yaml#/UUIDIdentifier
+            - type: 'null'
+      - name: billing_month_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              pattern: ^\d{4}-(0[1-9]|1[0-2])$
+            - type: 'null'
+      - name: billing_month_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              pattern: ^\d{4}-(0[1-9]|1[0-2])$
+            - type: 'null'
+      - name: lifecycle_status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - active
+            - voided
+          default: active
+      - name: settlement_status
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              enum:
+                - unpaid
+                - partially_settled
+                - settled
+            - type: 'null'
+      - name: outstanding_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: external_bill_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 128
+            - type: 'null'
+      - name: due_date_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+      - name: due_date_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+      - name: is_overdue
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - -period_start
+            - period_start
+            - -created_at
+            - created_at
+            - due_date
+            - -due_date
+            - receivable_cents
+            - -receivable_cents
+            - outstanding_cents
+            - -outstanding_cents
+          default: -period_start
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/BillPage
+  post:
+    operationId: createBill
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.bill.create
+    tags:
+      - billing
+    summary: 手动建立月度物业费账单
+    description:
+      需要 Idempotency-Key。同公司相同键和规范化输入重放首次成功结果，同键不同输入返回 409。自动计算或附参考依据额外要求 property.fee_basis.read；初始收款额外要求
+      property.bill_receipt.create。自动模式必须核对依据 ID、规则版本和预期金额；预览已变化返回 409。手填金额允许不绑定依据，原因必填。应收可为 0，此时直接结清且不创建收款。可同时登记部分或全额初始已缴，建账、明细、操作和审计原子提交。一房一月只允许一张有效账单，作废后可新建。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Za-z0-9_-]+$
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '201':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/BillWriteResult
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/billing-schemas.yaml#/BillCreate
+bill:
+  get:
+    operationId: getBill
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.bill.read
+    tags:
+      - billing
+    summary: 读取账单详情
+    description: 只返回当前公司和小区内账单。property.bill.read 包含查看本账单固定引用的计费依据证明，无需额外授予全部依据历史读取权限。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: bill_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/Bill
+  patch:
+    operationId: updateBill
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.bill.update
+    tags:
+      - billing
+    summary: 修改账单资料
+    description:
+      仅允许修改外部编号及到期日，至少提供一个字段，显式 null 清空。携带 Idempotency-Key 和 expected_row_version。成功版本加一，旧版本返回
+      409；已作废只读。应收、月份、房屋、位置快照及依据引用不可修改。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: bill_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Za-z0-9_-]+$
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/BillWriteResult
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/billing-schemas.yaml#/BillUpdate
+voids:
+  post:
+    operationId: voidBill
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.bill.void
+    tags:
+      - billing
+    summary: 作废账单
+    description: 携带 Idempotency-Key、expected_row_version 和必填原因。仅净结清金额为 0 时允许（含零元账单）。作废后只读并释放该房屋月份的有效账单唯一性，不恢复旧单。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: bill_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Za-z0-9_-]+$
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/BillWriteResult
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/billing-schemas.yaml#/BillReasonAction
+entries:
+  get:
+    operationId: listBillSettlementEntries
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.bill.read
+    tags:
+      - billing
+    summary: 分页读取收款与冲正流水
+    description: 按登记时间和 ID 倒序独立分页，包含原收款、冲正和纠错后的新收款；返回冲正关联、操作者和操作原因。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: bill_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/SettlementEntryPage
+receipts:
+  post:
+    operationId: createOfflineReceipt
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.bill_receipt.create
+    tags:
+      - billing
+    summary: 追加线下收款登记
+    description:
+      携带 Idempotency-Key 和 expected_row_version；账单必须有效，房屋及上级必须启用。金额为正整数分且不能超过待缴；不记录渠道或外部收据。实际收款日期可空，但不能晚于
+      Asia/Shanghai 的业务今天。汇总、明细、操作和审计原子提交。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: bill_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Za-z0-9_-]+$
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '201':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/BillWriteResult
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/billing-schemas.yaml#/ReceiptCreate
+corrections:
+  post:
+    operationId: correctOfflineReceipt
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.bill_receipt.correct
+    tags:
+      - billing
+    summary: 纠正线下收款登记
+    description: 携带 Idempotency-Key、expected_row_version 和必填原因。在同一事务中完整冲正指定原收款，再登记正确的正金额及日期。只能更正同一账单尚未冲正的原收款，最终净结清不得超出应收。历史全部保留；房屋或上级停用后仍允许纠错。此操作不表示退款。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: bill_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: entry_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Za-z0-9_-]+$
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '201':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/BillWriteResult
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/billing-schemas.yaml#/ReceiptCorrection
+reversals:
+  post:
+    operationId: reverseOfflineReceipt
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.bill_receipt.correct
+    tags:
+      - billing
+    summary: 撤销线下误登记
+    description: 携带 Idempotency-Key、expected_row_version 和必填原因。追加与指定原收款金额完全相反的冲正；不能冲正另一条冲正，同一原收款最多冲正一次。已作废账单只读，停用房屋可纠错，此操作不表示退款。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: bill_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: entry_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+            - type: string
+            - type: 'null'
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Za-z0-9_-]+$
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '201':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/BillWriteResult
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/billing-schemas.yaml#/BillReasonAction
+operations:
+  get:
+    operationId: listBillOperations
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.bill.read
+    tags:
+      - billing
+    summary: 分页读取账单操作历史
+    description: 按账单版本倒序独立分页，包含每次成功操作的操作者、原因、版本及请求标识。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: bill_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/BillOperationPage
+operationResult:
+  get:
+    operationId: getBillOperationResult
+    x-runtimes:
+      - property_admin_api
+    x-permissions:
+      - property.bill.read
+    tags:
+      - billing
+    summary: 核实账单操作结果
+    description:
+      仅允许当前公司内原操作人查询，并校验当前 property.bill.read、原操作权限及建账涉及的附加权限。返回首次成功状态码和结果快照；应重新读取账单当前详情。404
+      仅表示暂未查到可见已提交结果，不能据此认定原请求失败；恢复须使用原幂等键及原输入。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: idempotency_key
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Za-z0-9_-]+$
+    responses:
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/billing-schemas.yaml#/BillOperationResult

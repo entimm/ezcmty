@@ -139,6 +139,49 @@ ProblemDetails:
       property.housing_disabled:
         status: 409
         title: 所属小区、空间或房屋已停用
+    billing:
+      billing.basis_changed:
+        status: 409
+        title: 计费依据或计算结果已变化，请重新核对
+      billing.basis_missing:
+        status: 409
+        title: 该月份没有适用计费依据
+      billing.basis_version_conflict:
+        status: 409
+        title: 计费依据版本已变化，请刷新
+      billing.bill_exists:
+        status: 409
+        title: 该房屋月份已有有效账单
+      billing.version_conflict:
+        status: 409
+        title: 账单已变化，请刷新后核对
+      billing.overpayment:
+        status: 409
+        title: 登记金额超过账单应收范围
+      billing.bill_voided:
+        status: 409
+        title: 账单已作废
+      billing.bill_has_settlement:
+        status: 409
+        title: 账单存在有效收款，不能作废
+      billing.receipt_already_reversed:
+        status: 409
+        title: 该收款已被冲正
+      billing.invalid_receipt:
+        status: 409
+        title: 该条目不是可纠错的原始收款
+      billing.idempotency_conflict:
+        status: 409
+        title: 幂等键已用于其他请求
+      billing.house_label_too_long:
+        status: 409
+        title: 房屋位置超过账单长度限制
+      billing.invalid_reference:
+        status: 409
+        title: 参考依据不适用于该房屋月份
+      billing.amount_out_of_range:
+        status: 409
+        title: 计费金额超过支持范围
 ValidationIssue:
   type: object
   required:

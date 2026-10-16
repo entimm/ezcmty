@@ -83,7 +83,13 @@ REGISTRY = {
         ("property",),
     ),
 }
-EXCLUDED_TABLES = {"alembic_version": "Alembic migration bookkeeping"}
+EXCLUDED_TABLES = {
+    "alembic_version": "Alembic migration bookkeeping",
+    "property_fee_basis_versions": "Billing versions are maintained through the billing workflow",
+    "bills": "Billing scenarios are entered through the billing workflow",
+    "bill_operations": "Immutable results are created atomically by billing operations",
+    "bill_settlement_entries": "Immutable entries are created atomically by billing operations",
+}
 
 
 class Plan(Parameters):

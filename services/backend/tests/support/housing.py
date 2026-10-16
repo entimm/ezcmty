@@ -1,5 +1,7 @@
 from typing import Any
 
+from sqlalchemy import select
+
 from backend_app.models.admin import AdminRole
 from backend_app.repositories.admin import AdminRepository
 from tests.support.workspace import PREFIX, WorkspaceHarness
@@ -38,16 +40,24 @@ def create_house(
 
 def set_permissions(workspace: WorkspaceHarness, permissions: set[str]) -> None:
     with workspace.platform.factory() as db:
-        role = AdminRole(
-            scope="property_admin",
-            property_company_id=workspace.company_id,
-            code="housing_editor",
-            name="资料维护",
-            enabled=True,
-            is_system=False,
+        role = db.scalar(
+            select(AdminRole).where(
+                AdminRole.scope == "property_admin",
+                AdminRole.property_company_id == workspace.company_id,
+                AdminRole.code == "housing_editor",
+            )
         )
-        db.add(role)
-        db.flush()
+        if role is None:
+            role = AdminRole(
+                scope="property_admin",
+                property_company_id=workspace.company_id,
+                code="housing_editor",
+                name="资料维护",
+                enabled=True,
+                is_system=False,
+            )
+            db.add(role)
+            db.flush()
         repo = AdminRepository(db, "property_admin", workspace.company_id)
         repo.replace_permissions(role.id, permissions)
         repo.replace_roles(workspace.account_id, {role.id})

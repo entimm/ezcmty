@@ -43,6 +43,8 @@ import CommunitiesPage from '@/features/platform/property/CommunitiesPage';
 import WorkspaceCommunitiesPage from '@/features/property/CommunitiesPage';
 import HousesPage from '@/features/property/housing/HousesPage';
 import HouseDetailPage from '@/features/property/housing/HouseDetailPage';
+import BillsPage from '@/features/property/billing/BillsPage';
+import BillDetailPage from '@/features/property/billing/BillDetailPage';
 
 import type { SessionResponse } from '@/shared/api/admin';
 
@@ -65,6 +67,8 @@ const pages = {
   '@/features/property/CommunitiesPage': WorkspaceCommunitiesPage,
   '@/features/property/housing/HousesPage': HousesPage,
   '@/features/property/housing/HouseDetailPage': HouseDetailPage,
+  '@/features/property/billing/BillsPage': BillsPage,
+  '@/features/property/billing/BillDetailPage': BillDetailPage,
 };
 
 export const session: SessionResponse = {

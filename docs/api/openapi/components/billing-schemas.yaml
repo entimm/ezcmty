@@ -1,0 +1,703 @@
+FeeBasisVersion:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    house_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    version_no:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    effective_from_month:
+      type: string
+      pattern: ^\d{4}-(0[1-9]|1[0-2])$
+    house_usage:
+      type: string
+      enum:
+        - residential
+        - commercial
+        - office
+        - other
+    area_sqm:
+      anyOf:
+        - type: string
+          pattern: ^(?:0|[1-9]\d{0,7})(?:\.\d{1,4})?$
+        - type: 'null'
+    unit_price_cents:
+      anyOf:
+        - type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        - type: 'null'
+    fixed_amount_cents:
+      anyOf:
+        - type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        - type: 'null'
+    change_reason:
+      type: string
+      minLength: 1
+      maxLength: 1000
+    created_by:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    created_at:
+      type: string
+      format: date-time
+  required:
+    - id
+    - house_id
+    - version_no
+    - effective_from_month
+    - house_usage
+    - area_sqm
+    - unit_price_cents
+    - fixed_amount_cents
+    - change_reason
+    - created_by
+    - created_at
+FeeBasisCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    expected_latest_version_no:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    effective_from_month:
+      type: string
+      pattern: ^\d{4}-(0[1-9]|1[0-2])$
+    house_usage:
+      type: string
+      enum:
+        - residential
+        - commercial
+        - office
+        - other
+    area_sqm:
+      anyOf:
+        - type: string
+          pattern: ^(?:0|[1-9]\d{0,7})(?:\.\d{1,4})?$
+        - type: 'null'
+    unit_price_cents:
+      anyOf:
+        - type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        - type: 'null'
+    fixed_amount_cents:
+      anyOf:
+        - type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        - type: 'null'
+    change_reason:
+      type: string
+      minLength: 1
+      maxLength: 1000
+  required:
+    - expected_latest_version_no
+    - effective_from_month
+    - house_usage
+    - change_reason
+FeeCalculationRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    billing_month:
+      type: string
+      pattern: ^\d{4}-(0[1-9]|1[0-2])$
+  required:
+    - billing_month
+FeeCalculation:
+  type: object
+  additionalProperties: false
+  properties:
+    available:
+      type: boolean
+    billing_month:
+      type: string
+      pattern: ^\d{4}-(0[1-9]|1[0-2])$
+    period_start:
+      type: string
+      format: date
+    period_end:
+      type: string
+      format: date
+    house_label_snapshot:
+      type: string
+      minLength: 1
+      maxLength: 512
+    basis:
+      anyOf:
+        - $ref: ./billing-schemas.yaml#/FeeBasisVersion
+        - type: 'null'
+    calculation_method:
+      anyOf:
+        - type: string
+          enum:
+            - fixed
+            - area_rate
+        - type: 'null'
+    calculation_rule_version:
+      anyOf:
+        - type: integer
+          minimum: 1
+          maximum: 32767
+        - type: 'null'
+    receivable_cents:
+      anyOf:
+        - type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        - type: 'null'
+  required:
+    - available
+    - billing_month
+    - period_start
+    - period_end
+    - house_label_snapshot
+    - basis
+    - calculation_method
+    - calculation_rule_version
+    - receivable_cents
+InitialReceipt:
+  type: object
+  additionalProperties: false
+  properties:
+    amount_cents:
+      type: integer
+      exclusiveMinimum: 0
+      maximum: 9007199254740991
+    received_on:
+      anyOf:
+        - type: string
+          format: date
+        - type: 'null'
+    reason:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 1000
+        - type: 'null'
+  required:
+    - amount_cents
+BillCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    house_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    bill_type:
+      type: string
+      const: property_fee
+      default: property_fee
+    billing_month:
+      type: string
+      pattern: ^\d{4}-(0[1-9]|1[0-2])$
+    amount_source:
+      type: string
+      enum:
+        - basis
+        - manual
+    basis_version_id:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    expected_calculation_rule_version:
+      anyOf:
+        - type: integer
+          minimum: 1
+          maximum: 32767
+        - type: 'null'
+    expected_receivable_cents:
+      anyOf:
+        - type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        - type: 'null'
+    receivable_cents:
+      anyOf:
+        - type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        - type: 'null'
+    manual_amount_reason:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 1000
+        - type: 'null'
+    external_bill_no:
+      anyOf:
+        - type: string
+          maxLength: 128
+        - type: 'null'
+    due_date:
+      anyOf:
+        - type: string
+          format: date
+        - type: 'null'
+    initial_receipt:
+      anyOf:
+        - $ref: ./billing-schemas.yaml#/InitialReceipt
+        - type: 'null'
+  required:
+    - house_id
+    - billing_month
+    - amount_source
+BillUpdate:
+  type: object
+  additionalProperties: false
+  properties:
+    expected_row_version:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    external_bill_no:
+      anyOf:
+        - type: string
+          maxLength: 128
+        - type: 'null'
+    due_date:
+      anyOf:
+        - type: string
+          format: date
+        - type: 'null'
+  required:
+    - expected_row_version
+ReceiptCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    expected_row_version:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    amount_cents:
+      type: integer
+      exclusiveMinimum: 0
+      maximum: 9007199254740991
+    received_on:
+      anyOf:
+        - type: string
+          format: date
+        - type: 'null'
+    reason:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 1000
+        - type: 'null'
+  required:
+    - expected_row_version
+    - amount_cents
+ReceiptCorrection:
+  type: object
+  additionalProperties: false
+  properties:
+    expected_row_version:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    corrected_amount_cents:
+      type: integer
+      exclusiveMinimum: 0
+      maximum: 9007199254740991
+    corrected_received_on:
+      anyOf:
+        - type: string
+          format: date
+        - type: 'null'
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 1000
+  required:
+    - expected_row_version
+    - corrected_amount_cents
+    - corrected_received_on
+    - reason
+BillReasonAction:
+  type: object
+  additionalProperties: false
+  properties:
+    expected_row_version:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 1000
+  required:
+    - expected_row_version
+    - reason
+Bill:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    property_company_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    community_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    house_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    bill_type:
+      type: string
+      const: property_fee
+    period_granularity:
+      type: string
+      const: month
+    billing_month:
+      type: string
+      pattern: ^\d{4}-(0[1-9]|1[0-2])$
+    period_start:
+      type: string
+      format: date
+    period_end:
+      type: string
+      format: date
+    external_bill_no:
+      anyOf:
+        - type: string
+          maxLength: 128
+        - type: 'null'
+    basis_version_id:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    amount_source:
+      type: string
+      enum:
+        - basis
+        - manual
+    calculation_rule_version:
+      anyOf:
+        - type: integer
+          minimum: 1
+          maximum: 32767
+        - type: 'null'
+    receivable_cents:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    settled_cents:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    outstanding_cents:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    lifecycle_status:
+      type: string
+      enum:
+        - active
+        - voided
+    settlement_status:
+      anyOf:
+        - type: string
+          enum:
+            - unpaid
+            - partially_settled
+            - settled
+        - type: 'null'
+    due_date:
+      anyOf:
+        - type: string
+          format: date
+        - type: 'null'
+    is_overdue:
+      type: boolean
+    house_label_snapshot:
+      type: string
+      minLength: 1
+      maxLength: 512
+    manual_amount_reason:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 1000
+        - type: 'null'
+    void_reason:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 1000
+        - type: 'null'
+    voided_at:
+      anyOf:
+        - type: string
+          format: date-time
+        - type: 'null'
+    voided_by:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    row_version:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    created_by:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    basis:
+      anyOf:
+        - $ref: ./billing-schemas.yaml#/FeeBasisVersion
+        - type: 'null'
+    house_effective_enabled:
+      type: boolean
+  required:
+    - id
+    - property_company_id
+    - community_id
+    - house_id
+    - bill_type
+    - period_granularity
+    - billing_month
+    - period_start
+    - period_end
+    - external_bill_no
+    - basis_version_id
+    - amount_source
+    - calculation_rule_version
+    - receivable_cents
+    - settled_cents
+    - outstanding_cents
+    - lifecycle_status
+    - settlement_status
+    - due_date
+    - is_overdue
+    - house_label_snapshot
+    - manual_amount_reason
+    - void_reason
+    - voided_at
+    - voided_by
+    - row_version
+    - created_by
+    - created_at
+    - updated_at
+    - basis
+    - house_effective_enabled
+SettlementEntry:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    bill_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    operation_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    entry_type:
+      type: string
+      enum:
+        - receipt
+        - reversal
+    source_type:
+      type: string
+      const: offline
+    amount_cents:
+      type: integer
+      minimum: -9007199254740991
+      maximum: 9007199254740991
+    reverses_entry_id:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    reversed_by_entry_id:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    received_on:
+      anyOf:
+        - type: string
+          format: date
+        - type: 'null'
+    created_at:
+      type: string
+      format: date-time
+    actor_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    actor_name:
+      type: string
+    reason:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 1000
+        - type: 'null'
+  required:
+    - id
+    - bill_id
+    - operation_id
+    - entry_type
+    - source_type
+    - amount_cents
+    - reverses_entry_id
+    - reversed_by_entry_id
+    - received_on
+    - created_at
+    - actor_id
+    - actor_name
+    - reason
+BillOperation:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    bill_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    action:
+      type: string
+      enum:
+        - create
+        - update
+        - receipt
+        - correct_receipt
+        - reverse_receipt
+        - void
+    bill_version:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    actor_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    actor_name:
+      type: string
+    reason:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 1000
+        - type: 'null'
+    request_id:
+      type: string
+      pattern: ^[A-Za-z0-9_-]{1,64}$
+    created_at:
+      type: string
+      format: date-time
+  required:
+    - id
+    - bill_id
+    - action
+    - bill_version
+    - actor_id
+    - actor_name
+    - reason
+    - request_id
+    - created_at
+BillWriteResult:
+  type: object
+  additionalProperties: false
+  properties:
+    bill:
+      $ref: ./billing-schemas.yaml#/Bill
+    operation:
+      $ref: ./billing-schemas.yaml#/BillOperation
+    settlement_entries:
+      type: array
+      items:
+        $ref: ./billing-schemas.yaml#/SettlementEntry
+  required:
+    - bill
+    - operation
+    - settlement_entries
+BillOperationResult:
+  type: object
+  additionalProperties: false
+  properties:
+    response_status:
+      type: integer
+    result:
+      $ref: ./billing-schemas.yaml#/BillWriteResult
+  required:
+    - response_status
+    - result
+FeeBasisPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./billing-schemas.yaml#/FeeBasisVersion
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+BillPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./billing-schemas.yaml#/Bill
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+SettlementEntryPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./billing-schemas.yaml#/SettlementEntry
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+BillOperationPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./billing-schemas.yaml#/BillOperation
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size

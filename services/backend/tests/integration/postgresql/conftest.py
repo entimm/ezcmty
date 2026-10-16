@@ -12,10 +12,14 @@ from pytest import MonkeyPatch
 from redis import Redis
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+from tests.support.billing_services import BillingSetup
+from tests.support.housing_services import provision_housing
 from tests.support.postgresql import free_port, stop_service
 
 from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.config import get_settings
+from backend_app.schemas.housing import HouseCreate
+from backend_app.services.property_admin.housing import PropertyHousingService
 
 
 @pytest.fixture(scope="session")
@@ -84,3 +88,17 @@ def real_admin(
     finally:
         engine.dispose()
         real_redis.flushdb()
+
+
+@pytest.fixture
+def billing_setup(real_admin: tuple[sessionmaker[Session], AdminSessionStore]) -> BillingSetup:
+    factory, store = real_admin
+    setup = provision_housing(factory, store)
+    with factory() as db:
+        house = PropertyHousingService(db).create_house(
+            setup.context,
+            setup.community_id,
+            HouseCreate(space_node_id=setup.node_id, room_no="101"),
+            "house",
+        )
+    return BillingSetup(factory, setup, house.id)

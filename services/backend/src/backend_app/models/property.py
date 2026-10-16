@@ -42,6 +42,7 @@ class Community(Base):
     __tablename__ = "communities"
     __table_args__ = (
         UniqueConstraint("code", name="uq_community_code"),
+        UniqueConstraint("property_company_id", "id", name="uq_community_company_id"),
         ForeignKeyConstraint(
             ["property_company_id"], ["property_companies.id"], name="fk_community_company"
         ),

@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Community Property Platform API
-  version: 0.7.0
+  version: 0.8.0
   description: 社区物业消费返利与物业费抵扣平台 API 契约。
 servers:
   - url: '/'
@@ -15,6 +15,8 @@ tags:
     description: 物业公司、小区与公司管理员接入管理
   - name: housing
     description: 小区空间、房屋和业主资料管理
+  - name: billing
+    description: 物业费计费依据、账单与线下收款
 paths:
   '/healthz':
     '$ref': './modules/system.yaml#/health'
@@ -74,6 +76,30 @@ paths:
     '$ref': './modules/housing.yaml#/houseOwners'
   '/v1/communities/{community_id}/houses/{house_id}/owners/{owner_id}':
     '$ref': './modules/housing.yaml#/houseOwner'
+  '/v1/communities/{community_id}/houses/{house_id}/property-fee-basis-versions':
+    '$ref': './modules/billing.yaml#/basisVersions'
+  '/v1/communities/{community_id}/houses/{house_id}/property-fee-basis-versions/{version_id}':
+    '$ref': './modules/billing.yaml#/basisVersion'
+  '/v1/communities/{community_id}/houses/{house_id}/property-fee-calculations':
+    '$ref': './modules/billing.yaml#/calculation'
+  '/v1/communities/{community_id}/bills':
+    '$ref': './modules/billing.yaml#/bills'
+  '/v1/communities/{community_id}/bills/{bill_id}':
+    '$ref': './modules/billing.yaml#/bill'
+  '/v1/communities/{community_id}/bills/{bill_id}/voids':
+    '$ref': './modules/billing.yaml#/voids'
+  '/v1/communities/{community_id}/bills/{bill_id}/settlement-entries':
+    '$ref': './modules/billing.yaml#/entries'
+  '/v1/communities/{community_id}/bills/{bill_id}/offline-receipts':
+    '$ref': './modules/billing.yaml#/receipts'
+  '/v1/communities/{community_id}/bills/{bill_id}/offline-receipts/{entry_id}/corrections':
+    '$ref': './modules/billing.yaml#/corrections'
+  '/v1/communities/{community_id}/bills/{bill_id}/offline-receipts/{entry_id}/reversals':
+    '$ref': './modules/billing.yaml#/reversals'
+  '/v1/communities/{community_id}/bills/{bill_id}/operations':
+    '$ref': './modules/billing.yaml#/operations'
+  '/v1/bill-operation-results/{idempotency_key}':
+    '$ref': './modules/billing.yaml#/operationResult'
 components:
   schemas:
     RequestId:
