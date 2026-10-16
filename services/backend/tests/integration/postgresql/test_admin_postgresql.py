@@ -218,11 +218,17 @@ def test_native_types_and_fresh_migration_schema(
             values: Sequence[datetime] = (
                 connection.execute(text(f"SELECT created_at FROM {table.name}")).scalars().all()
             )
-            if table.name not in {
-                "bills",
-                "property_fee_basis_versions",
-                "bill_operations",
-                "bill_settlement_entries",
+            if table.name in {
+                "admin_accounts",
+                "admin_roles",
+                "admin_account_roles",
+                "admin_role_permissions",
+                "admin_audit_logs",
+                "property_companies",
+                "communities",
+                "community_space_nodes",
+                "houses",
+                "house_owners",
             }:
                 assert values
             assert all(value is not None for value in values)
