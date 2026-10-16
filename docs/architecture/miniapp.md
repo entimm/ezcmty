@@ -35,7 +35,7 @@
 
 ## 后端与外部能力
 
-各端应用 Service 分别编排身份、数据范围和事务，共用 Domain、Repository、Model、Integration、纯 Mapper，不相互调用私有用例。微信登录、访问令牌和手机号兑换由 `integrations/wechat/` 封装，外部响应必须校验。
+各端应用 Service 分别编排身份、数据范围和事务，共用 Domain、Repository、Model、Integration、纯 Mapper，不相互调用私有用例。微信登录、访问令牌和手机号兑换由 `integrations/wechat_miniapp.py` 封装，外部响应必须校验。
 
 平台 AppID、AppSecret 由服务端统一配置，数据库不保存 AppID。Redis 只保存居民会话、微信访问令牌、限流和非凭证的请求协调锁，不保存临时手机号验证凭证或兑换成功结果。手机号验证成功后直接在 PostgreSQL 中提交绑定及成功验证记录。
 

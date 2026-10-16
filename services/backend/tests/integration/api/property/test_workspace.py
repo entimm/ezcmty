@@ -57,6 +57,10 @@ def test_platform_provisioning_to_restricted_login_password_change_and_workspace
     assert not full["must_change_password"]
     assert set(full["permissions"]) == {
         "property.company.read",
+        "property.house_claim.read",
+        "property.house_claim.review",
+        "property.resident_house_binding.read",
+        "property.resident_house_binding.revoke",
         "property.community.read",
         "property.space.read",
         "property.space.create",
