@@ -6,7 +6,7 @@
 
 - 平台管理端
 - 物业管理端
-- 居民微信小程序
+- 平台微信小程序（当前实现居民功能）
 - Webhook 端
 - 任务系统
 
@@ -23,6 +23,8 @@
 各 API 进程使用独立的应用 Service，共享 Domain、Repository、Model、Integration 和响应映射。后台业务编排与复用边界见 [后端业务边界与公共能力](backend-services.md)。
 
 管理后台平台和物业功能共用 Ant Design Pro 项目，但保持独立路由、布局、会话和权限上下文；前端工程与缓存隔离见 [管理后台前端设计](admin-web.md)。
+
+居民、物业、商家共用一个平台微信小程序，业务模块和授权上下文独立，见 [平台微信小程序架构](miniapp.md)。居民身份、手机号和房屋认领见 [居民接入设计](../design/resident/identity-and-house-claims.md)。
 
 后台认证、管理员、角色权限和审计的共用规则见 [管理后台基础框架设计](../design/admin/foundation.md)。
 
