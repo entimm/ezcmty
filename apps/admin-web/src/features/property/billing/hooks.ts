@@ -68,7 +68,10 @@ export function useBillingWrite() {
       if (!session) throw new Error('请重新登录');
       const pending: PendingBillWrite = recovery ?? {
         ...submission,
-        key: crypto.randomUUID(),
+        // getRandomValues also works on HTTP development domains.
+        key: Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+          byte.toString(16).padStart(2, '0'),
+        ).join(''),
         submittedAt: new Date().toISOString(),
         kind: 'bill',
       };

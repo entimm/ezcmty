@@ -213,6 +213,9 @@ describe('property billing screens', () => {
     );
   });
   it('preserves a submitted request after network failure and recovers after reload', async () => {
+    vi.stubGlobal('crypto', {
+      getRandomValues: crypto.getRandomValues.bind(crypto),
+    });
     const fetcher = mockBilling(true);
     const view = renderRoutes(`${route}/${billId}`);
     fireEvent.click(
@@ -244,6 +247,62 @@ describe('property billing screens', () => {
           String(url).endsWith('/offline-receipts') && init?.method === 'POST',
       ),
     ).toHaveLength(1);
+  });
+  it('creates a manual bill when randomUUID is unavailable on HTTP', async () => {
+    vi.stubGlobal('crypto', {
+      getRandomValues: crypto.getRandomValues.bind(crypto),
+    });
+    const fetcher = mockBilling();
+    renderRoutes(route);
+    fireEvent.click(await screen.findByRole('button', { name: '新增账单' }));
+    const drawer = within(await screen.findByRole('dialog'));
+    fireEvent.mouseDown(drawer.getByRole('combobox', { name: '房屋' }));
+    fireEvent.click(
+      await screen.findByText(bill.house_label_snapshot, {
+        selector: '.ant-select-item-option-content',
+      }),
+    );
+    fireEvent.change(drawer.getByLabelText('账单月份'), {
+      target: { value: '2024-01' },
+    });
+    fireEvent.change(drawer.getByLabelText('应收金额（元）'), {
+      target: { value: '120' },
+    });
+    fireEvent.change(drawer.getByLabelText('手填金额原因'), {
+      target: { value: '历史补录' },
+    });
+    await drawer.findByText('应收 ¥120.00，已缴 ¥0.00，待缴 ¥120.00');
+    fireEvent.click(drawer.getByRole('button', { name: '确认保存' }));
+    await waitFor(() =>
+      expect(
+        fetcher.mock.calls.some(
+          ([url, init]) =>
+            String(url).endsWith('/bills') && init?.method === 'POST',
+        ),
+        screen.queryByRole('dialog')?.textContent ?? undefined,
+      ).toBe(true),
+    );
+    const call = fetcher.mock.calls.find(
+      ([url, init]) =>
+        String(url).endsWith('/bills') && init?.method === 'POST',
+    )!;
+    expect(JSON.parse(String(call[1]?.body))).toMatchObject({
+      house_id: house,
+      amount_source: 'manual',
+      receivable_cents: 12000,
+    });
+    expect(new Headers(call[1]?.headers).get('Idempotency-Key')).toMatch(
+      /^[A-Za-z0-9_-]{1,128}$/,
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      `${route}/${billId}`,
+    );
+    expect(screen.queryByText('放弃未保存的修改？')).not.toBeInTheDocument();
+    expect(pendingSnapshot('property_admin', subject)).toBe('[]');
+    expect(screen.queryByText('请求未完成')).not.toBeInTheDocument();
   });
   it('creates a manual zero bill without a basis and enforces the reason boundary', async () => {
     const fetcher = mockBilling();
