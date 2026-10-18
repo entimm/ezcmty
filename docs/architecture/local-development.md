@@ -48,11 +48,11 @@ stateDiagram-v2
 
 所有服务须实际进程存活，并满足以下条件：
 
-| 服务     | 就绪条件                                                                                  |
-| -------- | ----------------------------------------------------------------------------------------- |
-| API      | `/readyz` 返回 200，服务标识匹配，`status=ok`，PostgreSQL、Redis 均为 `ok`                |
+| 服务     | 就绪条件                                                                                                                                                                |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API      | `/readyz` 返回 200，服务标识匹配，`status=ok`，PostgreSQL、Redis 均为 `ok`                                                                                              |
 | Worker   | 只读依赖检查及实际任务表读取通过，调度已启动且注册了业务 Handler；本批日志出现 `service=worker`、`message=worker_ready scheduler=running task_handlers=N`，`N` 为正整数 |
-| 管理后台 | `/` 返回 200，`Content-Type` 包含 `text/html`，页面非空                                   |
+| 管理后台 | `/` 返回 200，`Content-Type` 包含 `text/html`，页面非空                                                                                                                 |
 
 API 标识分别为 `platform-admin-api`、`property-admin-api`、`resident-api`、`webhook`，沿用 [现有契约](../api/openapi/components/schemas.yaml)。Worker 就绪表示持久调度和已注册的业务处理能力可用，不表示真实商户条件或资金验收已通过；不新增 HTTP 接口。日志配置要求见 [指南](../guidelines/local-development.md#初始化本地环境)。
 

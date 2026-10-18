@@ -85,7 +85,7 @@ uv run python -m backend_app.cli init-platform-admin --login-name your-admin --d
 | `make property`         | 前台启动物业管理 API，8002                                                 |
 | `make resident`         | 前台启动居民 API，8003                                                     |
 | `make webhook`          | 前台启动 Webhook，8004                                                     |
-| `make worker`           | 前台启动持久任务 Worker                                                     |
+| `make worker`           | 前台启动持久任务 Worker                                                    |
 | `make admin`            | 前台启动管理后台，5173                                                     |
 | `make miniapp-build`    | 构建小程序到 `apps/miniapp/dist/`，通过微信开发者工具打开小程序项目        |
 | `make check`            | 先运行根目录 Prettier，再依次运行后端、前端和 OpenAPI 检查                 |
@@ -210,14 +210,14 @@ make dev
 
 日志标明所属服务，全部服务就绪后显示地址。四个 API 默认开启 Uvicorn 热重载，监听 `services/backend/src/`；管理后台使用 Umi 热更新，开发端口固定且不自动切换。所有服务仅监听本机 `127.0.0.1`。
 
-| 服务         | 访问地址                                                            |
-| ------------ | ------------------------------------------------------------------- |
-| 平台管理 API | http://127.0.0.1:8001/docs                                          |
-| 物业管理 API | http://127.0.0.1:8002/docs                                          |
-| 居民 API     | http://127.0.0.1:8003/docs                                          |
-| Webhook      | http://127.0.0.1:8004/docs                                          |
-| 平台管理页面 | http://127.0.0.1:5173/platform                                      |
-| 物业管理页面 | http://127.0.0.1:5173/property                                      |
+| 服务         | 访问地址                                                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| 平台管理 API | http://127.0.0.1:8001/docs                                                                                                     |
+| 物业管理 API | http://127.0.0.1:8002/docs                                                                                                     |
+| 居民 API     | http://127.0.0.1:8003/docs                                                                                                     |
+| Webhook      | http://127.0.0.1:8004/docs                                                                                                     |
+| 平台管理页面 | http://127.0.0.1:5173/platform                                                                                                 |
+| 物业管理页面 | http://127.0.0.1:5173/property                                                                                                 |
 | Worker       | 无 HTTP 入口；读取实际任务表并启动调度、注册业务 Handler 后输出 `worker_ready scheduler=running task_handlers=N`，`N` 为正整数 |
 
 启动入口会等待全部所选服务通过各自的 [就绪判断](../architecture/local-development.md#就绪判断)，再报告启动成功。
