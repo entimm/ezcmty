@@ -90,19 +90,33 @@ _SNAPSHOT_FIELDS = frozenset(
         "company_id",
         "matched",
         "different",
+        "local_count",
+        "channel_count",
+        "discrepancy_count",
+        "local_amount_cents",
+        "channel_amount_cents",
+        "source",
+        "checked_at",
+        "expected_status",
+        "actual_status",
+        "statement_line_no",
+        "evidence",
     }
 )
 
 
 def validate_snapshot(snapshot: Mapping[str, Any]) -> dict[str, Any]:
-    def validate(value: object, depth: int = 0) -> None:
+    def validate(value: object, depth: int = 0, *, company_groups: bool = False) -> None:
         if depth > 12:
             raise ValueError("Channel evidence nesting exceeds its bound")
         if isinstance(value, dict):
             for key, child in value.items():
-                if key not in _SNAPSHOT_FIELDS:
+                if company_groups:
+                    if not re.fullmatch(r"[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}", key):
+                        raise ValueError("Channel evidence company group key is invalid")
+                elif key not in _SNAPSHOT_FIELDS:
                     raise ValueError("Channel evidence contains a field outside the whitelist")
-                validate(child, depth + 1)
+                validate(child, depth + 1, company_groups=key == "company_summaries")
         elif isinstance(value, list):
             if len(value) > 10000:
                 raise ValueError("Channel evidence collection exceeds its bound")
