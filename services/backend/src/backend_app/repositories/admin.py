@@ -238,6 +238,21 @@ class AdminRepository:
         allowed = {"changed_fields", "role_ids", "permissions"}
         if action in {"property.house_claim.review", "property.resident_house_binding.revoke"}:
             allowed |= {"status", "match_status", "house_id"}
+        if action in {
+            "payment.payment_order.recover",
+            "payment.reconciliation_run.recover",
+            "payment.reconciliation_discrepancy.recover",
+        }:
+            allowed |= {"reason", "task_id", "evidence"}
+        if action == "payment.reconciliation_discrepancy.external_resolution":
+            allowed |= {
+                "reason",
+                "evidence_reference",
+                "before",
+                "after",
+                "source_request_id",
+                "source_digest",
+            }
         safe = {key: value for key, value in (metadata or {}).items() if key in allowed}
         self.db.add(
             AdminAuditLog(

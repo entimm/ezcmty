@@ -1,89 +1,17 @@
 from typing import Any
 
 import pytest
-from pydantic import SecretStr
 from sqlalchemy import func, select
-from tests.support.payment_api import PaymentHouse
-from tests.support.wechatpay import WechatPayHarness
+from tests.support.payment_api import PaymentHouse, configure_payment_api
 
-from backend_app.core.config import get_settings
 from backend_app.models.admin import utc_now
 from backend_app.models.payments import (
     PaymentChannelRequest,
     PaymentOrder,
     PaymentTask,
-    ProfitSharingRuleVersion,
-    ProfitSharingRuleVersionItem,
-    PropertyMerchantBinding,
 )
 
 ROOT = "/v1/miniapp-users/me/payment-orders"
-
-
-def configure(setup: PaymentHouse, monkeypatch: pytest.MonkeyPatch) -> WechatPayHarness:
-    peer = WechatPayHarness()
-    settings = get_settings().model_copy(
-        update={
-            "payment_new_orders_enabled": True,
-            "wechat_miniapp_app_id": peer.config.app_id,
-            "wechatpay_service_provider_merchant_no": peer.config.service_provider_merchant_no,
-            "wechatpay_merchant_certificate_serial": peer.config.merchant_certificate_serial,
-            "wechatpay_merchant_private_key": peer.config.merchant_private_key,
-            "wechatpay_api_v3_key": peer.config.api_v3_key,
-            "wechatpay_verification_keys": peer.config.verification_keys,
-            "wechatpay_encryption_key_id": peer.config.encryption_key_id,
-            "wechatpay_payment_notify_url": peer.config.payment_notify_url,
-            "wechatpay_platform_receiver_name": SecretStr("隔离平台"),
-        }
-    )
-    monkeypatch.setattr("backend_app.api.resident.payments.get_settings", lambda: settings)
-    with setup.workspace.platform.factory() as db:
-        binding = PropertyMerchantBinding(
-            property_company_id=setup.workspace.company_id,
-            service_provider_merchant_no="1900000001",
-            merchant_no="1900000002",
-            merchant_name="隔离物业",
-            enabled=False,
-            max_ratio_bps=3000,
-            ratio_checked_at=utc_now(),
-            created_by=setup.workspace.account_id,
-            idempotency_key="binding",
-            request_fingerprint="1" * 64,
-        )
-        rule = ProfitSharingRuleVersion(
-            property_company_id=setup.workspace.company_id,
-            version_no=1,
-            created_by=setup.workspace.account_id,
-            idempotency_key="rule",
-            request_fingerprint="2" * 64,
-        )
-        db.add_all([binding, rule])
-        db.flush()
-        binding.enabled = True
-        binding.row_version += 1
-        binding.updated_at = utc_now()
-        db.add(
-            ProfitSharingRuleVersionItem(
-                rule_version_id=rule.id,
-                receiver_account="1900000001",
-                receiver_name="隔离平台",
-                rate_bps=300,
-            )
-        )
-        db.add(
-            PaymentChannelRequest(
-                operation="receiver_add",
-                merchant_binding_id=binding.id,
-                request_snapshot={},
-                response_snapshot={"merchant_no": "1900000002", "receiver_account": "1900000001"},
-                outcome="verified_response",
-                finished_at=utc_now(),
-                http_status=200,
-                request_id="ready",
-            )
-        )
-        db.commit()
-    return peer
 
 
 def body(setup: PaymentHouse) -> dict[str, Any]:
@@ -100,7 +28,7 @@ def test_resident_order_http_create_read_recover_and_replay_after_release(
     payment_house: PaymentHouse, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     setup = payment_house
-    configure(setup, monkeypatch)
+    configure_payment_api(setup, monkeypatch)
     client = setup.resident.client
     data = body(setup)
     response = client.post(ROOT, json=data, headers=setup.resident.headers("order"))
@@ -157,7 +85,7 @@ def test_payment_parameters_are_explicit_post_and_current_authorization_required
     payment_house: PaymentHouse, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     setup = payment_house
-    configure(setup, monkeypatch)
+    configure_payment_api(setup, monkeypatch)
     client = setup.resident.client
     result = client.post(ROOT, json=body(setup), headers=setup.resident.headers("order"))
     assert result.status_code == 201, result.text
@@ -212,7 +140,7 @@ def test_order_http_validates_single_bill_and_date_timezone(
     payment_house: PaymentHouse, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     setup = payment_house
-    configure(setup, monkeypatch)
+    configure_payment_api(setup, monkeypatch)
     client = setup.resident.client
     assert (
         client.post(ROOT, json={"items": []}, headers=setup.resident.headers("zero")).status_code

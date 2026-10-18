@@ -17,6 +17,10 @@ def permission_catalog(scope: AdminScope) -> list[PermissionDefinition]:
             PermissionDefinition(code=c, name=n, group=g, assignable=True)
             for c, n, g in (
                 ("property.company.read", "查看本公司资料", "物业公司"),
+                ("property.payment_config.read", "查看收款配置", "支付"),
+                ("property.payment.read", "查看支付记录", "支付"),
+                ("property.payment_funds.read", "查看资金处理", "支付"),
+                ("property.payment_reconciliation.read", "查看本公司核对结果", "支付"),
                 ("property.house_claim.read", "查看房屋认领申请", "房屋认领"),
                 ("property.house_claim.review", "审核房屋认领申请", "房屋认领"),
                 ("property.resident_house_binding.read", "查看居民房屋授权", "居民房屋"),
@@ -42,6 +46,13 @@ def permission_catalog(scope: AdminScope) -> list[PermissionDefinition]:
             )
         ]
     definitions = [
+        ("platform.payment_config.read", "查看收款配置", "支付", True),
+        ("platform.payment_config.manage", "维护收款配置", "支付", True),
+        ("platform.payment.read", "查看支付记录", "支付", True),
+        ("platform.payment_funds.read", "查看资金处理", "支付", True),
+        ("platform.payment_funds.recover", "恢复资金处理", "支付", True),
+        ("platform.payment_reconciliation.read", "查看资金核对", "支付", True),
+        ("platform.payment_reconciliation.recheck", "重新核对资金", "支付", True),
         ("admin.account.read", "查看管理员", "管理员", True),
         ("admin.account.create", "创建管理员", "管理员", False),
         ("admin.account.update", "编辑及启停管理员", "管理员", False),

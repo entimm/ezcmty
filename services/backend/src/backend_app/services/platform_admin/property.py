@@ -33,6 +33,28 @@ class PropertyOnboardingService:
             raise AppError("auth.forbidden")
         return actor
 
+    def _company_writer_precheck(
+        self, context: AdminContext, *, permission: str | None = None
+    ) -> None:
+        self.identity.require_full_session(context)
+        candidate = self.identity.account(context.account_id)
+        self.db.refresh(candidate)
+        if not candidate.enabled or candidate.session_version != context.version:
+            raise AppError("auth.unauthenticated")
+        if candidate.must_change_password:
+            raise AppError("auth.password_change_required")
+        if permission is not None and permission not in self.identity.effective_permissions(
+            candidate.id
+        ):
+            raise AppError("auth.forbidden")
+        if permission is None:
+            system = self.identity.repo.role_by_code("super_admin")
+            if system is None or not any(
+                role.id == system.id and role.enabled
+                for role in self.identity.repo.account_roles(candidate.id)
+            ):
+                raise AppError("auth.forbidden")
+
     def _company(self, company_id: str, *, lock: bool = False) -> PropertyCompany:
         company = self.repo.company(company_id, lock=lock)
         if company is None:
@@ -113,8 +135,9 @@ class PropertyOnboardingService:
         data: schema.CompanyUpdate,
         request_id: str,
     ) -> schema.PropertyCompany:
-        actor = self._business_writer(context, "property.company.update")
+        self._company_writer_precheck(context, permission="property.company.update")
         company = self._company(company_id, lock=True)
+        actor = self._business_writer(context, "property.company.update")
         changes: list[str] = []
         if data.enabled is not None and data.enabled != company.enabled:
             company_admins = AdminRepository(self.db, "property_admin", company_id)
@@ -183,8 +206,9 @@ class PropertyOnboardingService:
         data: schema.CommunityCreate,
         request_id: str,
     ) -> schema.Community:
-        actor = self._business_writer(context, "property.community.create")
+        self._company_writer_precheck(context, permission="property.community.create")
         company = self._company(data.property_company_id, lock=True)
+        actor = self._business_writer(context, "property.community.create")
         if self.repo.community_by_code(data.code):
             raise AppError("property.duplicate_community_code")
         now = utc_now()
@@ -210,6 +234,9 @@ class PropertyOnboardingService:
         data: schema.CommunityUpdate,
         request_id: str,
     ) -> schema.Community:
+        self._company_writer_precheck(context, permission="property.community.update")
+        company_id = self._community(community_id).property_company_id
+        self._company(company_id, lock=True)
         actor = self._business_writer(context, "property.community.update")
         community = self._community(community_id, lock=True)
         changes: list[str] = []
@@ -268,8 +295,9 @@ class PropertyOnboardingService:
         data: schema.PropertyAdminCreate,
         request_id: str,
     ) -> schema.PropertyAdminAccount:
-        actor, _ = self.identity.management_writer(context)
+        self._company_writer_precheck(context)
         self._company(company_id, lock=True)
+        actor, _ = self.identity.management_writer(context)
         repo = AdminRepository(self.db, "property_admin", company_id)
         if repo.identity_by_login(data.login_name):
             raise AppError("admin.duplicate_login")
@@ -316,8 +344,9 @@ class PropertyOnboardingService:
         data: admin_schema.AccountUpdate,
         request_id: str,
     ) -> schema.PropertyAdminAccount:
-        actor, _ = self.identity.management_writer(context)
+        self._company_writer_precheck(context)
         self._company(company_id, lock=True)
+        actor, _ = self.identity.management_writer(context)
         repo = AdminRepository(self.db, "property_admin", company_id)
         system = repo.role_by_code("super_admin", lock=True)
         account = repo.account(account_id, lock=True)
@@ -349,8 +378,9 @@ class PropertyOnboardingService:
         data: admin_schema.PasswordReset,
         request_id: str,
     ) -> None:
-        actor, _ = self.identity.management_writer(context)
+        self._company_writer_precheck(context)
         self._company(company_id, lock=True)
+        actor, _ = self.identity.management_writer(context)
         repo = AdminRepository(self.db, "property_admin", company_id)
         account = repo.account(account_id, lock=True)
         if account is None:

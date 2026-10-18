@@ -49,12 +49,18 @@ def provision_payment(
     reserve: bool = True,
     schedule: bool = True,
     order_amount_cents: int | None = None,
+    payer_user_id: str | None = None,
 ) -> PaymentSetup:
     """Create a whole pending aggregate, leaving commit and rollback to the test."""
     bill = db.get(Bill, bill_id)
     assert bill is not None
-    payer = MiniappUser(wechat_openid=f"isolated_{new_id()}")
-    db.add(payer)
+    if payer_user_id is None:
+        payer = MiniappUser(wechat_openid=f"isolated_{new_id()}")
+        db.add(payer)
+    else:
+        existing_payer = db.get(MiniappUser, payer_user_id)
+        assert existing_payer is not None
+        payer = existing_payer
     binding = PropertyMerchantBinding(
         property_company_id=setup.housing.company_id,
         service_provider_merchant_no="1900000001",
