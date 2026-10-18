@@ -13,6 +13,7 @@
 - [居民身份与房屋认领](../resident/identity-and-house-claims.md)：居民身份、房屋绑定及授权有效性。
 - [OpenAPI](../../api/openapi/openapi.yaml)：各端接口的路径、输入输出、错误码、权限码、幂等及运行进程归属。
 - [系统架构](../../architecture/overview.md)、[后端业务边界](../../architecture/backend-services.md)及[小程序架构](../../architecture/miniapp.md)：进程、分层、身份与缓存边界。
+- [代码组织与账单支付接入](../../architecture/code-organization.md)：各端目录、共享收款确认与账单入账、任务及测试归属。
 
 ## 业务规则与可见范围
 

@@ -622,7 +622,7 @@ voids:
     tags:
       - billing
     summary: 作废账单
-    description: 携带 Idempotency-Key、expected_row_version 和必填原因。仅净结清金额为 0 时允许（含零元账单）。作废后只读并释放该房屋月份的有效账单唯一性，不恢复旧单。
+    description: 携带 Idempotency-Key、expected_row_version 和必填原因。仅净结清金额为 0 时允许（含零元账单）。账单锁内存在当前支付占用时返回 409，不能绕过占用作废。作废后只读并释放该房屋月份的有效账单唯一性，不恢复旧单。
     security:
       - AdminSession: []
     parameters:
@@ -698,7 +698,7 @@ entries:
     tags:
       - billing
     summary: 分页读取收款与冲正流水
-    description: 按登记时间和 ID 倒序独立分页，包含原收款、冲正和纠错后的新收款；返回冲正关联、操作者和操作原因。
+    description: 按登记时间和 ID 倒序独立分页，包含线下原收款、冲正、纠错后的新收款和系统线上收款；返回业务来源、支付明细关联、冲正关联、操作者类型及操作原因。线上收款操作人显示“系统”，不返回付款人身份、渠道单号、调起凭证或原始渠道内容。
     security:
       - AdminSession: []
     parameters:
@@ -763,7 +763,7 @@ receipts:
     summary: 追加线下收款登记
     description:
       携带 Idempotency-Key 和 expected_row_version；账单必须有效，房屋及上级必须启用。金额为正整数分且不能超过待缴；不记录渠道或外部收据。实际收款日期可空，但不能晚于
-      Asia/Shanghai 的业务今天。汇总、明细、操作和审计原子提交。
+      Asia/Shanghai 的业务今天。账单锁内存在当前支付占用时返回 409，不能绕过占用登记收款。汇总、明细、操作和审计原子提交。
     security:
       - AdminSession: []
     parameters:
@@ -839,7 +839,7 @@ corrections:
     tags:
       - billing
     summary: 纠正线下收款登记
-    description: 携带 Idempotency-Key、expected_row_version 和必填原因。在同一事务中完整冲正指定原收款，再登记正确的正金额及日期。只能更正同一账单尚未冲正的原收款，最终净结清不得超出应收。历史全部保留；房屋或上级停用后仍允许纠错。此操作不表示退款。
+    description: 携带 Idempotency-Key、expected_row_version 和必填原因。在同一事务中完整冲正指定原收款，再登记正确的正金额及日期。只能更正同一账单尚未冲正、source_type 为 offline 的原收款，线上收款不能通过此接口纠错；最终净结清不得超出应收。账单锁内存在当前支付占用时返回 409。历史全部保留；房屋或上级停用后仍允许纠错。此操作不表示退款。
     security:
       - AdminSession: []
     parameters:
@@ -920,7 +920,7 @@ reversals:
     tags:
       - billing
     summary: 撤销线下误登记
-    description: 携带 Idempotency-Key、expected_row_version 和必填原因。追加与指定原收款金额完全相反的冲正；不能冲正另一条冲正，同一原收款最多冲正一次。已作废账单只读，停用房屋可纠错，此操作不表示退款。
+    description: 携带 Idempotency-Key、expected_row_version 和必填原因。追加与指定原收款金额完全相反的冲正；仅允许 source_type 为 offline 的原收款，不能冲正另一条冲正或线上收款，同一原收款最多冲正一次。账单锁内存在当前支付占用时返回 409。已作废账单只读，停用房屋可纠错，此操作不表示退款。
     security:
       - AdminSession: []
     parameters:
@@ -1001,7 +1001,7 @@ operations:
     tags:
       - billing
     summary: 分页读取账单操作历史
-    description: 按账单版本倒序独立分页，包含每次成功操作的操作者、原因、版本及请求标识。
+    description: 按账单版本倒序独立分页，包含每次成功操作的操作者类型、原因、版本及请求标识。系统 online_receipt 操作的 actor_type 为 system、actor_id 为空、actor_name 为“系统”；其他操作由管理员发起。
     security:
       - AdminSession: []
     parameters:
@@ -1066,7 +1066,7 @@ operationResult:
     summary: 核实账单操作结果
     description:
       仅允许当前公司内原操作人查询，并校验当前 property.bill.read、原操作权限及建账涉及的附加权限。返回首次成功状态码和结果快照；应重新读取账单当前详情。404
-      仅表示暂未查到可见已提交结果，不能据此认定原请求失败；恢复须使用原幂等键及原输入。
+      仅表示暂未查到可见已提交结果，不能据此认定原请求失败；恢复须使用原幂等键及原输入。系统线上入账没有原管理员，不通过本接口返回内部结果快照。
     security:
       - AdminSession: []
     parameters:

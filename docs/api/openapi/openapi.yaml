@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Community Property Platform API
-  version: 0.10.0
+  version: 0.11.0
   description: 社区物业消费返利与物业费抵扣平台 API 契约。
 servers:
   - url: '/'
@@ -16,7 +16,7 @@ tags:
   - name: housing
     description: 小区空间、房屋和业主资料管理
   - name: billing
-    description: 物业费计费依据、账单与线下收款
+    description: 物业费计费依据、账单、收款流水与线下登记
   - name: miniapp
     description: 平台小程序身份与居民业务
   - name: payments

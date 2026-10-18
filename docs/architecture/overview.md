@@ -20,7 +20,7 @@
 | `webhook`            | 外部回调接收和校验 |
 | `worker`             | 异步任务执行       |
 
-各 API 进程使用独立的应用 Service，共享 Domain、Repository、Model、Integration 和响应映射。后台业务编排与复用边界见 [后端业务边界与公共能力](backend-services.md)。
+各 API 进程使用独立的应用 Service，共享 Domain、Repository、Model、Integration 和响应映射。后台业务编排与复用边界见 [后端业务边界与公共能力](backend-services.md)，后端、前端及测试的目录和支付接入方式见 [代码组织与账单支付接入](code-organization.md)。
 
 管理后台平台和物业功能共用 Ant Design Pro 项目，但保持独立路由、布局、会话和权限上下文；前端工程与缓存隔离见 [管理后台前端设计](admin-web.md)。
 

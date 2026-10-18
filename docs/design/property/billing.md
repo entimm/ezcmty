@@ -170,6 +170,8 @@ WHERE lifecycle_status = 'active'
 
 账单不保存当前占用订单字段，当前支付占用由独立的 [账单支付占用表](../payment/bill-payments-and-profit-sharing.md#账单支付占用) 管理。建立或释放占用不修改账单，不递增账单版本，也不生成账单操作。
 
+管理端账单读投影返回 `payment_in_progress`，由当前占用是否存在派生，用于提示冲突及限制操作；不增加账单存储字段，不返回占用者身份或占用订单号。该值是读取时的提示，写操作仍须在账单锁内重新检查占用，不能仅凭页面状态放行。
+
 ### 收款及冲正明细
 
 `bill_settlement_entries`：

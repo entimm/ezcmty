@@ -457,6 +457,9 @@ Bill:
         - type: 'null'
     house_effective_enabled:
       type: boolean
+    payment_in_progress:
+      type: boolean
+      description: 由 bill_payment_reservations 是否存在当前占用派生，仅用于管理端展示和操作提示；不在 bills 表持久化，不公开占用者身份或支付订单号。建立或释放占用不递增账单版本，写入时仍须在账单锁内重新检查。
   required:
     - id
     - property_company_id
@@ -489,9 +492,11 @@ Bill:
     - updated_at
     - basis
     - house_effective_enabled
+    - payment_in_progress
 SettlementEntry:
   type: object
   additionalProperties: false
+  description: 物业管理端账务流水。offline 由管理员登记，payment_order_item_id 为空；online_payment 为系统确认的线上收款，payment_order_item_id 非空、entry_type 为 receipt、received_on 非空，actor_type 为 system。线上收款不允许通过线下纠错或撤销登记冲正。不返回付款人身份、渠道单号、调起凭证或原始渠道内容。
   properties:
     id:
       $ref: ./schemas.yaml#/UUIDIdentifier
@@ -506,7 +511,15 @@ SettlementEntry:
         - reversal
     source_type:
       type: string
-      const: offline
+      enum:
+        - offline
+        - online_payment
+      description: 业务来源，不表示支付渠道。
+    payment_order_item_id:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+      description: 线上收款关联的支付明细 ID，与本条明细属于同一账单；offline 时为空，online_payment 时非空。
     amount_cents:
       type: integer
       minimum: -9007199254740991
@@ -524,13 +537,24 @@ SettlementEntry:
         - type: string
           format: date
         - type: 'null'
+      description: 原收款业务日期；线下历史日期不详允许为空，线上按可信支付成功时间转换为 Asia/Shanghai 日期，不使用通知到达或处理日期。
     created_at:
       type: string
       format: date-time
+    actor_type:
+      type: string
+      enum:
+        - admin
+        - system
+      description: 来自关联账单操作；线下收款和冲正为 admin，线上收款为 system。
     actor_id:
-      $ref: ./schemas.yaml#/UUIDIdentifier
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+      description: 管理员标识；actor_type 为 admin 时非空，为 system 时为空，不使用付款人身份代替。
     actor_name:
       type: string
+      description: 管理员显示名；actor_type 为 system 时固定显示“系统”。
     reason:
       anyOf:
         - type: string
@@ -543,17 +567,20 @@ SettlementEntry:
     - operation_id
     - entry_type
     - source_type
+    - payment_order_item_id
     - amount_cents
     - reverses_entry_id
     - reversed_by_entry_id
     - received_on
     - created_at
+    - actor_type
     - actor_id
     - actor_name
     - reason
 BillOperation:
   type: object
   additionalProperties: false
+  description: 管理员操作和系统线上入账的只读历史。actor_type 为 admin 时 actor_id 非空且 action 不能为 online_receipt；为 system 时 action 仅为 online_receipt、actor_id 为空。系统线上入账的支付关联由该操作的结算明细提供，不返回付款人身份或渠道凭证。
   properties:
     id:
       $ref: ./schemas.yaml#/UUIDIdentifier
@@ -565,6 +592,7 @@ BillOperation:
         - create
         - update
         - receipt
+        - online_receipt
         - correct_receipt
         - reverse_receipt
         - void
@@ -572,10 +600,19 @@ BillOperation:
       type: integer
       minimum: 1
       maximum: 9007199254740991
+    actor_type:
+      type: string
+      enum:
+        - admin
+        - system
     actor_id:
-      $ref: ./schemas.yaml#/UUIDIdentifier
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+      description: 管理员标识；actor_type 为 admin 时非空，为 system 时为空。
     actor_name:
       type: string
+      description: 管理员显示名；actor_type 为 system 时固定显示“系统”。
     reason:
       anyOf:
         - type: string
@@ -585,6 +622,7 @@ BillOperation:
     request_id:
       type: string
       pattern: ^[A-Za-z0-9_-]{1,64}$
+      description: 管理员操作的请求诊断标识，或系统线上入账的处理链路标识，不承担幂等职责。
     created_at:
       type: string
       format: date-time
@@ -593,6 +631,7 @@ BillOperation:
     - bill_id
     - action
     - bill_version
+    - actor_type
     - actor_id
     - actor_name
     - reason
@@ -617,6 +656,7 @@ BillWriteResult:
 BillOperationResult:
   type: object
   additionalProperties: false
+  description: 仅用于原管理员核实自身操作的首次成功 HTTP 状态与结果；系统线上入账不通过此接口公开内部结果快照。
   properties:
     response_status:
       type: integer
