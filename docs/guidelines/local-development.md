@@ -2,6 +2,8 @@
 
 本指南维护本地开发操作。启动器的模块职责、批次归属、就绪判断和故障处理见 [本地开发入口设计](../architecture/local-development.md)。
 
+只验证代码时，安装依赖后进入[质量检查](#质量检查)，无需手动迁移、seed 或准备真实商户材料；集成测试自行建立隔离资源。查看页面和接口时，按下文准备本地数据库、Redis、配置与账号。命令应在需要验证的分支或 worktree 中执行，未另行说明时工作目录为仓库根目录。
+
 ## 开发环境
 
 - Python 3.14.x（默认版本见 [.python-version](../../.python-version)，版本范围由 [后端项目配置](../../services/backend/pyproject.toml) 的 `requires-python` 声明）
@@ -17,14 +19,21 @@
 
 ```bash
 make install
-cp services/backend/.env.example services/backend/.env
 ```
 
 `make install` 按现有锁文件安装后端开发依赖与整个 pnpm 工作区依赖。
 
-[services/backend/.env.example](../../services/backend/.env.example) 是本地后端配置模板，仅包含 `APP_*`，默认连接本机 PostgreSQL 和 Redis。实际 `.env` 文件只在首次初始化时从对应模板复制，已有文件直接编辑。
+仅首次初始化且目标文件不存在时复制配置；已有文件直接编辑：
+
+```bash
+cp services/backend/.env.example services/backend/.env
+```
+
+[services/backend/.env.example](../../services/backend/.env.example) 是本地后端配置模板，仅包含 `APP_*`，默认连接本机 PostgreSQL 和 Redis。
 
 启动前，使用你本机已有的管理方式启动 PostgreSQL 和 Redis，并确认已有数据库、账号及访问权限满足应用配置。开发入口仅检查已有配置与依赖；检查范围及处理方式见 [启动流程](../architecture/local-development.md#启动流程)。
+
+支付本地联调使用独立数据库及 Redis 资源。`make migrate` 和 seed 会写入配置指向的数据库；执行前核对目标与已有环境变量，不能将隔离联调命令用于既有业务数据库。
 
 编辑 `services/backend/.env`：
 
@@ -74,34 +83,38 @@ uv run python -m backend_app.cli init-platform-admin --login-name your-admin --d
 
 全部命令在仓库根目录执行；`make` 默认显示帮助。
 
-| 命令                    | 用途                                                                       |
-| ----------------------- | -------------------------------------------------------------------------- |
-| `make install`          | 安装后端及前端工作区开发依赖                                               |
-| `make migrate`          | 执行 Alembic 数据库迁移，升级到 `head`                                     |
-| `make dev`              | 前台同时启动四个 API、Worker 和管理后台                                    |
-| `make dev-bg`           | 后台同时启动同样六个服务，全部就绪后返回                                   |
-| `make stop`             | 停止本仓库所有开发入口登记的批次                                           |
-| `make platform`         | 前台启动平台管理 API，8001                                                 |
-| `make property`         | 前台启动物业管理 API，8002                                                 |
-| `make resident`         | 前台启动居民 API，8003                                                     |
-| `make webhook`          | 前台启动 Webhook，8004                                                     |
-| `make worker`           | 前台启动持久任务 Worker                                                    |
-| `make admin`            | 前台启动管理后台，5173                                                     |
-| `make miniapp-build`    | 构建小程序到 `apps/miniapp/dist/`，通过微信开发者工具打开小程序项目        |
-| `make check`            | 先运行根目录 Prettier，再依次运行后端、前端和 OpenAPI 检查                 |
-| `make check-backend`    | 后端源码、devtools、测试及仓库 scripts 的 Ruff、mypy、pytest               |
-| `make check-frontend`   | 管理后台 typecheck、lint、test、build；小程序 typecheck、lint、test、build |
-| `make check-api`        | 现有 `pnpm api:check`：OpenAPI lint、bundle、contract                      |
-| `make test-unit`        | 后端单元测试                                                               |
-| `make test-integration` | 后端快速集成测试，排除专用 PostgreSQL/Redis 并发测试和进程生命周期         |
-| `make test-contract`    | 后端与权威 OpenAPI 的契约一致性测试                                        |
-| `make test-postgresql`  | 使用独立临时实例执行真实 PostgreSQL/Redis 测试                             |
-| `make test-full`        | 全部后端和管理后台测试，包含真实依赖与进程生命周期，生成 JUnit 报告        |
-| `make help`             | 显示全部命令及用途                                                         |
+| 命令                    | 用途                                                                        |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `make install`          | 安装后端及前端工作区开发依赖                                                |
+| `make migrate`          | 执行 Alembic 数据库迁移，升级到 `head`                                      |
+| `make dev`              | 前台同时启动四个 API、Worker 和管理后台                                     |
+| `make dev-bg`           | 后台同时启动同样六个服务，全部就绪后返回                                    |
+| `make stop`             | 停止本仓库所有开发入口登记的批次                                            |
+| `make platform`         | 前台启动平台管理 API，8001                                                  |
+| `make property`         | 前台启动物业管理 API，8002                                                  |
+| `make resident`         | 前台启动居民 API，8003                                                      |
+| `make webhook`          | 前台启动 Webhook，8004                                                      |
+| `make worker`           | 前台启动持久任务 Worker                                                     |
+| `make admin`            | 前台启动管理后台，5173                                                      |
+| `make miniapp-build`    | 构建小程序到 `apps/miniapp/dist/`，通过微信开发者工具打开小程序项目         |
+| `make check`            | 先运行根目录 Prettier，再依次运行后端、前端和 OpenAPI 检查                  |
+| `make check-backend`    | 后端源码、devtools、测试及仓库 scripts 的 Ruff、mypy、pytest                |
+| `make check-frontend`   | 管理后台 typecheck、lint、test、build；小程序 typecheck、lint、test、build  |
+| `make check-api`        | 现有 `pnpm api:check`：OpenAPI lint、bundle、contract                       |
+| `make test-unit`        | 后端单元测试                                                                |
+| `make test-integration` | 后端快速集成测试，排除专用 PostgreSQL/Redis 并发测试和进程生命周期          |
+| `make test-contract`    | 后端与权威 OpenAPI 的契约一致性测试                                         |
+| `make test-postgresql`  | 使用独立临时实例执行真实 PostgreSQL/Redis 测试                              |
+| `make test-full`        | 全部后端、管理后台和小程序测试，包含真实依赖与进程生命周期，生成 JUnit 报告 |
+| `make help`             | 显示全部命令及用途                                                          |
 
 小程序不作为常驻进程；构建后使用微信开发者工具运行。
 
-微信支付配置沿用后端 `APP_*` 环境变量，完整名称见 `.env.example` 中的支付段。
+### 账单支付配置与运行边界
+
+按[平台后台初始化](#平台后台初始化)完成迁移和管理员准备，按需使用[开发数据填充](#开发数据填充)生成账单，再按[运行、地址与日志](#运行地址与日志)启动服务。`billing` seed 生成账单、线下收款和冲正等演示数据，不生成微信支付成功、分账或解冻事实。
+
+微信支付配置沿用后端 `APP_*` 环境变量，完整名称见[配置模板](../../services/backend/.env.example)中的支付段。
 `APP_WECHATPAY_MERCHANT_PRIVATE_KEY` 是服务商签名私钥的 PEM，
 `APP_WECHATPAY_API_V3_KEY` 是 APIv3 密钥；验签公钥或证书以
 `APP_WECHATPAY_VERIFICATION_KEYS` 的 JSON 对象按公钥 ID／证书序列号配置，
@@ -112,7 +125,21 @@ uv run python -m backend_app.cli init-platform-admin --login-name your-admin --d
 `APP_PAYMENT_NEW_ORDERS_ENABLED` 默认关闭，只控制新支付创建。停止新支付时保留
 Webhook 与 Worker，已有订单仍须查单、确认入账、分账、解冻及核对；不能以停掉任务进程代替关闭新单入口。
 
+缺少商户材料时 Worker 仍可启动调度；就绪标记不证明渠道可用或资金执行成功。普通服务启动不提供模拟支付成功入口，无真实材料的支付流程验证使用[账单支付专项验证](#账单支付专项验证)中的测试替身。真实商户请求、付款、分账、解冻及新单开放须取得相应授权，发布条件见[账单支付发布与恢复准备](../plans/payment/bill-payments-release.md)。
+
+### 小程序构建与运行
+
 小程序使用平台统一 AppID。构建时设置 `MINIAPP_APP_ID`、可选 `MINIAPP_APP_NAME` 和 `MINIAPP_API_BASE_URL`；后者默认直连本地居民 API `http://127.0.0.1:8003`，部署时填写 HTTPS 网关地址（包含 `/api/resident`，不包含 `/v1`）。在微信开发者工具打开 `apps/miniapp/`，项目输出位于 `dist/`。真机需要可访问的 HTTPS 域名及微信后台合法域名配置，服务端配置见 `services/backend/.env.example`。
+
+本地构建示例（替换为对应平台小程序 AppID）：
+
+```bash
+MINIAPP_APP_ID=你的小程序AppID \
+MINIAPP_API_BASE_URL=http://127.0.0.1:8003 \
+make miniapp-build
+```
+
+实际微信登录和手机号授权还需在后端配置匹配的 `APP_WECHAT_MINIAPP_APP_ID`、`APP_WECHAT_MINIAPP_APP_SECRET`；仅设置构建 AppID 不提供登录凭据。构建变量变更后重新构建。
 
 `pnpm --filter resident-miniapp test` 验证会话隔离、请求恢复和选房交互。构建后可运行 `pnpm --filter resident-miniapp check:native` 调用微信开发者工具的 WXML/WXSS 编译器；默认查找 macOS 安装目录，其他环境通过 `MINIAPP_WCC`、`MINIAPP_WCSC` 指定编译器绝对路径。此检查要求本机已安装微信编译器，不能替代体验版登录及手机号授权的真机验收。
 
@@ -264,7 +291,7 @@ make check
 make test-full
 ```
 
-完整测试需要本机可用的 `initdb`、`postgres`、`pg_ctl`、`redis-server` 以及已安装的前端依赖，会创建独立的临时实例、随机端口和测试数据库，完成后关闭并清理所属资源。JUnit 报告写入 `build/test-results/backend.xml` 和 `build/test-results/admin-web.xml`，CI 应保留这些报告和失败日志。
+完整测试需要 `initdb`、`postgres`、`pg_ctl`、`pg_dump`、`pg_restore`、`redis-server` 在 PATH 中，以及已安装的前端依赖；其中备份工具用于支付发布恢复验证。测试会创建独立的临时实例、随机端口和测试数据库，完成后关闭并清理所属资源，无需先启动应用服务或手动迁移、seed。JUnit 报告写入 `build/test-results/backend.xml`、`build/test-results/admin-web.xml` 和 `build/test-results/miniapp.xml`，CI 应保留三份报告和失败日志。
 
 按模块、文件或用例运行时，在 `services/backend/` 下选择具体路径。例如：
 
@@ -275,8 +302,41 @@ APP_RUN_POSTGRESQL_TESTS=1 uv run pytest tests/integration/postgresql --require-
 uv run pytest tests/integration/dev --require-all-tests --durations=20
 ```
 
-测试分类和 `postgresql`、`slow` 标记按目录自动设置。直接运行 pytest 时，未启用 `APP_RUN_POSTGRESQL_TESTS=1` 的专用 PostgreSQL/Redis 测试会给出原因并跳过；显式启用后依赖缺失会失败。上述 Make 测试入口的后端检查均启用 `--require-all-tests`，选中测试出现跳过或预期失败时返回非零，未收集到测试沿用 pytest 的非零退出码。`make test-full` 还检查两端 JUnit 报告，拒绝空报告、跳过、失败及错误记录。
+测试分类和 `postgresql`、`slow` 标记按目录自动设置。直接运行 pytest 时，未启用 `APP_RUN_POSTGRESQL_TESTS=1` 的专用 PostgreSQL/Redis 测试会给出原因并跳过；显式启用后依赖缺失会失败。上述 Make 测试入口的后端检查均启用 `--require-all-tests`，选中测试出现跳过或预期失败时返回非零，未收集到测试沿用 pytest 的非零退出码。`make test-full` 还检查三份 JUnit 报告，拒绝空报告、跳过、失败及错误记录。
 
 任一检查失败返回非零。也可使用上表中的单项检查或构建命令。
 
 契约测试会调用现有 `pnpm api:bundle`，确保使用最新 OpenAPI 文件。API 设计与错误处理约定见 [API 规范](../api/conventions.md)。
+
+### 账单支付专项验证
+
+在 `services/backend/` 下执行支付相关单元、API、数据库、迁移和 Worker 回归：
+
+```bash
+APP_RUN_POSTGRESQL_TESTS=1 uv run --no-sync pytest \
+  tests/unit/domain/payments \
+  tests/unit/integrations/wechatpay \
+  tests/unit/repositories/payments \
+  tests/integration/api/payments \
+  tests/integration/postgresql/payments \
+  tests/integration/migrations/test_payment_schema.py \
+  tests/integration/runtime/test_payment_worker.py \
+  tests/integration/runtime/test_payment_worker_composition.py \
+  --require-all-tests
+```
+
+上述范围包括以下两项，也可单独执行：
+
+```bash
+APP_RUN_POSTGRESQL_TESTS=1 uv run --no-sync pytest \
+  tests/integration/api/payments/test_miniapp_controller.py \
+  tests/integration/postgresql/payments/test_release_readiness.py \
+  --require-all-tests
+```
+
+- `test_miniapp_controller.py`：编译实际小程序控制器，通过本地 HTTP 访问居民 API 与隔离 PostgreSQL，验证创建响应丢失后的原请求恢复、取消或未知结果、可靠关单及解绑后历史读取；微信 SDK、登录和渠道交互使用替身。
+- `test_release_readiness.py`：验证关闭新单后已有订单的查询、通知、入账、分账、解冻及核对，并实际执行 `pg_dump`／`pg_restore` 到另一个全新临时数据库，核实账务与不可变保护。
+
+支付测试使用测试密码学材料和渠道替身，不要求真实商户凭据，不调用真实资金渠道。专项测试不替代完整工程门禁；前端、契约及完整回归仍执行 `make check` 和 `make test-full`。小程序 WXML/WXSS 原生编译按[小程序构建与运行](#小程序构建与运行)单独执行，不包含在上述两个 Make 目标中。
+
+本地测试、原生编译、真机交互和真实渠道资金验证分别判定，不能相互替代。既有验收记录见[支付实施证据](../plans/payment/bill-payments-evidence.md)，真实渠道及发布操作的前置条件见[发布与恢复准备](../plans/payment/bill-payments-release.md)。
