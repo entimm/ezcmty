@@ -1,0 +1,7 @@
+<view class="screen"><view class="title">账单缴费</view><view class="muted">选择房屋，逐张缴纳全部待缴金额</view>
+<view class="card" wx:for="{{houses}}" wx:key="id" data-id="{{item.house_id}}" bindtap="choose"><view>{{item.house_label_snapshot}}</view><text wx:if="{{item.house_id === houseId}}" class="badge active">当前房屋</text></view>
+<view wx:if="{{houseId}}" class="row"><button class="quiet" data-scope="outstanding" bindtap="scope">待缴账单</button><button class="quiet" data-scope="all" bindtap="scope">全部账单</button></view>
+<screen-state loading="{{loading}}" error="{{error}}" bind:retry="loadHouses" empty="{{!loading && !error && !houses.length}}" message="暂无有效房屋授权，请先认领房屋"/>
+<view wx:if="{{houseId && !loading && !error && !items.length}}" class="notice">暂无{{scope === 'outstanding' ? '待缴' : ''}}账单</view>
+<view wx:for="{{items}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="open"><view class="row"><text>{{item.billing_month}} 物业费</text><text>待缴 ¥{{item.amount}}</text></view><view wx:if="{{item.is_overdue}}" class="notice">历史欠费</view><view class="muted">{{item.hint}} →</view></view>
+<button wx:if="{{items.length < total}}" class="quiet" bindtap="more" disabled="{{loading}}">加载更多</button></view>

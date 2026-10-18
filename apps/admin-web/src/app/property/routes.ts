@@ -2,6 +2,38 @@ import type { AdminRoute } from '../../shared/admin-app-context';
 
 export const propertyRoutes: AdminRoute[] = [
   {
+    path: '/property/payments',
+    component: '@/features/property/payments/PaymentOrdersPage',
+    title: '收款记录',
+    menu: true,
+    permission: 'property.payment.read',
+    states: ['authenticated'],
+  },
+  {
+    path: '/property/payments/:payment_id',
+    component: '@/features/property/payments/PaymentDetailPage',
+    title: '收款详情',
+    menuParent: '/property/payments',
+    permission: 'property.payment.read',
+    states: ['authenticated'],
+  },
+  {
+    path: '/property/payment-configuration',
+    component: '@/features/property/payments/PaymentConfigurationPage',
+    title: '收款配置',
+    menu: true,
+    permission: 'property.payment_config.read',
+    states: ['authenticated'],
+  },
+  {
+    path: '/property/payment-reconciliation',
+    component: '@/features/property/payments/ReconciliationPage',
+    title: '核对结果',
+    menu: true,
+    permission: 'property.payment_reconciliation.read',
+    states: ['authenticated'],
+  },
+  {
     path: '/property',
     component: '@/features/property/HomePage',
     title: '工作台',

@@ -90,4 +90,8 @@ Page({
   profile() {
     wx.navigateTo({ url: '/packages/resident/pages/profile/index' });
   },
+  bills() {
+    const url = '/packages/resident/pages/bills/index';
+    if (requireSession(url)) wx.navigateTo({ url });
+  },
 });

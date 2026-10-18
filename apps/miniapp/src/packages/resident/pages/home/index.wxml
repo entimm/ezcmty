@@ -3,6 +3,7 @@
   <view class="card hero"><view class="row"><view><view class="eyebrow">BETTER LIVING, TOGETHER</view><view class="title" style="margin-top:20rpx">从认领你的家开始</view></view><text class="hero-icon">⌂</text></view><view class="subtitle">连接物业，让社区服务触手可及。</view><button bindtap="claim">＋ 认领房屋</button></view>
   <view wx:if="{{!signedIn}}" class="card"><view class="section-title" style="margin-top:0">欢迎来到你的社区</view><view class="muted">微信登录，查看你的房屋和认领进度。</view><button class="primary" style="margin-top:28rpx" bindtap="login">微信登录</button></view>
   <block wx:else>
+    <view class="card" bindtap="bills"><view class="row"><view class="section-title">账单缴费</view><text class="chevron">›</text></view><view class="muted">查看物业费账单与待缴金额</view></view>
     <view class="summary-grid"><view bindtap="houses"><view class="number">{{houseCount}}</view><text class="muted">我的房屋 →</text></view><view bindtap="claims"><view class="number">{{pendingCount}}</view><text class="muted">等待审核 →</text></view></view>
     <screen-state loading="{{loading}}" error="{{error}}" bind:retry="load"/>
     <view class="row"><view class="section-title">我的家</view><text class="tiny-link" bindtap="houses">查看全部 →</text></view>

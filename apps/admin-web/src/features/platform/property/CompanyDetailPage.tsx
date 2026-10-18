@@ -43,6 +43,15 @@ export default function CompanyDetailPage() {
       }}
       extra={
         <Space>
+          {company && hasPermission('platform.payment_config.read') && (
+            <Link
+              to={path(
+                `/platform/property/companies/${company.id}/payment-configuration`,
+              )}
+            >
+              收款配置
+            </Link>
+          )}
           {company && (
             <CompanyActions
               company={company}

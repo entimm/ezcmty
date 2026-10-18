@@ -9,6 +9,7 @@ export const platformApp: AdminAppConfig = {
   title: '平台管理',
   theme: 'realDark',
   menuGroups: [
+    { id: 'payments', title: '支付与资金' },
     { id: 'property', title: '物业管理' },
     { id: 'system', title: '系统管理', path: '/platform/system' },
   ],

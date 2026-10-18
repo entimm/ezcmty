@@ -11,7 +11,12 @@
         "pages/claim-detail/index",
         "pages/house-detail/index",
         "pages/claim/index",
-        "pages/profile/index"
+        "pages/profile/index",
+        "pages/bills/index",
+        "pages/bill-detail/index",
+        "pages/payment-confirm/index",
+        "pages/payment-orders/index",
+        "pages/payment-detail/index"
       ]
     }
   ],

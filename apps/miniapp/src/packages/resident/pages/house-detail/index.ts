@@ -105,4 +105,11 @@ Page({
           item.community_id,
       });
   },
+  bills() {
+    const item = this.data.item;
+    if (item?.status === 'active' && item.effective_enabled)
+      wx.navigateTo({
+        url: '/packages/resident/pages/bills/index?house_id=' + item.house_id,
+      });
+  },
 });

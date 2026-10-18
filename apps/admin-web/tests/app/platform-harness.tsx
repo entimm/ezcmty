@@ -49,10 +49,28 @@ import ClaimsPage from '@/features/property/house-claims/ClaimsPage';
 import ClaimDetailPage from '@/features/property/house-claims/ClaimDetailPage';
 import BindingsPage from '@/features/property/house-claims/BindingsPage';
 import BindingDetailPage from '@/features/property/house-claims/BindingDetailPage';
+import PlatformPaymentOrders from '@/features/platform/payments/PaymentOrdersPage';
+import PlatformPaymentDetail from '@/features/platform/payments/PaymentDetailPage';
+import PlatformPaymentConfiguration from '@/features/platform/payments/PaymentConfigurationPage';
+import PlatformReconciliation from '@/features/platform/payments/ReconciliationPage';
+import PropertyPaymentOrders from '@/features/property/payments/PaymentOrdersPage';
+import PropertyPaymentDetail from '@/features/property/payments/PaymentDetailPage';
+import PropertyPaymentConfiguration from '@/features/property/payments/PaymentConfigurationPage';
+import PropertyReconciliation from '@/features/property/payments/ReconciliationPage';
 
 import type { SessionResponse } from '@/shared/api/admin';
 
 const pages = {
+  '@/features/platform/payments/PaymentOrdersPage': PlatformPaymentOrders,
+  '@/features/platform/payments/PaymentDetailPage': PlatformPaymentDetail,
+  '@/features/platform/payments/PaymentConfigurationPage':
+    PlatformPaymentConfiguration,
+  '@/features/platform/payments/ReconciliationPage': PlatformReconciliation,
+  '@/features/property/payments/PaymentOrdersPage': PropertyPaymentOrders,
+  '@/features/property/payments/PaymentDetailPage': PropertyPaymentDetail,
+  '@/features/property/payments/PaymentConfigurationPage':
+    PropertyPaymentConfiguration,
+  '@/features/property/payments/ReconciliationPage': PropertyReconciliation,
   '@/app/App': App,
   '@/app/platform/PlatformApp': PlatformApp,
   '@/features/platform/HomePage': PlatformHome,

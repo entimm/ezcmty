@@ -10,7 +10,7 @@ export function safeReturn(value?: string): string {
   } catch {
     return residentHome;
   }
-  return /^\/(?:packages\/resident\/pages\/(?:home|houses|claims|profile|claim|claim-detail|house-detail)|pages\/phones)\/index(?:\?(?:id|house_id|community_id)=[0-9a-f-]{36}(?:&(?:house_id|community_id)=[0-9a-f-]{36})?)?$/.test(
+  return /^\/(?:packages\/resident\/pages\/(?:home|houses|claims|profile|claim|claim-detail|house-detail|bills|bill-detail|payment-confirm|payment-orders|payment-detail)|pages\/phones)\/index(?:\?(?:id|house_id|community_id)=[0-9a-f-]{36}(?:&(?:house_id|community_id)=[0-9a-f-]{36})?)?$/.test(
     decoded,
   )
     ? decoded

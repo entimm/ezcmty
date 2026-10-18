@@ -2,6 +2,39 @@ import type { AdminRoute } from '../../shared/admin-app-context';
 
 export const platformRoutes: AdminRoute[] = [
   {
+    path: '/platform/payments',
+    component: '@/features/platform/payments/PaymentOrdersPage',
+    title: '支付记录',
+    menu: 'payments',
+    permission: 'platform.payment.read',
+    states: ['authenticated'],
+  },
+  {
+    path: '/platform/payments/:payment_id',
+    component: '@/features/platform/payments/PaymentDetailPage',
+    title: '支付与资金详情',
+    menuParent: '/platform/payments',
+    permission: 'platform.payment.read',
+    states: ['authenticated'],
+  },
+  {
+    path: '/platform/payment-reconciliation',
+    component: '@/features/platform/payments/ReconciliationPage',
+    title: '资金核对',
+    menu: 'payments',
+    permission: 'platform.payment_reconciliation.read',
+    states: ['authenticated'],
+  },
+  {
+    path: '/platform/property/companies/:company_id/payment-configuration',
+    sitePath: '/companies/:company_id/payment-configuration',
+    component: '@/features/platform/payments/PaymentConfigurationPage',
+    title: '收款配置',
+    menuParent: '/platform/property/companies',
+    permission: 'platform.payment_config.read',
+    states: ['authenticated'],
+  },
+  {
     path: '/platform',
     component: '@/features/platform/HomePage',
     title: '首页',
