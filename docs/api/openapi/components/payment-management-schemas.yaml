@@ -1,0 +1,1047 @@
+PaymentConfigurationToken:
+  type: string
+  minLength: 1
+  maxLength: 256
+  description: 不透明配置令牌；由该公司全部历史绑定的 (id,row_version) 与最新规则 ID 规范排序生成，不能用时间戳替代；客户端不得解析。
+PaymentStateToken:
+  type: string
+  minLength: 1
+  maxLength: 256
+  description: 当前资源的派生并发令牌；由资源和关联执行事实生成，不代表持久字段或执行授权。恢复时在父记录锁内复核，变化返回 409。
+MerchantBindingCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    merchant_no:
+      type: string
+      minLength: 1
+      maxLength: 64
+    merchant_name:
+      type: string
+      minLength: 1
+      maxLength: 256
+    expected_configuration_token:
+      $ref: ./payment-management-schemas.yaml#/PaymentConfigurationToken
+  required:
+    - merchant_no
+    - merchant_name
+    - expected_configuration_token
+  description: 只创建停用的绑定，服务商身份来自受控服务端配置；请求不能指定 enabled、比例缓存或服务商商户号。
+MerchantBinding:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    property_company_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    service_provider_merchant_no:
+      type: string
+      maxLength: 64
+    merchant_no:
+      type: string
+      maxLength: 64
+    merchant_name:
+      type: string
+      maxLength: 256
+    enabled:
+      type: boolean
+    max_ratio_bps:
+      anyOf:
+        - type: integer
+          minimum: 0
+          maximum: 10000
+        - type: 'null'
+    ratio_checked_at:
+      anyOf:
+        - type: string
+          format: date-time
+          description: 带时区 RFC 3339；响应统一为 UTC Z。
+        - type: 'null'
+    row_version:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    created_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+    updated_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+  required:
+    - id
+    - property_company_id
+    - service_provider_merchant_no
+    - merchant_no
+    - merchant_name
+    - enabled
+    - max_ratio_bps
+    - ratio_checked_at
+    - row_version
+    - created_at
+    - updated_at
+  description: 启停版本与渠道能力缓存分离；停用不影响历史支付的查询、关单、分账和解冻。不包含渠道密钥、证书或接收关系原始响应。
+ActiveMerchantBindingUpdate:
+  type: object
+  additionalProperties: false
+  properties:
+    binding_id:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    expected_configuration_token:
+      $ref: ./payment-management-schemas.yaml#/PaymentConfigurationToken
+  required:
+    - binding_id
+    - expected_configuration_token
+  description: binding_id 为 null 表示停用当前收款绑定；非空表示原子启用目标并停用旧绑定。允许无规则或旧规则超过新商户上限时激活已核验商户，但配置仍不可收款；发布适用规则后才可恢复新支付。
+ProfitSharingRuleItemCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    rate_bps:
+      type: integer
+      minimum: 0
+      maximum: 10000
+  required:
+    - rate_bps
+  description: 100 表示 1%；平台接收账号、名称、关系与接收方类型均由服务端固定。
+ProfitSharingRuleCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    expected_configuration_token:
+      $ref: ./payment-management-schemas.yaml#/PaymentConfigurationToken
+    items:
+      type: array
+      items:
+        $ref: ./payment-management-schemas.yaml#/ProfitSharingRuleItemCreate
+      minItems: 1
+      maxItems: 1
+  required:
+    - expected_configuration_token
+    - items
+  description: 一期恰好一条平台接收方。规则及条目同事务不可变创建；采用计算版本 1，创建即成为最新版本。
+ProfitSharingRuleItem:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    receiver_type:
+      type: string
+      const: merchant
+    receiver_account:
+      type: string
+      maxLength: 128
+    receiver_name:
+      type: string
+      maxLength: 256
+    relation_type:
+      type: string
+      const: service_provider
+    rate_bps:
+      type: integer
+      minimum: 0
+      maximum: 10000
+  required:
+    - id
+    - receiver_type
+    - receiver_account
+    - receiver_name
+    - relation_type
+    - rate_bps
+ProfitSharingRuleVersion:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    property_company_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    version_no:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    calculation_version:
+      type: integer
+      const: 1
+    items:
+      type: array
+      items:
+        $ref: ./payment-management-schemas.yaml#/ProfitSharingRuleItem
+      minItems: 1
+    created_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+  required:
+    - id
+    - property_company_id
+    - version_no
+    - calculation_version
+    - items
+    - created_at
+  description: 计算版本 1：支付订单金额（扣渠道手续费前）乘每个接收方比例，分别 half-up 到整数分。渠道手续费另由物业承担。历史版本不可修改或删除，回退也创建新版本。
+PaymentConfiguration:
+  type: object
+  additionalProperties: false
+  properties:
+    property_company_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    configuration_token:
+      $ref: ./payment-management-schemas.yaml#/PaymentConfigurationToken
+    ready:
+      type: boolean
+    reasons:
+      type: array
+      items:
+        type: string
+        enum:
+          - company_disabled
+          - merchant_missing
+          - rule_missing
+          - merchant_unverified
+          - receiver_unready
+          - ratio_unknown
+          - ratio_exceeded
+          - channel_unavailable
+      minItems: 0
+    current_binding:
+      anyOf:
+        - $ref: ./payment-management-schemas.yaml#/MerchantBinding
+        - type: 'null'
+    current_rule:
+      anyOf:
+        - $ref: ./payment-management-schemas.yaml#/ProfitSharingRuleVersion
+        - type: 'null'
+  required:
+    - property_company_id
+    - configuration_token
+    - ready
+    - reasons
+    - current_binding
+    - current_rule
+  description: ready 为当前配置的必要条件检查，不能代替下单时金额级、渠道及权限复核；ready=true 时 reasons 为空。无规则仍可激活已核验商户，此时 ready=false，reasons 包含 rule_missing；旧规则超出新商户上限时同样保持不可收款，reasons 包含 ratio_exceeded。
+ManagedPaymentItem:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    bill_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    community_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    house_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    house_label:
+      type: string
+      maxLength: 512
+    billing_month:
+      type: string
+      pattern: ^\d{4}-(0[1-9]|1[0-2])$
+    amount_cents:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+  required:
+    - id
+    - bill_id
+    - community_id
+    - house_id
+    - house_label
+    - billing_month
+    - amount_cents
+  description: 只返回所付账单的不可变摘要，不附带该房屋当前欠费或居民个人资料。
+ManagedPaymentOrder:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    property_company_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    order_no:
+      type: string
+      maxLength: 64
+    channel_transaction_no:
+      anyOf:
+        - type: string
+          maxLength: 64
+        - type: 'null'
+    merchant_binding_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    rule_version_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    merchant_name:
+      type: string
+      maxLength: 256
+    merchant_no:
+      type: string
+      maxLength: 64
+    amount_cents:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    payer_total_cents:
+      anyOf:
+        - type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        - type: 'null'
+    status:
+      type: string
+      enum:
+        - pending
+        - unknown
+        - payable
+        - closing
+        - succeeded
+        - closed
+    confirmation_status:
+      type: string
+      enum:
+        - unconfirmed
+        - awaiting_posting
+        - posted
+    items:
+      type: array
+      items:
+        $ref: ./payment-management-schemas.yaml#/ManagedPaymentItem
+      minItems: 1
+    expires_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+    paid_at:
+      anyOf:
+        - type: string
+          format: date-time
+          description: 带时区 RFC 3339；响应统一为 UTC Z。
+        - type: 'null'
+    closed_at:
+      anyOf:
+        - type: string
+          format: date-time
+          description: 带时区 RFC 3339；响应统一为 UTC Z。
+        - type: 'null'
+    created_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+    updated_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+    state_token:
+      $ref: ./payment-management-schemas.yaml#/PaymentStateToken
+  required:
+    - id
+    - property_company_id
+    - order_no
+    - channel_transaction_no
+    - merchant_binding_id
+    - rule_version_id
+    - merchant_name
+    - merchant_no
+    - amount_cents
+    - payer_total_cents
+    - status
+    - confirmation_status
+    - items
+    - expires_at
+    - paid_at
+    - closed_at
+    - created_at
+    - updated_at
+    - state_token
+  description: 管理支付视图。succeeded 表示可信收款及账单入账已原子完成；awaiting_posting 来自可靠可信证据，不能据此再次付款。没有预支付凭证、OpenID、签名、他人身份或原始渠道报文。资金明细通过单独权限和资源读取。
+ManagedProfitSharingItem:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    allocation_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    receiver_type:
+      type: string
+      const: merchant
+    receiver_account:
+      type: string
+      maxLength: 128
+    receiver_name:
+      type: string
+      maxLength: 256
+    allocation_cents:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    amount_cents:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    result:
+      anyOf:
+        - type: string
+          enum:
+            - success
+            - failed
+        - type: 'null'
+    channel_detail_no:
+      anyOf:
+        - type: string
+          maxLength: 64
+        - type: 'null'
+    failure_summary:
+      anyOf:
+        - type: string
+          maxLength: 1000
+        - type: 'null'
+    finished_at:
+      anyOf:
+        - type: string
+          format: date-time
+          description: 带时区 RFC 3339；响应统一为 UTC Z。
+        - type: 'null'
+  required:
+    - id
+    - allocation_id
+    - receiver_type
+    - receiver_account
+    - receiver_name
+    - allocation_cents
+    - amount_cents
+    - result
+    - channel_detail_no
+    - failure_summary
+    - finished_at
+  description: allocation_cents 是不可变应分额，amount_cents 是本次执行额；不能将多次尝试合计当作已分金额。failure_summary 仅为脱敏业务说明，不返回原始异常。
+ManagedProfitSharingOrder:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    property_company_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    payment_order_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    order_no:
+      type: string
+      maxLength: 64
+    channel_order_no:
+      anyOf:
+        - type: string
+          maxLength: 64
+        - type: 'null'
+    status:
+      type: string
+      enum:
+        - pending
+        - unknown
+        - processing
+        - finished
+        - rejected
+    items:
+      type: array
+      items:
+        $ref: ./payment-management-schemas.yaml#/ManagedProfitSharingItem
+      minItems: 1
+    created_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+    updated_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+  required:
+    - id
+    - property_company_id
+    - payment_order_id
+    - order_no
+    - channel_order_no
+    - status
+    - items
+    - created_at
+    - updated_at
+  description: finished 仅表示执行结束，各接收方 success 才算履行；分账异常不撤销居民缴费。
+ManagedUnfreezeOrder:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    property_company_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    payment_order_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    order_no:
+      type: string
+      maxLength: 64
+    channel_order_no:
+      anyOf:
+        - type: string
+          maxLength: 64
+        - type: 'null'
+    status:
+      type: string
+      enum:
+        - pending
+        - unknown
+        - processing
+        - succeeded
+        - failed
+        - no_remaining
+    unfrozen_cents:
+      anyOf:
+        - type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        - type: 'null'
+    channel_detail_no:
+      anyOf:
+        - type: string
+          maxLength: 64
+        - type: 'null'
+    failure_summary:
+      anyOf:
+        - type: string
+          maxLength: 1000
+        - type: 'null'
+    finished_at:
+      anyOf:
+        - type: string
+          format: date-time
+          description: 带时区 RFC 3339；响应统一为 UTC Z。
+        - type: 'null'
+    created_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+    updated_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+  required:
+    - id
+    - property_company_id
+    - payment_order_id
+    - order_no
+    - channel_order_no
+    - status
+    - unfrozen_cents
+    - channel_detail_no
+    - failure_summary
+    - finished_at
+    - created_at
+    - updated_at
+  description: unfrozen_cents 只来自渠道确认，未知为空；no_remaining 不表示本次释放成功或服务费到账。解冻异常不撤销居民缴费。
+ReconciliationSummary:
+  type: object
+  additionalProperties: false
+  properties:
+    local_count:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    channel_count:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    matched_count:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    discrepancy_count:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    local_amount_cents:
+      anyOf:
+        - type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        - type: 'null'
+    channel_amount_cents:
+      anyOf:
+        - type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        - type: 'null'
+    channel_fee_cents:
+      anyOf:
+        - type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        - type: 'null'
+  required:
+    - local_count
+    - channel_count
+    - matched_count
+    - discrepancy_count
+    - local_amount_cents
+    - channel_amount_cents
+    - channel_fee_cents
+  description: 白名单汇总。金额未知为 null；资金记账金额可为负数，只汇总当前授权投影，物业绝不返回全平台批次金额、未知归属行或其他公司的统计。手续费仅采用渠道账单实际值。
+ManagedReconciliationRun:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    business_date:
+      type: string
+      format: date
+    statement_type:
+      type: string
+      enum:
+        - trade
+        - profit_sharing
+        - platform_fundflow
+    service_provider_merchant_no:
+      type: string
+      maxLength: 64
+    merchant_no:
+      anyOf:
+        - type: string
+          maxLength: 64
+        - type: 'null'
+    status:
+      type: string
+      enum:
+        - ready
+        - running
+        - completed
+        - failed
+    projection:
+      type: string
+      enum:
+        - batch
+        - company
+    property_company_id:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    source_digest:
+      anyOf:
+        - type: string
+          maxLength: 128
+        - type: 'null'
+    summary:
+      $ref: ./payment-management-schemas.yaml#/ReconciliationSummary
+    created_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+    updated_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+    finished_at:
+      anyOf:
+        - type: string
+          format: date-time
+          description: 带时区 RFC 3339；响应统一为 UTC Z。
+        - type: 'null'
+    state_token:
+      $ref: ./payment-management-schemas.yaml#/PaymentStateToken
+  required:
+    - id
+    - business_date
+    - statement_type
+    - service_provider_merchant_no
+    - merchant_no
+    - status
+    - projection
+    - property_company_id
+    - source_digest
+    - summary
+    - created_at
+    - updated_at
+    - finished_at
+    - state_token
+  description: 批次按业务日期、账单类型和实际服务商/收款商户唯一。平台资金账单 merchant_no=null，仅平台可见；物业仅能读取可归属本公司的 trade/profit_sharing 投影，不返回下载地址、原文件或未知行。交易按付款日期、分账按执行事件日期、资金按记账日期核对。
+ReconciliationEvidence:
+  type: object
+  additionalProperties: false
+  properties:
+    source:
+      type: string
+      enum:
+        - channel_trade
+        - channel_profit_sharing
+        - channel_fundflow
+        - order_query
+        - unfreeze_query
+        - internal
+    order_no:
+      anyOf:
+        - type: string
+          maxLength: 64
+        - type: 'null'
+    channel_transaction_no:
+      anyOf:
+        - type: string
+          maxLength: 64
+        - type: 'null'
+    channel_order_no:
+      anyOf:
+        - type: string
+          maxLength: 64
+        - type: 'null'
+    channel_detail_no:
+      anyOf:
+        - type: string
+          maxLength: 64
+        - type: 'null'
+    statement_line_no:
+      anyOf:
+        - type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        - type: 'null'
+    expected_status:
+      anyOf:
+        - type: string
+          maxLength: 32
+        - type: 'null'
+    actual_status:
+      anyOf:
+        - type: string
+          maxLength: 32
+        - type: 'null'
+    checked_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+  required:
+    - source
+    - order_no
+    - channel_transaction_no
+    - channel_order_no
+    - channel_detail_no
+    - statement_line_no
+    - expected_status
+    - actual_status
+    - checked_at
+  description: 仅列出授权业务编号、规范化状态及核验时间；没有原始账单行、付款身份、下载地址或渠道报文。未知本地订单仍可保留渠道业务编号。
+ManagedReconciliationDiscrepancy:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    reconciliation_run_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    property_company_id:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    difference_type:
+      type: string
+      enum:
+        - channel_only
+        - local_only
+        - amount_mismatch
+        - status_mismatch
+        - unclassified
+    reference_key:
+      type: string
+      maxLength: 256
+    payment_order_id:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    profit_sharing_order_item_id:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    expected_cents:
+      anyOf:
+        - type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        - type: 'null'
+    actual_cents:
+      anyOf:
+        - type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        - type: 'null'
+    evidence:
+      $ref: ./payment-management-schemas.yaml#/ReconciliationEvidence
+    status:
+      type: string
+      enum:
+        - open
+        - observing
+        - resolved
+    created_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+    updated_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+    resolved_at:
+      anyOf:
+        - type: string
+          format: date-time
+          description: 带时区 RFC 3339；响应统一为 UTC Z。
+        - type: 'null'
+    resolved_by:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    resolution_note:
+      anyOf:
+        - type: string
+          maxLength: 1000
+        - type: 'null'
+    state_token:
+      $ref: ./payment-management-schemas.yaml#/PaymentStateToken
+  required:
+    - id
+    - reconciliation_run_id
+    - property_company_id
+    - difference_type
+    - reference_key
+    - payment_order_id
+    - profit_sharing_order_item_id
+    - expected_cents
+    - actual_cents
+    - evidence
+    - status
+    - created_at
+    - updated_at
+    - resolved_at
+    - resolved_by
+    - resolution_note
+    - state_token
+  description:
+    observing 表示已恢复原业务但仍待可靠结果或重核对；resolved 只能由可信证据确认。未知金额不按零处理，资金记账金额可为负数。物业只返回可确定归属本公司的白名单信息；未知归属记录仅平台可见。解决说明须脱敏；差异再次打开时保留最近
+    resolved_at/by/note，不能据此推断当前已解决。重跑不得静默删除历史差异。
+PaymentRecoveryRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 1000
+      pattern: \S
+    expected_state_token:
+      $ref: ./payment-management-schemas.yaml#/PaymentStateToken
+  required:
+    - reason
+    - expected_state_token
+  description: 只说明恢复原因和当前并发证据，不允许提交金额、账号、成功目标或任意任务类型。服务端在锁内复核事实、选择正常恢复方式并审计；没有人工强制成功或直接释放占用。
+PaymentRecoveryAccepted:
+  type: object
+  additionalProperties: false
+  properties:
+    target_type:
+      type: string
+      enum:
+        - payment_order
+        - reconciliation_run
+        - reconciliation_discrepancy
+    target_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    accepted_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应统一为 UTC Z。
+  required:
+    - target_type
+    - target_id
+    - accepted_at
+  description: 202 表示任务已可靠持久化或已存在的任务被合并，不表示付款、分账、解冻或差异已经成功；查询原资源确认。
+MerchantBindingPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./payment-management-schemas.yaml#/MerchantBinding
+      minItems: 0
+    total:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    page:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
+  required:
+    - items
+    - total
+    - page
+    - page_size
+ProfitSharingRuleVersionPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./payment-management-schemas.yaml#/ProfitSharingRuleVersion
+      minItems: 0
+    total:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    page:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
+  required:
+    - items
+    - total
+    - page
+    - page_size
+ManagedPaymentOrderPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./payment-management-schemas.yaml#/ManagedPaymentOrder
+      minItems: 0
+    total:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    page:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
+  required:
+    - items
+    - total
+    - page
+    - page_size
+ManagedProfitSharingOrderPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./payment-management-schemas.yaml#/ManagedProfitSharingOrder
+      minItems: 0
+    total:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    page:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
+  required:
+    - items
+    - total
+    - page
+    - page_size
+ManagedUnfreezeOrderPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./payment-management-schemas.yaml#/ManagedUnfreezeOrder
+      minItems: 0
+    total:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    page:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
+  required:
+    - items
+    - total
+    - page
+    - page_size
+ManagedReconciliationRunPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./payment-management-schemas.yaml#/ManagedReconciliationRun
+      minItems: 0
+    total:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    page:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
+  required:
+    - items
+    - total
+    - page
+    - page_size
+ManagedReconciliationDiscrepancyPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./payment-management-schemas.yaml#/ManagedReconciliationDiscrepancy
+      minItems: 0
+    total:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    page:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
+  required:
+    - items
+    - total
+    - page
+    - page_size

@@ -1,0 +1,443 @@
+ResidentPaymentAmount:
+  description: 人民币整数分，限制在 JavaScript 可精确表达的整数范围内。
+  type: integer
+  minimum: 0
+  maximum: 9007199254740991
+ResidentPaymentTimestamp:
+  description: 服务端响应统一使用带 Z 后缀的 UTC RFC 3339 时间。
+  type: string
+  format: date-time
+  pattern: Z$
+ResidentPaymentStatus:
+  description: 本地支付状态；succeeded 表示可信收款与账单入账均已提交，closed 表示已确认不可再支付。
+  type: string
+  enum:
+    - pending
+    - unknown
+    - payable
+    - closing
+    - succeeded
+    - closed
+ResidentPaymentConfirmationStatus:
+  description: 由可信渠道收款证据和本地入账事实派生；客户端支付面板结果不能产生 awaiting_posting 或 posted。
+  type: string
+  enum:
+    - unconfirmed
+    - awaiting_posting
+    - posted
+ResidentBill:
+  description: 当前有效房屋授权下可读的账单视图；不返回管理员自由文本、他人付款身份或渠道凭证。
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    property_company_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    property_company_name:
+      type: string
+      minLength: 1
+      maxLength: 200
+    community_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    house_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    house_label_snapshot:
+      type: string
+      minLength: 1
+      maxLength: 512
+    bill_type:
+      type: string
+      const: property_fee
+    billing_month:
+      type: string
+      pattern: ^\d{4}-(0[1-9]|1[0-2])$
+    period_start:
+      type: string
+      format: date
+    period_end:
+      type: string
+      format: date
+    receivable_cents:
+      $ref: '#/ResidentPaymentAmount'
+    settled_cents:
+      $ref: '#/ResidentPaymentAmount'
+    outstanding_cents:
+      $ref: '#/ResidentPaymentAmount'
+    lifecycle_status:
+      type: string
+      enum:
+        - active
+        - voided
+    settlement_status:
+      anyOf:
+        - type: string
+          enum:
+            - unpaid
+            - partially_settled
+            - settled
+        - type: 'null'
+    due_date:
+      anyOf:
+        - type: string
+          format: date
+        - type: 'null'
+    is_overdue:
+      type: boolean
+    row_version:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    payment_availability:
+      description: 服务端派生的操作提示；不能替代创建支付时对授权、账务版本、占用和收款配置的原子校验。
+      type: string
+      enum:
+        - available
+        - own_payment_in_progress
+        - other_payment_in_progress
+        - settled
+        - voided
+        - collection_unavailable
+    own_payment_order_id:
+      description: 当前占用属于本人时返回原订单 ID；他人占用及无占用均为 null。
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    created_at:
+      $ref: '#/ResidentPaymentTimestamp'
+    updated_at:
+      $ref: '#/ResidentPaymentTimestamp'
+  required:
+    - id
+    - property_company_id
+    - property_company_name
+    - community_id
+    - house_id
+    - house_label_snapshot
+    - bill_type
+    - billing_month
+    - period_start
+    - period_end
+    - receivable_cents
+    - settled_cents
+    - outstanding_cents
+    - lifecycle_status
+    - settlement_status
+    - due_date
+    - is_overdue
+    - row_version
+    - payment_availability
+    - own_payment_order_id
+    - created_at
+    - updated_at
+ResidentBillPage:
+  description: 同一查询快照内的房屋账单分页结果。
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      maxItems: 100
+      items:
+        $ref: '#/ResidentBill'
+    total:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    page:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
+  required:
+    - items
+    - total
+    - page
+    - page_size
+ResidentBillSettlementEntry:
+  description: 房屋历史收款的脱敏流水；不含姓名、手机号、OpenID、渠道单号、支付凭证或管理员自由文本。
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    bill_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    entry_type:
+      type: string
+      enum:
+        - receipt
+        - reversal
+    source_type:
+      type: string
+      enum:
+        - offline
+        - online_payment
+    amount_cents:
+      description: 收款为正，线下登记调整为负；调整不表示退款。
+      type: integer
+      minimum: -9007199254740991
+      maximum: 9007199254740991
+      not:
+        const: 0
+    received_on:
+      anyOf:
+        - type: string
+          format: date
+        - type: 'null'
+    display_type:
+      description: 界面据此显示“本人缴纳”“其他缴费人缴纳”“线下登记”或“线下登记调整”。
+      type: string
+      enum:
+        - own_payment
+        - other_payment
+        - offline_receipt
+        - offline_adjustment
+    own_payment_order_id:
+      description: 仅本人的线上收款返回可跳转的本人订单 ID，其他情况为 null。
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    created_at:
+      $ref: '#/ResidentPaymentTimestamp'
+  required:
+    - id
+    - bill_id
+    - entry_type
+    - source_type
+    - amount_cents
+    - received_on
+    - display_type
+    - own_payment_order_id
+    - created_at
+ResidentBillSettlementEntryPage:
+  description: 同一查询快照内的脱敏账单收款流水分页结果。
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      maxItems: 100
+      items:
+        $ref: '#/ResidentBillSettlementEntry'
+    total:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    page:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
+  required:
+    - items
+    - total
+    - page
+    - page_size
+ResidentPaymentItemCreate:
+  description: 指定本次付清的账单及居民确认时看到的账单版本，不接受客户端指定支付金额。
+  type: object
+  additionalProperties: false
+  properties:
+    bill_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    expected_row_version:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+  required:
+    - bill_id
+    - expected_row_version
+ResidentPaymentOrderCreate:
+  description: 本期恰好一张账单，付清锁定后的全部剩余欠款；金额、付款人、商户和分账规则均由服务端确定。
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      minItems: 1
+      maxItems: 1
+      items:
+        $ref: '#/ResidentPaymentItemCreate'
+  required:
+    - items
+ResidentPaymentOrderItem:
+  description: 本人付款关联的账单摘要；解绑后仍可返回，不包含房屋当前余额或其他居民流水。
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    bill_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    bill_type:
+      type: string
+      const: property_fee
+    billing_month:
+      type: string
+      pattern: ^\d{4}-(0[1-9]|1[0-2])$
+    house_label_snapshot:
+      type: string
+      minLength: 1
+      maxLength: 512
+    amount_cents:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+  required:
+    - id
+    - bill_id
+    - bill_type
+    - billing_month
+    - house_label_snapshot
+    - amount_cents
+ResidentPaymentOrder:
+  description: 本人订单视图；不暴露预支付凭证或渠道单号，支付成功不依赖后续分账和解冻完成。
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    order_no:
+      type: string
+      minLength: 1
+      maxLength: 64
+    merchant_name:
+      description: 原订单收款商户名称；更换当前绑定不改变原订单收款方。
+      type: string
+      minLength: 1
+      maxLength: 256
+    amount_cents:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    payer_total_cents:
+      description: 渠道确认的付款人实付金额；不能用它与订单金额的差额推断渠道手续费。
+      anyOf:
+        - $ref: '#/ResidentPaymentAmount'
+        - type: 'null'
+    status:
+      $ref: '#/ResidentPaymentStatus'
+    confirmation_status:
+      $ref: '#/ResidentPaymentConfirmationStatus'
+    available_actions:
+      description: 依据本人关系、当前房屋授权、收款证据和订单状态实时派生；awaiting_posting 时不允许继续支付。
+      type: array
+      uniqueItems: true
+      maxItems: 3
+      items:
+        type: string
+        enum:
+          - continue_payment
+          - refresh
+          - close
+    items:
+      type: array
+      minItems: 1
+      items:
+        $ref: '#/ResidentPaymentOrderItem'
+    expires_at:
+      $ref: '#/ResidentPaymentTimestamp'
+    paid_at:
+      anyOf:
+        - $ref: '#/ResidentPaymentTimestamp'
+        - type: 'null'
+    closed_at:
+      anyOf:
+        - $ref: '#/ResidentPaymentTimestamp'
+        - type: 'null'
+    created_at:
+      $ref: '#/ResidentPaymentTimestamp'
+    updated_at:
+      $ref: '#/ResidentPaymentTimestamp'
+  required:
+    - id
+    - order_no
+    - merchant_name
+    - amount_cents
+    - payer_total_cents
+    - status
+    - confirmation_status
+    - available_actions
+    - items
+    - expires_at
+    - paid_at
+    - closed_at
+    - created_at
+    - updated_at
+ResidentPaymentOrderPage:
+  description: 同一查询快照内的本人订单分页结果，解绑后仍可查询。
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      maxItems: 100
+      items:
+        $ref: '#/ResidentPaymentOrder'
+    total:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    page:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
+  required:
+    - items
+    - total
+    - page
+    - page_size
+ResidentClientPaymentParameters:
+  description: 原订单的一次客户端调起参数；禁止缓存或记录到日志，重新签发不会创建新支付订单。
+  type: object
+  additionalProperties: false
+  properties:
+    payment_order_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    channel:
+      type: string
+      const: wechat_pay
+    client_parameters:
+      $ref: '#/ResidentWechatPayClientParameters'
+  required:
+    - payment_order_id
+    - channel
+    - client_parameters
+ResidentWechatPayClientParameters:
+  description: 微信小程序 wx.requestPayment 的精确渠道载荷；仅该协议对象保留渠道要求的字段名，领域字段仍使用通用命名。
+  type: object
+  additionalProperties: false
+  properties:
+    timeStamp:
+      type: string
+      pattern: ^[0-9]+$
+    nonceStr:
+      type: string
+      minLength: 1
+      maxLength: 32
+    package:
+      type: string
+      pattern: ^prepay_id=.+$
+    signType:
+      type: string
+      const: RSA
+    paySign:
+      type: string
+      minLength: 1
+  required:
+    - timeStamp
+    - nonceStr
+    - package
+    - signType
+    - paySign

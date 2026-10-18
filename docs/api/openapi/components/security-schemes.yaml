@@ -11,3 +11,9 @@ WebhookSignature:
   type: apiKey
   in: header
   name: X-Webhook-Signature
+
+WechatpaySignature:
+  type: apiKey
+  in: header
+  name: Wechatpay-Signature
+  description: 微信支付原始报文签名；与时间戳、随机串及可信公钥或证书标识共同验证，不是居民或管理员身份凭证。

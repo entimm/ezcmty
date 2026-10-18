@@ -1,0 +1,1119 @@
+paymentOrders:
+  get:
+    operationId: listManagedPaymentOrders
+    x-runtimes:
+      - platform_admin_api
+      - property_admin_api
+    tags:
+      - payment-management
+    summary: 查询支付订单
+    description:
+      本期物业按认证公司限定完整业务记录，不引入指定小区授权；未来引入小区授权时，再按支付明细关联账单核验，越界返回 404。若订单包含不可访问明细，则整单不返回，不能只展示部分金额后伪装完整订单。平台按所授范围读取。
+      只返回该资源权限内业务白名单，不读取原始通知、请求报文或技术日志。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.payment.read
+      property_admin_api:
+        - property.payment.read
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - created_at,id
+            - -created_at,-id
+          default: -created_at,-id
+      - name: property_company_id
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+        description: 仅平台可用；物业提交此参数返回 422，不能切换公司。
+      - name: community_id
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+        description: 按支付明细关联账单筛选；本期仍以认证公司授权，不建立指定小区授权。未来引入小区授权时再与授权范围相交。
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - pending
+            - unknown
+            - payable
+            - closing
+            - succeeded
+            - closed
+      - name: order_no
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 64
+        description: 系统业务单号精确匹配。
+      - name: created_from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: 含边界，必须带时区。
+      - name: created_before
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: 不含边界，必须晚于 created_from。
+      - name: house_id
+        in: query
+        required: false
+        description: 按支付明细关联账单的房屋精确筛选，仍受当前公司范围限制。
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: channel_transaction_no
+        in: query
+        required: false
+        description: 渠道支付交易号精确匹配。
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 64
+      - name: confirmation_status
+        in: query
+        required: false
+        description: 按可信收款证据及本地入账事实派生筛选；awaiting_posting 表示已收款待入账。
+        schema:
+          type: string
+          enum:
+            - unconfirmed
+            - awaiting_posting
+            - posted
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ManagedPaymentOrderPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+paymentOrder:
+  get:
+    operationId: getManagedPaymentOrder
+    x-runtimes:
+      - platform_admin_api
+      - property_admin_api
+    tags:
+      - payment-management
+    summary: 读取支付订单
+    description:
+      本期物业按认证公司限定完整业务记录，不引入指定小区授权；未来引入小区授权时，再按支付明细关联账单核验，越界返回 404。若订单包含不可访问明细，则整单不返回，不能只展示部分金额后伪装完整订单。平台按所授范围读取。
+      支付成功、入账、分账与解冻分开表达，资金异常不恢复居民欠费。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.payment.read
+      property_admin_api:
+        - property.payment.read
+    parameters:
+      - name: payment_order_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ManagedPaymentOrder
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+profitSharingOrders:
+  get:
+    operationId: listManagedProfitSharingOrders
+    x-runtimes:
+      - platform_admin_api
+      - property_admin_api
+    tags:
+      - payment-management
+    summary: 查询分账执行单
+    description:
+      本期物业按认证公司限定完整业务记录，不引入指定小区授权；未来引入小区授权时，再按支付明细关联账单核验，越界返回 404。若订单包含不可访问明细，则整单不返回，不能只展示部分金额后伪装完整订单。平台按所授范围读取。
+      只返回该资源权限内业务白名单，不读取原始通知、请求报文或技术日志。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.payment_funds.read
+      property_admin_api:
+        - property.payment_funds.read
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - created_at,id
+            - -created_at,-id
+          default: -created_at,-id
+      - name: property_company_id
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+        description: 仅平台可用；物业提交此参数返回 422，不能切换公司。
+      - name: community_id
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+        description: 按支付明细关联账单筛选；本期仍以认证公司授权，不建立指定小区授权。未来引入小区授权时再与授权范围相交。
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - pending
+            - unknown
+            - processing
+            - finished
+            - rejected
+      - name: order_no
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 64
+        description: 系统业务单号精确匹配。
+      - name: created_from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: 含边界，必须带时区。
+      - name: created_before
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: 不含边界，必须晚于 created_from。
+      - name: payment_order_id
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ManagedProfitSharingOrderPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+profitSharingOrder:
+  get:
+    operationId: getManagedProfitSharingOrder
+    x-runtimes:
+      - platform_admin_api
+      - property_admin_api
+    tags:
+      - payment-management
+    summary: 读取分账执行单
+    description:
+      本期物业按认证公司限定完整业务记录，不引入指定小区授权；未来引入小区授权时，再按支付明细关联账单核验，越界返回 404。若订单包含不可访问明细，则整单不返回，不能只展示部分金额后伪装完整订单。平台按所授范围读取。
+      支付成功、入账、分账与解冻分开表达，资金异常不恢复居民欠费。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.payment_funds.read
+      property_admin_api:
+        - property.payment_funds.read
+    parameters:
+      - name: profit_sharing_order_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ManagedProfitSharingOrder
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+unfreezeOrders:
+  get:
+    operationId: listManagedUnfreezeOrders
+    x-runtimes:
+      - platform_admin_api
+      - property_admin_api
+    tags:
+      - payment-management
+    summary: 查询解冻执行单
+    description:
+      本期物业按认证公司限定完整业务记录，不引入指定小区授权；未来引入小区授权时，再按支付明细关联账单核验，越界返回 404。若订单包含不可访问明细，则整单不返回，不能只展示部分金额后伪装完整订单。平台按所授范围读取。
+      只返回该资源权限内业务白名单，不读取原始通知、请求报文或技术日志。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.payment_funds.read
+      property_admin_api:
+        - property.payment_funds.read
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - created_at,id
+            - -created_at,-id
+          default: -created_at,-id
+      - name: property_company_id
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+        description: 仅平台可用；物业提交此参数返回 422，不能切换公司。
+      - name: community_id
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+        description: 按支付明细关联账单筛选；本期仍以认证公司授权，不建立指定小区授权。未来引入小区授权时再与授权范围相交。
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - pending
+            - unknown
+            - processing
+            - succeeded
+            - failed
+            - no_remaining
+      - name: order_no
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 64
+        description: 系统业务单号精确匹配。
+      - name: created_from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: 含边界，必须带时区。
+      - name: created_before
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+        description: 不含边界，必须晚于 created_from。
+      - name: payment_order_id
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ManagedUnfreezeOrderPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+unfreezeOrder:
+  get:
+    operationId: getManagedUnfreezeOrder
+    x-runtimes:
+      - platform_admin_api
+      - property_admin_api
+    tags:
+      - payment-management
+    summary: 读取解冻执行单
+    description:
+      本期物业按认证公司限定完整业务记录，不引入指定小区授权；未来引入小区授权时，再按支付明细关联账单核验，越界返回 404。若订单包含不可访问明细，则整单不返回，不能只展示部分金额后伪装完整订单。平台按所授范围读取。
+      支付成功、入账、分账与解冻分开表达，资金异常不恢复居民欠费。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.payment_funds.read
+      property_admin_api:
+        - property.payment_funds.read
+    parameters:
+      - name: unfreeze_order_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ManagedUnfreezeOrder
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+reconciliationRuns:
+  get:
+    operationId: listManagedReconciliationRuns
+    x-runtimes:
+      - platform_admin_api
+      - property_admin_api
+    tags:
+      - payment-management
+    summary: 查询资金核对批次
+    description:
+      物业只查看可明确归属本公司的交易/分账批次投影及差异，所有计数金额均重算为授权范围；平台账户资金批次、未知归属或混合且无法安全投影的数据仅平台可见，物业访问返回 404。 重跑沿用原批次，不以当前绑定 ID 切分历史商户。
+      所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.payment_reconciliation.read
+      property_admin_api:
+        - property.payment_reconciliation.read
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - created_at,id
+            - -created_at,-id
+          default: -created_at,-id
+      - name: property_company_id
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+        description: 仅平台可用，物业提交返回 422。
+      - name: business_date_from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+        description: 含边界。
+      - name: business_date_through
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+        description: 含边界，必须不早于开始日期。
+      - name: statement_type
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - trade
+            - profit_sharing
+            - platform_fundflow
+        description: 物业不能请求 platform_fundflow，返回 404。
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - ready
+            - running
+            - completed
+            - failed
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ManagedReconciliationRunPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+reconciliationRun:
+  get:
+    operationId: getManagedReconciliationRun
+    x-runtimes:
+      - platform_admin_api
+      - property_admin_api
+    tags:
+      - payment-management
+    summary: 读取资金核对批次
+    description:
+      物业只查看可明确归属本公司的交易/分账批次投影及差异，所有计数金额均重算为授权范围；平台账户资金批次、未知归属或混合且无法安全投影的数据仅平台可见，物业访问返回 404。 所有请求校验完整管理会话、当前权限和资源范围；越界返回
+      404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.payment_reconciliation.read
+      property_admin_api:
+        - property.payment_reconciliation.read
+    parameters:
+      - name: reconciliation_run_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ManagedReconciliationRun
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+reconciliationDiscrepancies:
+  get:
+    operationId: listManagedReconciliationDiscrepancies
+    x-runtimes:
+      - platform_admin_api
+      - property_admin_api
+    tags:
+      - payment-management
+    summary: 查询资金核对差异
+    description:
+      物业只查看可明确归属本公司的交易/分账批次投影及差异，所有计数金额均重算为授权范围；平台账户资金批次、未知归属或混合且无法安全投影的数据仅平台可见，物业访问返回 404。 差异按稳定 reference_key
+      去重，解决后重现重新打开；未知金额不是零。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.payment_reconciliation.read
+      property_admin_api:
+        - property.payment_reconciliation.read
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - created_at,id
+            - -created_at,-id
+          default: -created_at,-id
+      - name: property_company_id
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+        description: 仅平台可用，物业提交返回 422。
+      - name: business_date_from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+        description: 含边界。
+      - name: business_date_through
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+        description: 含边界，必须不早于开始日期。
+      - name: statement_type
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - trade
+            - profit_sharing
+            - platform_fundflow
+        description: 物业不能请求 platform_fundflow，返回 404。
+      - name: reconciliation_run_id
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: payment_order_id
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - open
+            - observing
+            - resolved
+      - name: difference_type
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - channel_only
+            - local_only
+            - amount_mismatch
+            - status_mismatch
+            - unclassified
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ManagedReconciliationDiscrepancyPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+reconciliationDiscrepancy:
+  get:
+    operationId: getManagedReconciliationDiscrepancy
+    x-runtimes:
+      - platform_admin_api
+      - property_admin_api
+    tags:
+      - payment-management
+    summary: 读取资金核对差异
+    description:
+      物业只查看可明确归属本公司的交易/分账批次投影及差异，所有计数金额均重算为授权范围；平台账户资金批次、未知归属或混合且无法安全投影的数据仅平台可见，物业访问返回 404。 所有请求校验完整管理会话、当前权限和资源范围；越界返回
+      404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.payment_reconciliation.read
+      property_admin_api:
+        - property.payment_reconciliation.read
+    parameters:
+      - name: discrepancy_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ManagedReconciliationDiscrepancy
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+paymentOrderRecoveries:
+  post:
+    operationId: recoverManagedPaymentOrder
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - payment-management
+    summary: 恢复原支付资金流程
+    description:
+      复核渠道事实后，按原单恢复查单、正常关单、入账、分账或解冻；未知执行先查原单，只有明确失败的未成功金额才能合法补执行。禁止指定成功、直接删除占用、跳过应分解冻或改写金额。 要求独立操作权限；在锁内复核 expected_state_token，过期返回
+      409 resource.conflict；当前资金事实不允许恢复时返回 payment.recovery_not_allowed。重复触发合并原目标持久任务，不能重复资金执行；接受任务与管理员原因审计同事务提交。读取权限不隐含恢复权限。
+      所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。 写入要求可信 Origin 和当前会话 CSRF；不自动换键重试。
+    security:
+      - AdminSession: []
+    x-permissions:
+      - platform.payment_funds.recover
+    parameters:
+      - name: payment_order_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 2048
+        description: 必须为受信后台 Origin；缺失或不可信拒绝。
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 256
+        description: 必须匹配当前完整管理会话。
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/payment-management-schemas.yaml#/PaymentRecoveryRequest
+    responses:
+      '202':
+        description: 已可靠接受任务，查询原资源确认结果。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/PaymentRecoveryAccepted
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+reconciliationRunRechecks:
+  post:
+    operationId: recheckManagedReconciliationRun
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - payment-management
+    summary: 重新核对原资金批次
+    description:
+      沿用原日期、类型和实际商户批次；保留历史差异和处置证据。只安排重新下载/核验和核对，不将差异直接改为已解决。 要求独立操作权限；在锁内复核 expected_state_token，过期返回 409 resource.conflict；当前资金事实不允许恢复时返回
+      payment.recovery_not_allowed。重复触发合并原目标持久任务，不能重复资金执行；接受任务与管理员原因审计同事务提交。读取权限不隐含恢复权限。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。
+      写入要求可信 Origin 和当前会话 CSRF；不自动换键重试。
+    security:
+      - AdminSession: []
+    x-permissions:
+      - platform.payment_reconciliation.recheck
+    parameters:
+      - name: reconciliation_run_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 2048
+        description: 必须为受信后台 Origin；缺失或不可信拒绝。
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 256
+        description: 必须匹配当前完整管理会话。
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/payment-management-schemas.yaml#/PaymentRecoveryRequest
+    responses:
+      '202':
+        description: 已可靠接受任务，查询原资源确认结果。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/PaymentRecoveryAccepted
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+reconciliationDiscrepancyRecoveries:
+  post:
+    operationId: recoverManagedReconciliationDiscrepancy
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - payment-management
+    summary: 恢复差异关联的原业务
+    description:
+      仅在能可靠关联原业务且满足前置条件时恢复；未知本地归属或无合法恢复方式返回 409，不能伪造订单或标记成功。可进入 observing 等待可靠结果/重核对。 要求独立操作权限；在锁内复核 expected_state_token，过期返回
+      409 resource.conflict；当前资金事实不允许恢复时返回 payment.recovery_not_allowed。重复触发合并原目标持久任务，不能重复资金执行；接受任务与管理员原因审计同事务提交。读取权限不隐含恢复权限。
+      所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。 写入要求可信 Origin 和当前会话 CSRF；不自动换键重试。
+    security:
+      - AdminSession: []
+    x-permissions:
+      - platform.payment_funds.recover
+    parameters:
+      - name: discrepancy_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 2048
+        description: 必须为受信后台 Origin；缺失或不可信拒绝。
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 256
+        description: 必须匹配当前完整管理会话。
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/payment-management-schemas.yaml#/PaymentRecoveryRequest
+    responses:
+      '202':
+        description: 已可靠接受任务，查询原资源确认结果。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/PaymentRecoveryAccepted
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem

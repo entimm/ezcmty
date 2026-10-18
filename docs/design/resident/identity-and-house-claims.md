@@ -150,6 +150,8 @@ stateDiagram-v2
 
 居民路径包含独立 `/v1/resident-sessions`、本人 `/v1/miniapp-users/me`、本人手机号绑定、本人申请和房屋绑定，以及只返回选房摘要的 `/v1/claimable-communities`。选项仅展示完整启用路径，不公开业主、账单、面积和他人认领数据。详情和列表仅解析本人资源。
 
+获授权房屋的账单缴费、历史收款脱敏与解绑后本人支付记录规则见 [居民账单支付与资金处理](../payment/bill-payments.md#房屋账单与本人订单)；本人历史支付不重新授予该房屋的当前账务读取权限。
+
 物业提供 `/v1/house-claims` 的列表、详情与审核，以及 `/v1/resident-house-bindings` 的列表、详情与撤销。公司从当前物业身份解析，不能请求切换；越界返回 404，列表和总数使用相同范围。
 
 新增 `property.house_claim.read`、`property.house_claim.review`、`property.resident_house_binding.read`、`property.resident_house_binding.revoke`。审核同时需要读取申请权限；撤销同时需要读取绑定权限。申请读取不授予既有业主读取，比较档案继续要求 `property.house_owner.read`。

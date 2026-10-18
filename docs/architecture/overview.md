@@ -26,6 +26,8 @@
 
 居民、物业、商家共用一个平台微信小程序，业务模块和授权上下文独立，见 [平台微信小程序架构](miniapp.md)。居民身份、手机号和房屋认领见 [居民接入设计](../design/resident/identity-and-house-claims.md)。
 
+居民账单支付、商户绑定、分账、解冻及后台恢复的业务规则、权限与交互见 [居民账单支付与资金处理](../design/payment/bill-payments.md)，数据与事务设计见 [账单支付与分账数据设计](../design/payment/bill-payments-and-profit-sharing.md)。
+
 后台认证、管理员、角色权限和审计的共用规则见 [管理后台基础框架设计](../design/admin/foundation.md)。
 
 ## 后端分层

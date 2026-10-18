@@ -1,0 +1,710 @@
+companyMerchantBindings:
+  get:
+    operationId: listCompanyMerchantBindings
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - payment-management
+    summary: 查询公司商户绑定历史
+    description: 包含当前有效绑定和停用历史；分页按 created_at,id 稳定排序。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions:
+      - platform.payment_config.read
+    parameters:
+      - name: company_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - created_at,id
+            - -created_at,-id
+          default: -created_at,-id
+      - name: enabled
+        in: query
+        required: false
+        schema:
+          type: boolean
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/MerchantBindingPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+  post:
+    operationId: createCompanyMerchantBinding
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - payment-management
+    summary: 创建停用商户绑定
+    description:
+      服务商号来自受控配置；先校验幂等重放，再比较配置令牌。首次成功默认 enabled=false；重放不能重新激活历史绑定。创建不等于已验证商户主体，线下核验仍必需。payment.configuration_changed
+      与 payment.idempotency_conflict 返回 409。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。 写入要求可信 Origin 和当前会话 CSRF；不自动换键重试。
+    security:
+      - AdminSession: []
+    x-permissions:
+      - platform.payment_config.manage
+    parameters:
+      - name: company_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 2048
+        description: 必须为受信后台 Origin；缺失或不可信拒绝。
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 256
+        description: 必须匹配当前完整管理会话。
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+        description: 公司内持久去重；同键同规范输入返回原资源当前状态，同键异输入返回 409。响应未知须原键原输入恢复。
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/payment-management-schemas.yaml#/MerchantBindingCreate
+    responses:
+      '201':
+        description: 操作成功；重放返回原资源当前状态。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/MerchantBinding
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+companyPaymentConfiguration:
+  get:
+    operationId: getCompanyPaymentConfiguration
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - payment-management
+    summary: 读取公司收款配置
+    description: 返回当前商户、最新规则、配置令牌与可收款条件，不返回渠道凭证。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions:
+      - platform.payment_config.read
+    parameters:
+      - name: company_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/PaymentConfiguration
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+companyActiveMerchantBinding:
+  put:
+    operationId: replaceCompanyActiveMerchantBinding
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - payment-management
+    summary: 切换或停用公司收款商户
+    description:
+      渠道接入、平台接收关系和比例上限在锁外核验；公司锁内重新比较 expected_configuration_token 后原子切换并递增受影响绑定 row_version。无规则可激活，ready=false 且 reasons 包含 rule_missing。目标商户自身接入、接收关系及上限必须核验成功；若旧规则超过新上限，允许激活但 ready=false 且 reasons 包含 ratio_exceeded，所有新支付被阻止，发布兼容规则后才可收款。只影响后续创建订单，历史支付使用原配置。令牌过期返回
+      409 payment.configuration_changed，不承诺旧响应重放；响应未知先 GET 核实，不自动更新期望后重试。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。 写入要求可信 Origin 和当前会话
+      CSRF；不自动换键重试。
+    security:
+      - AdminSession: []
+    x-permissions:
+      - platform.payment_config.manage
+    parameters:
+      - name: company_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 2048
+        description: 必须为受信后台 Origin；缺失或不可信拒绝。
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 256
+        description: 必须匹配当前完整管理会话。
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/payment-management-schemas.yaml#/ActiveMerchantBindingUpdate
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/PaymentConfiguration
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+companyProfitSharingRuleVersions:
+  get:
+    operationId: listCompanyProfitSharingRuleVersions
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - payment-management
+    summary: 查询公司分账规则历史
+    description: ' 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET 只读本地事实，可安全重试。'
+    security:
+      - AdminSession: []
+    x-permissions:
+      - platform.payment_config.read
+    parameters:
+      - name: company_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - version_no,id
+            - -version_no,-id
+          default: -version_no,-id
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ProfitSharingRuleVersionPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+  post:
+    operationId: createCompanyProfitSharingRuleVersion
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - payment-management
+    summary: 发布公司分账规则版本
+    description:
+      要求有效商户绑定并核验接收关系、比例上限及计算版本；先查公司幂等键，再比较令牌。渠道调用在锁外完成，公司锁内重核令牌后完整创建。创建即生效，历史支付不改变。重放只返回原版本，不能将历史版本重新发布；令牌过期返回
+      409 payment.configuration_changed，同键不同输入返回 409 payment.idempotency_conflict，配置不可用返回 payment.configuration_unavailable，比例超限返回
+      payment.rate_exceeds_channel_limit。金额级舍入上限在居民下单时继续校验。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。 写入要求可信 Origin 和当前会话 CSRF；不自动换键重试。
+    security:
+      - AdminSession: []
+    x-permissions:
+      - platform.payment_config.manage
+    parameters:
+      - name: company_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 2048
+        description: 必须为受信后台 Origin；缺失或不可信拒绝。
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 256
+        description: 必须匹配当前完整管理会话。
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+        description: 公司内持久去重；同键同规范输入返回原资源当前状态，同键异输入返回 409。响应未知须原键原输入恢复。
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/payment-management-schemas.yaml#/ProfitSharingRuleCreate
+    responses:
+      '201':
+        description: 操作成功；重放返回原资源当前状态。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ProfitSharingRuleVersion
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+companyProfitSharingRuleVersion:
+  get:
+    operationId: getCompanyProfitSharingRuleVersion
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - payment-management
+    summary: 读取公司确切分账规则版本
+    description: 按公司及确切版本共同限定，不能用版本 ID 越权。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions:
+      - platform.payment_config.read
+    parameters:
+      - name: company_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ProfitSharingRuleVersion
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+currentMerchantBindings:
+  get:
+    operationId: listCurrentCompanyMerchantBindings
+    x-runtimes:
+      - property_admin_api
+    tags:
+      - payment-management
+    summary: 查询本公司商户绑定历史
+    description:
+      公司从认证上下文解析，不接受客户端指定或切换公司；本端只读，无配置维护能力。 包含当前有效绑定和停用历史；分页按 created_at,id 稳定排序。 所有请求校验完整管理会话、当前权限和资源范围；越界返回
+      404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions:
+      - property.payment_config.read
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - created_at,id
+            - -created_at,-id
+          default: -created_at,-id
+      - name: enabled
+        in: query
+        required: false
+        schema:
+          type: boolean
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/MerchantBindingPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+currentPaymentConfiguration:
+  get:
+    operationId: getCurrentCompanyPaymentConfiguration
+    x-runtimes:
+      - property_admin_api
+    tags:
+      - payment-management
+    summary: 读取本公司收款配置
+    description:
+      公司从认证上下文解析，不接受客户端指定或切换公司；本端只读，无配置维护能力。 返回当前商户、最新规则、配置令牌与可收款条件，不返回渠道凭证。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET
+      只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions:
+      - property.payment_config.read
+    parameters: []
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/PaymentConfiguration
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+currentProfitSharingRuleVersions:
+  get:
+    operationId: listCurrentCompanyProfitSharingRuleVersions
+    x-runtimes:
+      - property_admin_api
+    tags:
+      - payment-management
+    summary: 查询本公司分账规则历史
+    description: 公司从认证上下文解析，不接受客户端指定或切换公司；本端只读，无配置维护能力。  所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions:
+      - property.payment_config.read
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+            - version_no,id
+            - -version_no,-id
+          default: -version_no,-id
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ProfitSharingRuleVersionPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+currentProfitSharingRuleVersion:
+  get:
+    operationId: getCurrentCompanyProfitSharingRuleVersion
+    x-runtimes:
+      - property_admin_api
+    tags:
+      - payment-management
+    summary: 读取本公司确切分账规则版本
+    description: 公司从认证上下文解析，不接受客户端指定或切换公司；本端只读，无配置维护能力。 按公司及确切版本共同限定，不能用版本 ID 越权。 所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。GET 只读本地事实，可安全重试。
+    security:
+      - AdminSession: []
+    x-permissions:
+      - property.payment_config.read
+    parameters:
+      - name: version_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+    responses:
+      '200':
+        description: 操作成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ProfitSharingRuleVersion
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem

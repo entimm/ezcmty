@@ -207,6 +207,37 @@ ProblemDetails:
       resident.rate_limited:
         status: 429
         title: 操作过于频繁，请稍后再试
+    payment:
+      payment.idempotency_conflict:
+        status: 409
+        title: 幂等键已用于其他支付或配置请求
+      payment.bill_reserved:
+        status: 409
+        title: 该账单已有支付正在处理中
+      payment.bill_version_conflict:
+        status: 409
+        title: 账单已变化，请重新核对
+      payment.bill_not_payable:
+        status: 409
+        title: 该账单当前不可缴费
+      payment.configuration_unavailable:
+        status: 409
+        title: 当前收款配置不可用
+      payment.configuration_changed:
+        status: 409
+        title: 收款配置已变化，请重新核对
+      payment.rate_exceeds_channel_limit:
+        status: 409
+        title: 本次应分金额超过渠道允许上限
+      payment.parameters_unavailable:
+        status: 409
+        title: 当前无法取得支付参数，请核实原订单
+      payment.order_not_payable:
+        status: 409
+        title: 该订单当前不可继续支付
+      payment.recovery_not_allowed:
+        status: 409
+        title: 当前业务状态不允许此恢复操作
     wechat:
       wechat.invalid_code:
         status: 422

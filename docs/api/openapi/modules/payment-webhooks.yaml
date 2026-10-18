@@ -1,0 +1,133 @@
+paymentSuccess:
+  post:
+    operationId: receiveWechatPayPaymentSuccess
+    x-runtimes:
+      - webhook
+    tags:
+      - payments
+    summary: 接收微信支付成功通知
+    description: >-
+      外部支付协议接口，按原始body及Wechatpay-Signature、Wechatpay-Timestamp、Wechatpay-Nonce、
+      Wechatpay-Serial验签并解密资源；验签前不能反序列化后重建签名文本。
+      校验时间窗口、公钥或证书标识、AppID、服务商与收款商户、付款人、订单、金额及成功状态。
+      event_type=TRANSACTION.SUCCESS且original_type=transaction才进入支付通知路由。
+      通知及处理任务可靠提交后在渠道5秒应答时限内返回204空响应；ACK仅表示可靠接收，不表示入账完成。
+      已可靠保存的重复通知直接应答；验签可信但业务不匹配的通知持久隔离，不入账。
+      保存失败返回500触发渠道重试，验签或格式失败按渠道失败响应返回；不使用内部Problem Details或居民鉴权。
+    security:
+      - WechatpaySignature: []
+    parameters:
+      - name: Wechatpay-Timestamp
+        in: header
+        required: true
+        description: 渠道签名时间戳，秒级Unix时间；与原始body、Nonce共同构造验签消息。
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+      - name: Wechatpay-Nonce
+        in: header
+        required: true
+        description: 渠道签名随机串，按原值参与验签。
+        schema:
+          type: string
+          minLength: 1
+      - name: Wechatpay-Serial
+        in: header
+        required: true
+        description: 验签公钥ID或平台证书序列号，仅使用受信配置或可信更新流程取得的验签材料。
+        schema:
+          type: string
+          minLength: 1
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/payment-webhook-schemas.yaml#/WechatPayPaymentSuccessNotification
+    responses:
+      '204':
+        description: 通知及处理任务已可靠提交，或重复通知已确认原记录提交；空响应体。
+      '400':
+        description: 通知格式或加密信封无效，按微信支付失败响应返回。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-webhook-schemas.yaml#/WechatPayNotificationFailure
+      '401':
+        description: 缺少必要签名信息、验签失败或签名时间不符合校验要求。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-webhook-schemas.yaml#/WechatPayNotificationFailure
+      '500':
+        description: 通知与处理任务未能可靠保存，渠道应重试。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-webhook-schemas.yaml#/WechatPayNotificationFailure
+profitSharing:
+  post:
+    operationId: receiveWechatPayProfitSharingNotification
+    x-runtimes:
+      - webhook
+    tags:
+      - payments
+    summary: 接收平台分账动账通知
+    description: >-
+      平台作为分账接收方的外部通知接口，使用原始body及微信支付四个签名头验签、解密和去重，
+      不使用通用X-Webhook-Signature。event_type也为TRANSACTION.SUCCESS，
+      必须结合该路由及original_type=profitsharing识别，不能误触发账单收款入账。
+      可信结果只提供平台接收方到账证据，不替代整张分账单各接收结果及独立解冻的查询确认。
+      通知及可靠处理任务持久提交后，在渠道5秒应答时限内返回204空响应；重复通知确认原记录已提交后直接应答。
+      可信但业务不匹配的通知持久隔离。保存失败返回500；所有失败响应遵循渠道协议，不使用Problem Details。
+    security:
+      - WechatpaySignature: []
+    parameters:
+      - name: Wechatpay-Timestamp
+        in: header
+        required: true
+        description: 渠道签名时间戳，秒级Unix时间，同时校验允许的时间窗口。
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+      - name: Wechatpay-Nonce
+        in: header
+        required: true
+        description: 渠道签名随机串，按原值参与验签。
+        schema:
+          type: string
+          minLength: 1
+      - name: Wechatpay-Serial
+        in: header
+        required: true
+        description: 验签公钥ID或平台证书序列号。
+        schema:
+          type: string
+          minLength: 1
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/payment-webhook-schemas.yaml#/WechatPayProfitSharingNotification
+    responses:
+      '204':
+        description: 通知和处理任务已可靠提交，或原重复通知已提交；空响应体，不表示整单分账或解冻完成。
+      '400':
+        description: 通知格式或加密信封无效。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-webhook-schemas.yaml#/WechatPayNotificationFailure
+      '401':
+        description: 必要签名信息缺失、验签失败或签名时间不符合要求。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-webhook-schemas.yaml#/WechatPayNotificationFailure
+      '500':
+        description: 可靠持久化失败，渠道应重试。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-webhook-schemas.yaml#/WechatPayNotificationFailure

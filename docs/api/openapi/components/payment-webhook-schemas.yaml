@@ -1,0 +1,111 @@
+WechatPayEncryptedResource:
+  description: 微信支付通知的加密资源；按原始通知完成验签后，再按 algorithm 解密并验证业务字段。
+  type: object
+  additionalProperties: false
+  properties:
+    original_type:
+      type: string
+      enum:
+        - transaction
+        - profitsharing
+    algorithm:
+      type: string
+      const: AEAD_AES_256_GCM
+    ciphertext:
+      description: 包含认证标签的 Base64 密文，不写入普通日志。
+      type: string
+      minLength: 1
+    associated_data:
+      description: 解密使用的附加认证数据；渠道未提供时按其协议处理空值。
+      type: string
+    nonce:
+      type: string
+      minLength: 1
+  required:
+    - original_type
+    - algorithm
+    - ciphertext
+    - nonce
+WechatPayPaymentSuccessNotification:
+  description: 支付成功通知的原始加密信封；解密后仍须核验商户、AppID、订单、金额、付款人与支付成功状态。
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      description: 渠道通知标识，验签通过后用于持久化去重。
+      type: string
+      minLength: 1
+      maxLength: 64
+    create_time:
+      type: string
+      format: date-time
+    event_type:
+      type: string
+      const: TRANSACTION.SUCCESS
+    resource_type:
+      type: string
+      const: encrypt-resource
+    summary:
+      type: string
+    resource:
+      $ref: '#/WechatPayEncryptedResource'
+      properties:
+        original_type:
+          type: string
+          const: transaction
+  required:
+    - id
+    - create_time
+    - event_type
+    - resource_type
+    - summary
+    - resource
+WechatPayProfitSharingNotification:
+  description: 平台作为接收方的分账动账通知；event_type 也为 TRANSACTION.SUCCESS，不能据此误入支付成功处理，不能替代整单及解冻结果查询。
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      description: 渠道通知标识，验签通过后用于持久化去重。
+      type: string
+      minLength: 1
+      maxLength: 64
+    create_time:
+      type: string
+      format: date-time
+    event_type:
+      type: string
+      const: TRANSACTION.SUCCESS
+    resource_type:
+      type: string
+      const: encrypt-resource
+    summary:
+      type: string
+    resource:
+      $ref: '#/WechatPayEncryptedResource'
+      properties:
+        original_type:
+          type: string
+          const: profitsharing
+  required:
+    - id
+    - create_time
+    - event_type
+    - resource_type
+    - summary
+    - resource
+WechatPayNotificationFailure:
+  description: 微信支付回调失败响应，遵循外部渠道协议，不使用内部 Problem Details。
+  type: object
+  additionalProperties: false
+  properties:
+    code:
+      type: string
+      const: FAIL
+    message:
+      type: string
+      minLength: 1
+      maxLength: 256
+  required:
+    - code
+    - message

@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Community Property Platform API
-  version: 0.9.0
+  version: 0.10.0
   description: 社区物业消费返利与物业费抵扣平台 API 契约。
 servers:
   - url: '/'
@@ -19,6 +19,10 @@ tags:
     description: 物业费计费依据、账单与线下收款
   - name: miniapp
     description: 平台小程序身份与居民业务
+  - name: payments
+    description: 居民账单缴费与支付渠道通知
+  - name: payment-management
+    description: 收款配置、支付资金记录、核对与恢复
 paths:
   '/healthz':
     '$ref': './modules/system.yaml#/health'
@@ -144,6 +148,70 @@ paths:
     $ref: ./modules/house-claims.yaml#/binding
   /v1/resident-house-bindings/{binding_id}/revocations:
     $ref: ./modules/house-claims.yaml#/revocations
+  /v1/miniapp-users/me/house-bindings/{binding_id}/bills:
+    $ref: ./modules/resident-payments.yaml#/houseBills
+  /v1/miniapp-users/me/bills/{bill_id}:
+    $ref: ./modules/resident-payments.yaml#/bill
+  /v1/miniapp-users/me/bills/{bill_id}/settlement-entries:
+    $ref: ./modules/resident-payments.yaml#/entries
+  /v1/miniapp-users/me/payment-orders:
+    $ref: ./modules/resident-payments.yaml#/orders
+  /v1/miniapp-users/me/payment-orders/{payment_order_id}:
+    $ref: ./modules/resident-payments.yaml#/order
+  /v1/miniapp-users/me/payment-orders/{payment_order_id}/client-payment-parameters:
+    $ref: ./modules/resident-payments.yaml#/parameters
+  /v1/miniapp-users/me/payment-orders/{payment_order_id}/refreshes:
+    $ref: ./modules/resident-payments.yaml#/refreshes
+  /v1/miniapp-users/me/payment-orders/{payment_order_id}/closures:
+    $ref: ./modules/resident-payments.yaml#/closures
+  /v1/property-companies/{company_id}/merchant-bindings:
+    $ref: ./modules/payment-configuration.yaml#/companyMerchantBindings
+  /v1/property-companies/{company_id}/payment-configuration:
+    $ref: ./modules/payment-configuration.yaml#/companyPaymentConfiguration
+  /v1/property-companies/{company_id}/active-merchant-binding:
+    $ref: ./modules/payment-configuration.yaml#/companyActiveMerchantBinding
+  /v1/property-companies/{company_id}/profit-sharing-rule-versions:
+    $ref: ./modules/payment-configuration.yaml#/companyProfitSharingRuleVersions
+  /v1/property-companies/{company_id}/profit-sharing-rule-versions/{version_id}:
+    $ref: ./modules/payment-configuration.yaml#/companyProfitSharingRuleVersion
+  /v1/merchant-bindings:
+    $ref: ./modules/payment-configuration.yaml#/currentMerchantBindings
+  /v1/payment-configuration:
+    $ref: ./modules/payment-configuration.yaml#/currentPaymentConfiguration
+  /v1/profit-sharing-rule-versions:
+    $ref: ./modules/payment-configuration.yaml#/currentProfitSharingRuleVersions
+  /v1/profit-sharing-rule-versions/{version_id}:
+    $ref: ./modules/payment-configuration.yaml#/currentProfitSharingRuleVersion
+  /v1/payment-orders:
+    $ref: ./modules/payment-funds.yaml#/paymentOrders
+  /v1/payment-orders/{payment_order_id}:
+    $ref: ./modules/payment-funds.yaml#/paymentOrder
+  /v1/profit-sharing-orders:
+    $ref: ./modules/payment-funds.yaml#/profitSharingOrders
+  /v1/profit-sharing-orders/{profit_sharing_order_id}:
+    $ref: ./modules/payment-funds.yaml#/profitSharingOrder
+  /v1/payment-unfreeze-orders:
+    $ref: ./modules/payment-funds.yaml#/unfreezeOrders
+  /v1/payment-unfreeze-orders/{unfreeze_order_id}:
+    $ref: ./modules/payment-funds.yaml#/unfreezeOrder
+  /v1/payment-reconciliation-runs:
+    $ref: ./modules/payment-funds.yaml#/reconciliationRuns
+  /v1/payment-reconciliation-runs/{reconciliation_run_id}:
+    $ref: ./modules/payment-funds.yaml#/reconciliationRun
+  /v1/payment-reconciliation-discrepancies:
+    $ref: ./modules/payment-funds.yaml#/reconciliationDiscrepancies
+  /v1/payment-reconciliation-discrepancies/{discrepancy_id}:
+    $ref: ./modules/payment-funds.yaml#/reconciliationDiscrepancy
+  /v1/payment-orders/{payment_order_id}/recoveries:
+    $ref: ./modules/payment-funds.yaml#/paymentOrderRecoveries
+  /v1/payment-reconciliation-runs/{reconciliation_run_id}/rechecks:
+    $ref: ./modules/payment-funds.yaml#/reconciliationRunRechecks
+  /v1/payment-reconciliation-discrepancies/{discrepancy_id}/recoveries:
+    $ref: ./modules/payment-funds.yaml#/reconciliationDiscrepancyRecoveries
+  /webhooks/payments/wechatpay/payment-success:
+    $ref: ./modules/payment-webhooks.yaml#/paymentSuccess
+  /webhooks/payments/wechatpay/profit-sharing:
+    $ref: ./modules/payment-webhooks.yaml#/profitSharing
 components:
   schemas:
     RequestId:
@@ -273,3 +341,5 @@ components:
       '$ref': './components/security-schemes.yaml#/ResidentToken'
     WebhookSignature:
       '$ref': './components/security-schemes.yaml#/WebhookSignature'
+    WechatpaySignature:
+      $ref: './components/security-schemes.yaml#/WechatpaySignature'
