@@ -8,6 +8,7 @@ import signal
 import sys
 import time
 from pathlib import Path
+from threading import Event
 
 
 def main() -> int:
@@ -47,14 +48,20 @@ def main() -> int:
         state = Path(sys.argv[2]).read_text()
         print(json.dumps({"ok": state == "ok", "reason": state, "log_level": "INFO"}), flush=True)
         return 0
-    if mode == "stubborn-worker":
-        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    if mode in {"worker", "stubborn-worker"}:
+        stop = Event()
+        signal.signal(
+            signal.SIGTERM, signal.SIG_IGN if mode == "stubborn-worker" else lambda *_: stop.set()
+        )
+        signal.signal(signal.SIGINT, lambda *_: stop.set())
         print(
-            json.dumps({"service": "worker", "message": "worker_started task_handlers=0"}),
+            json.dumps(
+                {"service": "worker", "message": "worker_ready scheduler=running task_handlers=1"}
+            ),
             flush=True,
         )
-        while True:
-            time.sleep(0.1)
+        stop.wait()
+        return 0
     if mode == "exit":
         time.sleep(float(sys.argv[2]))
         return int(sys.argv[3])

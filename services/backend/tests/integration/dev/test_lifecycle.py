@@ -22,7 +22,7 @@ def test_all_services_start_and_stop(harness: Harness) -> None:
     harness.ready(batch)
     state = harness.registry.read_batch(batch)
     assert all(value["ready"] for value in state["services"].values())
-    assert "task_handlers=0" in state["services"]["worker"]["reason"]
+    assert "支付任务处理器已注册" in state["services"]["worker"]["reason"]
     assert stop_all(harness.registry, harness.timing) == 0
     coordinator.wait(timeout=5)
     assert_ports_released(selected)

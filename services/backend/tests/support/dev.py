@@ -102,9 +102,9 @@ class Harness:
     def worker(self, name: str = "worker", *, stubborn: bool = False) -> Service:
         from scripts.dev.services import Service
 
-        command = [sys.executable, "-m", "backend_app.runtimes.worker"]
-        if stubborn:
-            command = [sys.executable, str(HELPER), "stubborn-worker"]
+        # Launcher tests exercise its readiness protocol. Real DB task/process behavior has
+        # separate payment worker runtime tests with a migrated isolated PostgreSQL database.
+        command = [sys.executable, str(HELPER), "stubborn-worker" if stubborn else "worker"]
         return Service(name, command, str(self.source.parent), worker=True)
 
     def admin(self) -> Service:

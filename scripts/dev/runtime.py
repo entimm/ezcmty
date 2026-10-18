@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -156,11 +157,15 @@ class RunningService:
                 if (
                     isinstance(record, dict)
                     and record.get("service") == "worker"
-                    and record.get("message") == "worker_started task_handlers=0"
+                    and isinstance(record.get("message"), str)
+                    and re.fullmatch(
+                        r"worker_ready scheduler=running task_handlers=[1-9][0-9]*",
+                        record["message"],
+                    )
                 ):
                     self.ready = True
                     self.phase = "ready"
-                    self.reason = "占位 Worker 已启动（task_handlers=0）"
+                    self.reason = "Worker 调度已运行，支付任务处理器已注册"
                     announce(f"{self.service.name}：{self.reason}")
 
     def check_readiness(
@@ -362,7 +367,7 @@ def coordinate(registry: Registry, batch_id: str) -> int:
                             and (result.get("log_level", "INFO") not in ("DEBUG", "INFO"))
                         ):
                             raise DevError(
-                                "Worker 就绪需要观察 INFO 级 worker_started 标记；"
+                                "Worker 就绪需要观察 INFO 级 worker_ready 标记；"
                                 "请将 APP_LOG_LEVEL 设置为 INFO 或 DEBUG。"
                             )
                         if dependencies_ready or reason != batch.get("reason"):
@@ -587,7 +592,7 @@ def attach(
                         suffix = "/docs" if service.expected_service else "/"
                         announce(f"{service.name} 访问地址：{service.url}{suffix}")
                     else:
-                        announce("Worker：占位进程已启动（task_handlers=0），尚无任务处理能力。")
+                        announce("Worker：持久调度已运行，支付任务处理器已注册。")
                 announce(f"批次：{batch_id}；日志：{directory}；停止：make stop")
                 reported = True
                 if background:

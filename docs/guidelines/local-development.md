@@ -85,7 +85,7 @@ uv run python -m backend_app.cli init-platform-admin --login-name your-admin --d
 | `make property`         | 前台启动物业管理 API，8002                                                 |
 | `make resident`         | 前台启动居民 API，8003                                                     |
 | `make webhook`          | 前台启动 Webhook，8004                                                     |
-| `make worker`           | 前台启动占位 Worker                                                        |
+| `make worker`           | 前台启动持久任务 Worker                                                     |
 | `make admin`            | 前台启动管理后台，5173                                                     |
 | `make miniapp-build`    | 构建小程序到 `apps/miniapp/dist/`，通过微信开发者工具打开小程序项目        |
 | `make check`            | 先运行根目录 Prettier，再依次运行后端、前端和 OpenAPI 检查                 |
@@ -100,6 +100,17 @@ uv run python -m backend_app.cli init-platform-admin --login-name your-admin --d
 | `make help`             | 显示全部命令及用途                                                         |
 
 小程序不作为常驻进程；构建后使用微信开发者工具运行。
+
+微信支付配置沿用后端 `APP_*` 环境变量，完整名称见 `.env.example` 中的支付段。
+`APP_WECHATPAY_MERCHANT_PRIVATE_KEY` 是服务商签名私钥的 PEM，
+`APP_WECHATPAY_API_V3_KEY` 是 APIv3 密钥；验签公钥或证书以
+`APP_WECHATPAY_VERIFICATION_KEYS` 的 JSON 对象按公钥 ID／证书序列号配置，
+`APP_WECHATPAY_ENCRYPTION_KEY_ID` 选择敏感字段加密公钥。AppID 复用平台小程序配置。
+支付通知地址和分账动账通知地址分别配置，均使用可达的 HTTPS 地址。
+这些材料只放在受控环境配置中，不写入任务证据或日志。
+
+`APP_PAYMENT_NEW_ORDERS_ENABLED` 默认关闭，只控制新支付创建。停止新支付时保留
+Webhook 与 Worker，已有订单仍须查单、确认入账、分账、解冻及核对；不能以停掉任务进程代替关闭新单入口。
 
 小程序使用平台统一 AppID。构建时设置 `MINIAPP_APP_ID`、可选 `MINIAPP_APP_NAME` 和 `MINIAPP_API_BASE_URL`；后者默认直连本地居民 API `http://127.0.0.1:8003`，部署时填写 HTTPS 网关地址（包含 `/api/resident`，不包含 `/v1`）。在微信开发者工具打开 `apps/miniapp/`，项目输出位于 `dist/`。真机需要可访问的 HTTPS 域名及微信后台合法域名配置，服务端配置见 `services/backend/.env.example`。
 
@@ -207,7 +218,7 @@ make dev
 | Webhook      | http://127.0.0.1:8004/docs                                          |
 | 平台管理页面 | http://127.0.0.1:5173/platform                                      |
 | 物业管理页面 | http://127.0.0.1:5173/property                                      |
-| Worker       | 无 HTTP 入口；当前为 `task_handlers=0` 的占位进程，尚无任务处理能力 |
+| Worker       | 无 HTTP 入口；读取实际任务表并启动调度、注册业务 Handler 后输出 `worker_ready scheduler=running task_handlers=N`，`N` 为正整数 |
 
 启动入口会等待全部所选服务通过各自的 [就绪判断](../architecture/local-development.md#就绪判断)，再报告启动成功。
 

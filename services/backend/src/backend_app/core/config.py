@@ -25,6 +25,16 @@ class Settings(BaseSettings):
     session_ttl_seconds: int = Field(default=86_400, ge=60)
     wechat_miniapp_app_id: str = ""
     wechat_miniapp_app_secret: SecretStr = SecretStr("")
+    payment_new_orders_enabled: bool = False
+    wechatpay_service_provider_merchant_no: str = ""
+    wechatpay_merchant_certificate_serial: str = ""
+    wechatpay_merchant_private_key: SecretStr = SecretStr("")
+    wechatpay_api_v3_key: SecretStr = SecretStr("")
+    wechatpay_verification_keys: dict[str, str] = {}
+    wechatpay_encryption_key_id: str = ""
+    wechatpay_payment_notify_url: str = ""
+    wechatpay_profit_sharing_notify_url: str = ""
+    wechatpay_platform_receiver_name: SecretStr = SecretStr("")
     resident_session_idle_seconds: int = Field(default=604_800, ge=60)
     resident_session_absolute_seconds: int = Field(default=2_592_000, ge=60)
     resident_login_limit: int = Field(default=30, ge=1)
