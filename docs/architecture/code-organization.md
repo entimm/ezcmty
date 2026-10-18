@@ -53,11 +53,11 @@ backend_app/
 │  │  └─ payments.py
 │  ├─ webhook/payments.py                通知去重和可靠保存
 │  └─ worker/payments/
-│     ├─ orders.py                      下单、查单和关单
+│     ├─ orders.py                      下单、查单、关单及失效订单任务补齐
 │     ├─ confirmation.py                唯一收款确认与入账用例
 │     ├─ profit_sharing.py              分账执行和查询
 │     ├─ unfreezing.py                  解冻执行和查询
-│     └─ reconciliation.py              核对与恢复安排
+│     └─ reconciliation.py              核对批次和任务生成、核对与恢复安排
 ├─ domain/
 │  ├─ billing/
 │  │  ├─ __init__.py                    保留原 billing.py 的公开导出
@@ -98,8 +98,8 @@ backend_app/
 │  ├─ statements.py                      文件获取、摘要核验和解析
 │  └─ notifications.py                   原始通知验签与解密
 └─ tasks/
-   ├─ runner.py                          领取、租约和进程停止
-   └─ handlers/payments.py               任务类型到应用用例的分派
+   ├─ runner.py                          领取、租约、周期回调触发和停止
+   └─ handlers/payments.py               任务及周期检查到应用用例的分派
 ```
 
 Model 按配置、订单、资金执行、调度证据和核对等生命周期组织，不要求一张表一个文件。请求与响应按实际契约组织，不将管理员完整对象作为居民响应的基础。微信协议字段只在 Integration 映射，领域和数据库继续使用通用名称。
@@ -118,13 +118,13 @@ Model 按配置、订单、资金执行、调度证据和核对等生命周期�
 
 ### 入口与共享能力
 
-| 入口       | 用例归属                    | 与共享能力协作                                                                         |
-| ---------- | --------------------------- | -------------------------------------------------------------------------------------- |
-| 居民端     | `services/resident/`        | 当前房屋授权与本人订单授权分别判断；创建订单和任务，读取本地结果，签发原订单调起参数。 |
-| 平台管理端 | `services/platform_admin/`  | 校验配置与恢复权限，核验渠道能力，提交配置和审计；恢复只安排原业务任务。               |
-| 物业管理端 | `services/property_admin/`  | 本公司数据范围；支付及资金只读；线下账单写入检查当前占用。                             |
-| Webhook    | `services/webhook/`         | 使用 Integration 验签解密，可靠保存通知及任务后应答，不同步执行账务。                  |
-| Worker     | `services/worker/payments/` | 执行渠道操作、统一收款确认、分账、解冻和核对，不依赖前台身份会话。                     |
+| 入口       | 用例归属                    | 与共享能力协作                                                                                         |
+| ---------- | --------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 居民端     | `services/resident/`        | 当前房屋授权与本人订单授权分别判断；创建订单和任务，读取本地结果，签发原订单调起参数。                 |
+| 平台管理端 | `services/platform_admin/`  | 校验配置与恢复权限，核验渠道能力，提交配置和审计；恢复只安排原业务任务，外部处置仅记录差异结论与审计。 |
+| 物业管理端 | `services/property_admin/`  | 本公司数据范围；支付及资金只读；线下账单写入检查当前占用。                                             |
+| Webhook    | `services/webhook/`         | 使用 Integration 验签解密，可靠保存通知及任务后应答，不同步执行账务。                                  |
+| Worker     | `services/worker/payments/` | 执行渠道操作、统一收款确认、分账、解冻和核对，不依赖前台身份会话。                                     |
 
 本期不另设跨端支付应用 Service。共用业务规则位于 Domain，共用查询位于 Repository，共用协议位于 Integration。调起参数签名可以由居民应用 Service 调用 Integration，本地签名不重新下单。
 
@@ -158,6 +158,8 @@ flowchart TD
 4. Profit Sharing Service 履行已固定的应分事实；Unfreezing Service 只在资金前置条件满足后建立解冻单。逐接收方结果、未知状态和解冻屏障遵循 [分账及独立解冻](../design/payment/bill-payments.md#分账及独立解冻)。
 5. Reconciliation Service 获取渠道事实，由 Domain 判断差异，保存批次、汇总和判定依据；恢复使用原业务任务，不建立另一条入账或资金成功路径。
 
+每日核对首次生成、停机漏日补齐及失效订单检查，由现有 Worker 的周期回调进入对应 Worker Service；职责及提交边界见 [任务生成与补齐](backend-services.md#任务生成与补齐)。
+
 普通 GET 只读本地事实。刷新、关闭、恢复均通过明确写操作安排或合并持久任务。Webhook 的成功 ACK 表示可靠接收，任务安排成功表示已安排，二者均不代表账务或资金已完成。
 
 ## 管理后台目录
@@ -174,7 +176,8 @@ src/
 │  │     ├─ api.ts、hooks.ts
 │  │     ├─ PaymentConfigurationPage.tsx
 │  │     ├─ PaymentOrdersPage.tsx、PaymentDetailPage.tsx
-│  │     └─ ReconciliationPage.tsx、RecoveryForm.tsx
+│  │     ├─ ReconciliationPage.tsx、RecoveryForm.tsx
+│  │     └─ ExternalResolutionForm.tsx
 │  └─ property/
 │     ├─ billing/                       线上流水和占用兼容
 │     └─ payments/
@@ -187,7 +190,7 @@ src/
 
 `api.ts` 定义本端可调用操作；`hooks.ts` 协调本端 QueryClient、查询键和失效；页面负责路由、筛选和交互。共享类型只覆盖相同契约，共享展示组件不持有身份、数据请求或恢复权限。物业接口和响应保留只读公司投影，不能通过隐藏平台页面按钮实现隔离。
 
-平台公司详情只链接收款配置页，商户绑定、规则和核验表单归支付模块；资金恢复的原因与幂等提交也归该模块。物业账单详情仍归 billing，展示系统来源及占用，不承载渠道执行。
+平台公司详情只链接收款配置页，商户绑定、规则和核验表单归支付模块；资金恢复的原因与幂等提交也归该模块。外部处置表单归平台支付模块，独立收集原因和依据引用，使用差异令牌提交；不复用资金恢复的异步受理结果。物业账单详情仍归 billing，展示系统来源及占用，不承载渠道执行。
 
 ## 居民小程序目录
 
@@ -250,6 +253,8 @@ apps/miniapp/tests/
 Domain 测试验证规则，应用集成测试验证状态和事务，PostgreSQL 测试验证实际锁与约束，API 测试验证各端隔离及协议，契约测试验证运行入口和 Schema。各层覆盖不同边界，不重复复制同一组断言。
 
 支付重点覆盖多人及线下竞争、重复确认、入账回滚、迟到证据、租约接管、分账解冻屏障、跨日核对、居民隐私和客户端未知结果。共享入账变更同时执行线下账单回归。迁移和新表实施时同步更新数据库 Harness 的表集合校验；不能削弱契约检查来接受未实现接口。
+
+周期检查集成测试覆盖首次建批次、停机漏日、多 Worker 重复触发、历史停用绑定及失效订单任务补齐；不依赖真实等待。核对测试区分同一订单的金额与手续费差异，验证逐次来源及判定快照的提交边界。外部处置的 API 与页面测试覆盖独立权限、并发令牌、审计、响应未知及物业写入拒绝，不将差异处置展示为资金到账。
 
 真实渠道联调验证商户能力、协议和资金结果，替身不能替代；本地数据库和并发测试复用现有隔离 PostgreSQL 与同步机制。
 

@@ -1117,3 +1117,79 @@ reconciliationDiscrepancyRecoveries:
         $ref: ../components/responses.yaml#/AdminProblem
       '503':
         $ref: ../components/responses.yaml#/AdminProblem
+reconciliationDiscrepancyExternalResolutions:
+  post:
+    operationId: recordManagedReconciliationExternalResolution
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - payment-management
+    summary: 记录已核实的差异外部处置
+    description: >-
+      仅平台可用，必须同时具有核对读取和资金恢复权限；读取或重新核对权限不隐含本操作权限。
+      管理员先核实渠道、银行等外部处理结论，提交原因、可追溯依据引用及当前差异令牌；非空引用本身不构成资金成功证据，仍可正常恢复的问题优先恢复后重核对。
+      服务端锁定批次后锁定差异，复核令牌、差异状态及核对是否在执行；令牌过期、差异已解决或批次正在核对返回 409 resource.conflict。
+      将差异 resolved 及最近处置信息与完整处置审计同事务提交，保留原差异证据；未知本地关联仍为空，不猜测补单。
+      不改写支付、账务、应分、分账、解冻或占用，不停止原资金任务，不屏蔽后续核对；同一问题再次出现仍重新打开。
+      200 仅表示处置记录已经提交，不代表资金成功。以 expected_state_token 比较交换，不提供旧请求成功重放；重复旧令牌返回 409，响应未知先读详情及审计，不自动换令牌重试。
+      所有请求校验完整管理会话、当前权限和资源范围；越界返回 404。写入要求可信 Origin 和当前会话 CSRF。
+    security:
+      - AdminSession: []
+    x-permissions:
+      - platform.payment_reconciliation.read
+      - platform.payment_funds.recover
+    parameters:
+      - name: discrepancy_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 2048
+        description: 必须为受信后台 Origin；缺失或不可信拒绝。
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 256
+        description: 必须匹配当前完整管理会话。
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/payment-management-schemas.yaml#/ReconciliationExternalResolutionRequest
+    responses:
+      '200':
+        description: 差异处置及审计已提交；不表示原资金业务成功。
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
+            description: 敏感管理数据禁止缓存。
+        content:
+          application/json:
+            schema:
+              $ref: ../components/payment-management-schemas.yaml#/ManagedReconciliationDiscrepancy
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem

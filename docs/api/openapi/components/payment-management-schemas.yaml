@@ -7,7 +7,7 @@ PaymentStateToken:
   type: string
   minLength: 1
   maxLength: 256
-  description: 当前资源的派生并发令牌；由资源和关联执行事实生成，不代表持久字段或执行授权。恢复时在父记录锁内复核，变化返回 409。
+  description: 当前资源的派生并发令牌；由资源和关联执行事实生成，不代表持久字段或执行授权。恢复或外部处置时在所属父记录及目标锁内复核，变化返回 409。差异令牌须覆盖当前核对证据、状态及最近处置信息，不能只用关联支付状态生成。
 MerchantBindingCreate:
   type: object
   additionalProperties: false
@@ -632,6 +632,7 @@ ManagedReconciliationRun:
         - type: string
           maxLength: 128
         - type: 'null'
+      description: 最近一次通过完整性核验的来源摘要，格式为算法名:十六进制摘要；不替代每次差异判定的来源证据。
     summary:
       $ref: ./payment-management-schemas.yaml#/ReconciliationSummary
     created_at:
@@ -666,6 +667,21 @@ ManagedReconciliationRun:
     - finished_at
     - state_token
   description: 批次按业务日期、账单类型和实际服务商/收款商户唯一。平台资金账单 merchant_no=null，仅平台可见；物业仅能读取可归属本公司的 trade/profit_sharing 投影，不返回下载地址、原文件或未知行。交易按付款日期、分账按执行事件日期、资金按记账日期核对。
+ReconciliationCheckCode:
+  type: string
+  enum:
+    - business_identity
+    - payment_amount
+    - payment_status
+    - bill_posting
+    - profit_sharing_amount
+    - profit_sharing_status
+    - unfreeze_amount
+    - unfreeze_status
+    - channel_fee
+    - platform_fundflow_amount
+    - unclassified
+  description: 具体核对维度；与 difference_type 的组合及稳定业务键规则见支付数据设计的“核对差异”。身份不符只返回脱敏分类，不暴露另一主体标识。
 ReconciliationEvidence:
   type: object
   additionalProperties: false
@@ -679,6 +695,19 @@ ReconciliationEvidence:
         - order_query
         - unfreeze_query
         - internal
+    check_code:
+      $ref: ./payment-management-schemas.yaml#/ReconciliationCheckCode
+    source_digest:
+      anyOf:
+        - type: string
+          maxLength: 128
+        - type: 'null'
+      description: 该次已核验文件的算法名:十六进制摘要，不随批次重跑改写；查询或纯内部核验可空。
+    source_request_id:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+      description: 本次文件下载或查询对应的本地 payment_channel_requests.id；不是渠道请求号，纯内部核验可空，不授予读取技术快照的权限。
     order_no:
       anyOf:
         - type: string
@@ -721,6 +750,9 @@ ReconciliationEvidence:
       description: 带时区 RFC 3339；响应统一为 UTC Z。
   required:
     - source
+    - check_code
+    - source_digest
+    - source_request_id
     - order_no
     - channel_transaction_no
     - channel_order_no
@@ -729,7 +761,7 @@ ReconciliationEvidence:
     - expected_status
     - actual_status
     - checked_at
-  description: 仅列出授权业务编号、规范化状态及核验时间；没有原始账单行、付款身份、下载地址或渠道报文。未知本地订单仍可保留渠道业务编号。
+  description: 仅列出核对维度、该次判定来源、授权业务编号、规范化状态及核验时间；文件来源必须有摘要和本地调用 ID，查询来源必须有本地调用 ID。没有原始账单行、付款身份、下载地址或渠道报文。未知本地订单仍可保留渠道业务编号；物业仅返回本公司安全投影，证据引用不开放诊断读取。
 ManagedReconciliationDiscrepancy:
   type: object
   additionalProperties: false
@@ -753,6 +785,7 @@ ManagedReconciliationDiscrepancy:
     reference_key:
       type: string
       maxLength: 256
+      description: 含核对维度的稳定业务引用；不含金额、状态、文件位置等易变事实或明文敏感账号，重核对不因补关联本地记录换键。
     payment_order_id:
       anyOf:
         - $ref: ./schemas.yaml#/UUIDIdentifier
@@ -825,7 +858,7 @@ ManagedReconciliationDiscrepancy:
     - resolution_note
     - state_token
   description:
-    observing 表示已恢复原业务但仍待可靠结果或重核对；resolved 只能由可信证据确认。未知金额不按零处理，资金记账金额可为负数。物业只返回可确定归属本公司的白名单信息；未知归属记录仅平台可见。解决说明须脱敏；差异再次打开时保留最近
+    observing 表示已安排原业务恢复但仍待可靠结果或重核对；resolved 来自可靠核对或经平台核实并审计的外部处置，不表示支付、分账或解冻成功。未知金额不按零处理，资金记账金额可为负数。物业只返回可确定归属本公司的白名单信息；未知归属记录仅平台可见。解决说明须脱敏；差异再次打开时保留最近
     resolved_at/by/note，不能据此推断当前已解决。重跑不得静默删除历史差异。
 PaymentRecoveryRequest:
   type: object
@@ -842,6 +875,28 @@ PaymentRecoveryRequest:
     - reason
     - expected_state_token
   description: 只说明恢复原因和当前并发证据，不允许提交金额、账号、成功目标或任意任务类型。服务端在锁内复核事实、选择正常恢复方式并审计；没有人工强制成功或直接释放占用。
+ReconciliationExternalResolutionRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 1000
+      pattern: \S
+    evidence_reference:
+      type: string
+      minLength: 1
+      maxLength: 256
+      pattern: \S
+      description: 经管理员核实的外部工单号或凭证引用；不上传原始凭证，不含凭证下载令牌、个人身份信息或支付密钥。非空引用本身不代表资金已核实成功。
+    expected_state_token:
+      $ref: ./payment-management-schemas.yaml#/PaymentStateToken
+  required:
+    - reason
+    - evidence_reference
+    - expected_state_token
+  description: 只记录经核实的外部处置结论及审计，不接受金额、账号、目标成功状态或关联替换；当前差异证据和原资金事实保持原义。旧令牌重放返回 409；响应未知先读详情及审计，不自动重提。
 PaymentRecoveryAccepted:
   type: object
   additionalProperties: false

@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Community Property Platform API
-  version: 0.11.0
+  version: 0.12.0
   description: 社区物业消费返利与物业费抵扣平台 API 契约。
 servers:
   - url: '/'
@@ -208,6 +208,8 @@ paths:
     $ref: ./modules/payment-funds.yaml#/reconciliationRunRechecks
   /v1/payment-reconciliation-discrepancies/{discrepancy_id}/recoveries:
     $ref: ./modules/payment-funds.yaml#/reconciliationDiscrepancyRecoveries
+  /v1/payment-reconciliation-discrepancies/{discrepancy_id}/external-resolutions:
+    $ref: ./modules/payment-funds.yaml#/reconciliationDiscrepancyExternalResolutions
   /webhooks/payments/wechatpay/payment-success:
     $ref: ./modules/payment-webhooks.yaml#/paymentSuccess
   /webhooks/payments/wechatpay/profit-sharing:
