@@ -31,6 +31,7 @@ def build_handlers(factory: sessionmaker[Session], settings: Settings) -> Paymen
         factory,
         Statements(client),
         service_provider_merchant_no=settings.wechatpay_service_provider_merchant_no,
+        platform_receiver_account=settings.wechatpay_service_provider_merchant_no,
         app_id=settings.wechat_miniapp_app_id,
     )
 
