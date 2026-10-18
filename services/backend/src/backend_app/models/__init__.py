@@ -1,3 +1,11 @@
 """SQLAlchemy models."""
 
-from backend_app.models import admin, billing, house_claims, housing, miniapp, property  # noqa: F401
+from backend_app.models import (  # noqa: F401
+    admin,
+    billing,
+    house_claims,
+    housing,
+    miniapp,
+    payments,
+    property,
+)

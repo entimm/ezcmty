@@ -44,6 +44,7 @@ export function BillStatus({ bill }: { bill: Bill }) {
         </Tag>
       )}
       {bill.is_overdue && <Tag color="warning">已过到期日</Tag>}
+      {bill.payment_in_progress && <Tag color="processing">支付处理中</Tag>}
     </Space>
   );
 }

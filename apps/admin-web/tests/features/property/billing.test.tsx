@@ -8,7 +8,12 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderRoutes } from '../../app/platform-harness';
 import type { SessionResponse } from '@/shared/api/admin';
-import type { Bill, BillWriteResult } from '@/features/property/billing/api';
+import type {
+  Bill,
+  BillOperation,
+  BillWriteResult,
+  SettlementEntry,
+} from '@/features/property/billing/api';
 import { pendingSnapshot, savePending } from '@/shared/pending-requests';
 
 const community = '019a0000-0000-7000-8000-000000000001';
@@ -68,6 +73,7 @@ const bill: Bill = {
   updated_at: timestamp,
   basis: null,
   house_effective_enabled: true,
+  payment_in_progress: false,
 };
 const result: BillWriteResult = {
   bill,
@@ -76,6 +82,7 @@ const result: BillWriteResult = {
     bill_id: billId,
     action: 'create',
     bill_version: 1,
+    actor_type: 'admin',
     actor_id: subject,
     actor_name: '管理员',
     reason: null,
@@ -84,7 +91,14 @@ const result: BillWriteResult = {
   },
   settlement_entries: [],
 };
-function mockBilling(unknownWrite = false) {
+function mockBilling(
+  unknownWrite = false,
+  history: {
+    bill?: Bill;
+    entries?: SettlementEntry[];
+    operations?: BillOperation[];
+  } = {},
+) {
   const fetcher = vi.fn<typeof fetch>(async (url, init) => {
     const target = new URL(String(url), window.location.origin);
     const path = target.pathname;
@@ -127,11 +141,13 @@ function mockBilling(unknownWrite = false) {
         if (unknownWrite) throw new TypeError('network lost after submission');
         return Response.json(result, { status: 201 });
       }
-      return page([bill]);
+      return page([history.bill ?? bill]);
     }
-    if (path === `${base}/bills/${billId}`) return Response.json(bill);
-    if (path.endsWith('/settlement-entries') || path.endsWith('/operations'))
-      return page([]);
+    if (path === `${base}/bills/${billId}`)
+      return Response.json(history.bill ?? bill);
+    if (path.endsWith('/settlement-entries'))
+      return page(history.entries ?? []);
+    if (path.endsWith('/operations')) return page(history.operations ?? []);
     if (path.endsWith('/offline-receipts') && init?.method === 'POST') {
       if (unknownWrite) throw new TypeError('network lost after submission');
       return Response.json(
@@ -163,6 +179,138 @@ afterEach(() => {
 });
 
 describe('property billing screens', () => {
+  it('shows payment occupation and prevents conflicting writes while allowing metadata changes', async () => {
+    const fetcher = mockBilling(false, {
+      bill: {
+        ...bill,
+        settled_cents: 0,
+        outstanding_cents: 10000,
+        settlement_status: 'unpaid',
+        payment_in_progress: true,
+      },
+    });
+    renderRoutes(`${route}/${billId}`);
+    await screen.findByText('该账单有支付正在处理中');
+    expect(screen.getByText('支付处理中')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '登记线下收款' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '作废账单' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '修改资料' })).toBeEnabled();
+    expect(fetcher.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(
+      false,
+    );
+  });
+
+  it('shows system online receipts without offering offline corrections or reversals', async () => {
+    mockBilling(false, {
+      entries: [
+        {
+          id: `${billId.slice(0, -1)}5`,
+          bill_id: billId,
+          operation_id: billId,
+          entry_type: 'receipt',
+          source_type: 'online_payment',
+          payment_order_item_id: house,
+          amount_cents: 3000,
+          reverses_entry_id: null,
+          reversed_by_entry_id: null,
+          received_on: '2026-10-16',
+          created_at: timestamp,
+          actor_type: 'system',
+          actor_id: null,
+          actor_name: '系统',
+          reason: null,
+        },
+      ],
+      operations: [
+        {
+          ...result.operation,
+          action: 'online_receipt',
+          actor_type: 'system',
+          actor_id: null,
+          actor_name: '系统',
+        },
+      ],
+    });
+    renderRoutes(`${route}/${billId}`);
+    await screen.findByText('线上支付');
+    expect(screen.getByText('系统')).toBeInTheDocument();
+    expect(screen.getByText(house)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '纠错' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '撤销误登记' }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: '操作历史' }));
+    await screen.findByText('线上收款入账');
+    expect(screen.getAllByText('系统').length).toBeGreaterThan(0);
+  });
+
+  it('keeps offline correction controls available only when the bill has no payment occupation', async () => {
+    const entry: SettlementEntry = {
+      id: `${billId.slice(0, -1)}5`,
+      bill_id: billId,
+      operation_id: billId,
+      entry_type: 'receipt',
+      source_type: 'offline',
+      payment_order_item_id: null,
+      amount_cents: 3000,
+      reverses_entry_id: null,
+      reversed_by_entry_id: null,
+      received_on: null,
+      created_at: timestamp,
+      actor_type: 'admin',
+      actor_id: subject,
+      actor_name: '管理员',
+      reason: null,
+    };
+    mockBilling(false, { entries: [entry] });
+    const view = renderRoutes(`${route}/${billId}`);
+    expect(await screen.findByRole('button', { name: '纠错' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '撤销误登记' })).toBeEnabled();
+    expect(screen.getByText('线下登记')).toBeInTheDocument();
+    view.unmount();
+    mockBilling(false, {
+      bill: { ...bill, payment_in_progress: true },
+      entries: [entry],
+    });
+    renderRoutes(`${route}/${billId}`);
+    await screen.findByText('线下登记');
+    expect(
+      screen.queryByRole('button', { name: '纠错' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '撤销误登记' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('blocks an open receipt form after a refresh discovers payment occupation without a version change', async () => {
+    const fetcher = mockBilling();
+    const fallback = fetcher.getMockImplementation()!;
+    let occupied = false;
+    fetcher.mockImplementation(async (url, init) =>
+      new URL(String(url)).pathname === `${base}/bills/${billId}`
+        ? Response.json({ ...bill, payment_in_progress: occupied })
+        : fallback(url, init),
+    );
+    renderRoutes(`${route}/${billId}`);
+    fireEvent.click(
+      await screen.findByRole('button', { name: '登记线下收款' }),
+    );
+    const drawer = within(await screen.findByRole('dialog'));
+    fireEvent.click(drawer.getByRole('button', { name: '填入剩余金额' }));
+    occupied = true;
+    fireEvent.click(drawer.getByRole('button', { name: '刷新账单并重新核对' }));
+    await drawer.findByText('该账单有支付正在处理中，请先核实原订单');
+    expect(drawer.getByRole('button', { name: '确认保存' })).toBeDisabled();
+    expect(
+      fetcher.mock.calls.some(
+        ([url, init]) =>
+          String(url).endsWith('/offline-receipts') && init?.method === 'POST',
+      ),
+    ).toBe(false);
+  });
+
   it('defaults to pending bills across all months and restores URL filters', async () => {
     const fetcher = mockBilling();
     renderRoutes(`${route}?external_bill_no=001a&page=2`);

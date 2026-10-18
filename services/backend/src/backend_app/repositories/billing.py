@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, aliased
 from backend_app.models.admin import AdminAccount
 from backend_app.models.billing import Bill, BillOperation, BillSettlementEntry, FeeBasisVersion
 from backend_app.models.housing import House, SpaceNode
+from backend_app.models.payments import BillPaymentReservation
 from backend_app.models.property import Community, PropertyCompany
 from backend_app.repositories.housing import HousingRepository
 from backend_app.repositories.pagination import read_page
@@ -18,6 +19,83 @@ class BillingRepository:
         self.db = db
         self.company_id = company_id
         self.housing = HousingRepository(db, company_id)
+
+    def protect_company(self) -> PropertyCompany | None:
+        """Protect historical posting without requiring an administrator or enabled state."""
+        return self.db.scalar(
+            select(PropertyCompany)
+            .where(PropertyCompany.id == self.company_id)
+            .with_for_update(read=True, of=PropertyCompany)
+            .execution_options(populate_existing=True)
+        )
+
+    def reservation(self, bill_id: str) -> BillPaymentReservation | None:
+        return self.db.get(BillPaymentReservation, bill_id, populate_existing=True)
+
+    def reserved_bill_ids(self, ids: Sequence[str]) -> set[str]:
+        if not ids:
+            return set()
+        return set(
+            self.db.scalars(
+                select(BillPaymentReservation.bill_id).where(
+                    BillPaymentReservation.bill_id.in_(ids)
+                )
+            )
+        )
+
+    def add_receipt(self, operation: BillOperation, entry: BillSettlementEntry) -> None:
+        self.db.add(operation)
+        self.db.flush()
+        self.db.add(entry)
+
+    def protect_bill_resources(self, bill_ids: Sequence[str]) -> list[Bill]:
+        """Lock ancestors before bills; the caller already holds the company/user guards."""
+        items = list(
+            self.db.scalars(
+                select(Bill).where(
+                    Bill.property_company_id == self.company_id, Bill.id.in_(bill_ids)
+                )
+            )
+        )
+        if not items:
+            return []
+        for community_id in sorted({item.community_id for item in items}):
+            self.community(community_id, lock=True)
+        houses = list(
+            self.db.scalars(select(House).where(House.id.in_({item.house_id for item in items})))
+        )
+        nodes: dict[str, SpaceNode] = {}
+        for community_id in sorted({item.community_id for item in items}):
+            paths = self.housing.paths(
+                community_id,
+                [house.space_node_id for house in houses if house.community_id == community_id],
+            )
+            for path in paths.values():
+                nodes.update({node.id: node for node in path})
+        # Shared guards coordinate ancestor changes while independent bills may post concurrently.
+        for node_id in sorted(nodes):
+            self.db.scalar(
+                select(SpaceNode)
+                .where(SpaceNode.id == node_id)
+                .with_for_update(read=True, of=SpaceNode)
+                .execution_options(populate_existing=True)
+            )
+        for house_id in sorted({house.id for house in houses}):
+            self.db.scalar(
+                select(House)
+                .where(House.id == house_id)
+                .with_for_update(read=True, of=House)
+                .execution_options(populate_existing=True)
+            )
+        return list(
+            self.db.scalars(
+                select(Bill)
+                .where(Bill.property_company_id == self.company_id, Bill.id.in_(bill_ids))
+                .order_by(Bill.id)
+                .with_for_update(of=Bill)
+                .execution_options(populate_existing=True)
+            )
+        )
 
     def protect(
         self, account_id: str, community_id: str | None = None

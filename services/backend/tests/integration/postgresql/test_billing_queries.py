@@ -133,7 +133,8 @@ def test_representative_bills_use_pending_index_and_batch_related_reads(
         finally:
             event.remove(connection, "before_cursor_execute", record)
         assert view.total == 1200 and len(view.items) == 20
-        assert len(captured) == 4  # Community, paged bills/count, houses, ancestor paths.
+        # Community, paged bills/count, houses, ancestor paths and one batched reservation read.
+        assert len(captured) == 5
         filters["page_size"] = 100
         captured.clear()
         event.listen(connection, "before_cursor_execute", record)
@@ -143,7 +144,7 @@ def test_representative_bills_use_pending_index_and_batch_related_reads(
             )
         finally:
             event.remove(connection, "before_cursor_execute", record)
-        assert len(view.items) == 100 and len(captured) == 4
+        assert len(view.items) == 100 and len(captured) == 5
         filters["page"] = 999
         empty, total = BillingRepository(db, s.housing.company_id).bill_list(
             s.housing.community_id, today=date(2026, 1, 1), **filters
@@ -151,5 +152,5 @@ def test_representative_bills_use_pending_index_and_batch_related_reads(
         assert not empty and total == 1200
         print(
             f"Billing plan: 12000 bills / 10800 receipts; pending={plan['Execution Time']}ms; "
-            "4 reads for 20 or 100 rows"
+            "5 reads for 20 or 100 rows"
         )

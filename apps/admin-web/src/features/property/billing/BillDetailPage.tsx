@@ -20,7 +20,7 @@ import { actionLabels, yuan } from './values';
 
 type Editor = {
   bill: Bill;
-  action: Exclude<BillAction, 'create'>;
+  action: Exclude<BillAction, 'create' | 'online_receipt'>;
   entry?: SettlementEntry;
 };
 function History({
@@ -72,16 +72,28 @@ function History({
     },
     { title: '金额', render: (_, row) => yuan(row.amount_cents) },
     {
+      title: '来源',
+      render: (_, row) =>
+        row.source_type === 'online_payment' ? '线上支付' : '线下登记',
+    },
+    {
       title: '实际收款日',
       render: (_, row) => row.received_on ?? '不详 / 不适用',
     },
     { title: '登记时间', dataIndex: 'created_at', valueType: 'dateTime' },
-    { title: '操作人', dataIndex: 'actor_name' },
+    {
+      title: '操作人',
+      render: (_, row) =>
+        row.actor_type === 'system' ? '系统' : row.actor_name,
+    },
     { title: '原因', render: (_, row) => row.reason ?? '—' },
     {
       title: '关联条目',
       render: (_, row) =>
-        row.reverses_entry_id ?? row.reversed_by_entry_id ?? '—',
+        row.payment_order_item_id ??
+        row.reverses_entry_id ??
+        row.reversed_by_entry_id ??
+        '—',
       ellipsis: true,
     },
     {
@@ -89,6 +101,8 @@ function History({
       valueType: 'option',
       render: (_, row) =>
         bill.lifecycle_status === 'active' &&
+        !bill.payment_in_progress &&
+        row.source_type === 'offline' &&
         row.entry_type === 'receipt' &&
         !row.reversed_by_entry_id &&
         hasPermission('property.bill_receipt.correct') ? (
@@ -116,7 +130,11 @@ function History({
   const operationColumns: ProColumns<BillOperation>[] = [
     { title: '版本', dataIndex: 'bill_version' },
     { title: '操作', render: (_, row) => actionLabels[row.action] },
-    { title: '操作人', dataIndex: 'actor_name' },
+    {
+      title: '操作人',
+      render: (_, row) =>
+        row.actor_type === 'system' ? '系统' : row.actor_name,
+    },
     { title: '原因', render: (_, row) => row.reason ?? '—' },
     { title: '时间', dataIndex: 'created_at', valueType: 'dateTime' },
     { title: '请求标识', dataIndex: 'request_id', copyable: true },
@@ -236,7 +254,9 @@ export default function BillDetailPage() {
               <Button
                 type="primary"
                 disabled={
-                  !bill.house_effective_enabled || bill.outstanding_cents === 0
+                  !bill.house_effective_enabled ||
+                  bill.outstanding_cents === 0 ||
+                  bill.payment_in_progress
                 }
                 onClick={() => setEditor({ bill, action: 'receipt' })}
               >
@@ -246,7 +266,7 @@ export default function BillDetailPage() {
             {writable && hasPermission('property.bill.void') && (
               <Button
                 danger
-                disabled={bill.settled_cents !== 0}
+                disabled={bill.settled_cents !== 0 || bill.payment_in_progress}
                 onClick={() => setEditor({ bill, action: 'void' })}
               >
                 作废账单
@@ -272,6 +292,14 @@ export default function BillDetailPage() {
         <Spin />
       ) : (
         <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+          {bill.payment_in_progress && (
+            <Alert
+              type="warning"
+              showIcon
+              title="该账单有支付正在处理中"
+              description="暂不能登记线下收款、纠错、撤销或作废。请等待支付结果，或由付款人核实原订单。"
+            />
+          )}
           {!bill.house_effective_enabled && (
             <Alert
               type="info"

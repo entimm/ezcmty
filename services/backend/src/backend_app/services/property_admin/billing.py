@@ -19,6 +19,7 @@ from backend_app.domain.billing import (
     month_date,
     next_month,
 )
+from backend_app.domain.billing.posting import append_receipt
 from backend_app.models.admin import AdminAccount, utc_now
 from backend_app.models.billing import Bill, BillOperation, BillSettlementEntry, FeeBasisVersion
 from backend_app.models.housing import House, SpaceNode
@@ -27,7 +28,13 @@ from backend_app.repositories.admin import AdminRepository
 from backend_app.repositories.billing import BillingRepository
 from backend_app.schemas import billing as schema
 from backend_app.schemas.admin import AdminSchema
-from backend_app.schemas.mappers.billing import basis_view, bill_view, entry_view, operation_view
+from backend_app.schemas.mappers.billing import (
+    basis_view,
+    bill_view,
+    entry_view,
+    historical_write_result,
+    operation_view,
+)
 from backend_app.services.contracts.admin import AdminContext
 
 PERMISSIONS: dict[Action, str] = {
@@ -224,8 +231,15 @@ class PropertyBillingService:
             today = business_today()
         bases = repo.basis_map([i.basis_version_id for i in items if i.basis_version_id])
         states = repo.house_states(community, [i.house_id for i in items])
+        reserved = repo.reserved_bill_ids([i.id for i in items])
         return [
-            bill_view(i, bases.get(i.basis_version_id or ""), states.get(i.house_id, False), today)
+            bill_view(
+                i,
+                bases.get(i.basis_version_id or ""),
+                states.get(i.house_id, False),
+                today,
+                payment_in_progress=i.id in reserved,
+            )
             for i in items
         ]
 
@@ -257,14 +271,14 @@ class PropertyBillingService:
             raise AppError("resource.not_found")
         items, total = repo.entries(bill_id, **filters)
         operations = repo.operation_map([i.operation_id for i in items])
-        names = repo.actor_names([i.actor_id for i in operations.values()])
+        names = repo.actor_names([i.actor_id for i in operations.values() if i.actor_id])
         reversed_by = repo.reversals([i.id for i in items])
         return schema.SettlementEntryPage(
             items=[
                 entry_view(
                     i,
                     operations[i.operation_id],
-                    names[operations[i.operation_id].actor_id],
+                    names.get(operations[i.operation_id].actor_id or "", "系统"),
                     reversed_by.get(i.id),
                 )
                 for i in items
@@ -280,9 +294,11 @@ class PropertyBillingService:
         if repo.bill(community_id, bill_id) is None:
             raise AppError("resource.not_found")
         items, total = repo.operations(bill_id, **filters)
-        names = repo.actor_names([i.actor_id for i in items])
+        names = repo.actor_names([i.actor_id for i in items if i.actor_id])
         return schema.BillOperationPage(
-            items=[operation_view(i, names[i.actor_id]) for i in items], total=total, **filters
+            items=[operation_view(i, names.get(i.actor_id or "", "系统")) for i in items],
+            total=total,
+            **filters,
         )
 
     @staticmethod
@@ -314,7 +330,7 @@ class PropertyBillingService:
             return None
         if previous.actor_id != ctx.account_id or previous.request_fingerprint != fingerprint:
             raise AppError("billing.idempotency_conflict")
-        return schema.BillWriteResult.model_validate(previous.result)
+        return historical_write_result(previous.result)
 
     def operation_result(self, ctx: AdminContext, key: str) -> schema.BillOperationResult:
         repo, _ = self._scope(ctx, "property.bill.read")
@@ -324,7 +340,7 @@ class PropertyBillingService:
         repo, identity, actor, _ = self._protect(
             ctx, PERMISSIONS[cast(Action, operation.action)], None
         )
-        result = schema.BillWriteResult.model_validate(operation.result)
+        result = historical_write_result(operation.result)
         if "property.bill.read" not in identity.effective_permissions(actor.id):
             raise AppError("auth.forbidden")
         if operation.action == "create":
@@ -334,6 +350,7 @@ class PropertyBillingService:
                 has_basis=result.bill.basis_version_id is not None,
                 has_receipt=bool(result.settlement_entries),
             )
+        assert operation.response_status is not None
         return schema.BillOperationResult(response_status=operation.response_status, result=result)
 
     @staticmethod
@@ -360,6 +377,7 @@ class PropertyBillingService:
             operation_id=operation_id,
             entry_type="reversal" if original_id else "receipt",
             source_type="offline",
+            payment_order_item_id=None,
             amount_cents=amount,
             received_on=received_on,
             reverses_entry_id=original_id,
@@ -446,7 +464,7 @@ class PropertyBillingService:
                     if data.amount_source == "basis"
                     else None,
                     receivable_cents=amount,
-                    settled_cents=paid,
+                    settled_cents=0,
                     lifecycle_status="active",
                     due_date=data.due_date,
                     house_label_snapshot=self._label(community, house, path),
@@ -460,7 +478,7 @@ class PropertyBillingService:
                 if data.initial_receipt:
                     reason = data.initial_receipt.reason
                     entries.append(
-                        self._entry(bill.id, operation_id, paid, data.initial_receipt.received_on)
+                        append_receipt(bill, operation_id, paid, data.initial_receipt.received_on)
                     )
             else:
                 assert bill_id is not None
@@ -474,6 +492,8 @@ class PropertyBillingService:
                 replay = self._replay(repo, ctx, key, fingerprint)
                 if replay is not None:
                     return replay
+                if action != "update" and repo.reservation(bill.id) is not None:
+                    raise AppError("payment.bill_reserved")
                 if bill.lifecycle_status != "active":
                     raise AppError("billing.bill_voided")
                 assert isinstance(
@@ -504,16 +524,17 @@ class PropertyBillingService:
                     assert isinstance(data, schema.ReceiptCreate)
                     self._require_enabled(community, house, path)
                     reason = data.reason
-                    bill.settled_cents += data.amount_cents
+                    if bill.settled_cents + data.amount_cents > bill.receivable_cents:
+                        raise AppError("billing.overpayment")
                     entries.append(
-                        self._entry(bill.id, operation_id, data.amount_cents, data.received_on)
+                        append_receipt(bill, operation_id, data.amount_cents, data.received_on)
                     )
                 else:
                     assert isinstance(data, (schema.ReceiptCorrection, schema.BillReasonAction))
                     original = repo.entry(bill.id, entry_id or "")
                     if original is None:
                         raise AppError("resource.not_found")
-                    if original.entry_type != "receipt":
+                    if original.entry_type != "receipt" or original.source_type != "offline":
                         raise AppError("billing.invalid_receipt")
                     if repo.reversals([original.id]):
                         raise AppError("billing.receipt_already_reversed")
@@ -526,10 +547,11 @@ class PropertyBillingService:
                     )
                     if action == "correct_receipt":
                         assert isinstance(data, schema.ReceiptCorrection)
-                        bill.settled_cents += data.corrected_amount_cents
+                        if bill.settled_cents + data.corrected_amount_cents > bill.receivable_cents:
+                            raise AppError("billing.overpayment")
                         entries.append(
-                            self._entry(
-                                bill.id,
+                            append_receipt(
+                                bill,
                                 operation_id,
                                 data.corrected_amount_cents,
                                 data.corrected_received_on,
@@ -550,6 +572,7 @@ class PropertyBillingService:
                 result={},
                 response_status=200 if action in {"update", "void"} else 201,
                 reason=reason,
+                actor_type="admin",
                 actor_id=actor.id,
                 request_id=request_id,
                 created_at=now,

@@ -27,6 +27,7 @@ export const actionLabels = {
   create: '建账',
   update: '修改资料',
   receipt: '登记收款',
+  online_receipt: '线上收款入账',
   correct_receipt: '收款纠错',
   reverse_receipt: '撤销误登记',
   void: '作废',

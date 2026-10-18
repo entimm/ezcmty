@@ -209,6 +209,7 @@ class Executor:
                 "billing_month",
                 "is_overdue",
                 "house_effective_enabled",
+                "payment_in_progress",
                 "created_at",
                 "updated_at",
             },

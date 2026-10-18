@@ -160,6 +160,21 @@ EXCLUDED_TABLES = {
     "miniapp_users": "微信账号必须经真实授权创建，不在后台开发数据场景中伪造",
     "miniapp_phone_bindings": "手机号授权事实不由开发数据填充生成",
     "miniapp_phone_verifications": "微信成功验证凭据不由开发数据填充生成",
+    "property_merchant_bindings": "收款身份由平台核实后配置，普通填充不建立商户绑定",
+    "profit_sharing_rule_versions": "真实资金规则只通过平台支付配置发布",
+    "profit_sharing_rule_version_items": "接收账号及比例属于完整资金规则，不伪造接收关系",
+    "payment_orders": "居民付款事实及原业务单不由普通后台填充创建",
+    "payment_order_items": "支付明细必须随真实支付聚合创建",
+    "bill_payment_reservations": "占用只能由支付用例建立，不阻塞开发账单",
+    "profit_sharing_allocations": "应分事实只能在可信收款入账事务生成",
+    "profit_sharing_orders": "普通填充不得触发真实资金分账任务",
+    "profit_sharing_order_items": "接收结果由可信渠道查询确认，不伪造到账",
+    "payment_unfreeze_orders": "普通填充不得触发真实资金解冻任务",
+    "payment_tasks": "资金恢复任务由支付用例创建，不由普通填充生成",
+    "payment_channel_requests": "渠道调用证据只能来自实际协议尝试",
+    "payment_channel_notifications": "通知证据必须验签，不伪造渠道通知",
+    "payment_reconciliation_runs": "资金批次由实际账户与业务日期周期生产",
+    "payment_reconciliation_discrepancies": "差异必须有可靠核对依据，不伪造资金异常",
 }
 
 

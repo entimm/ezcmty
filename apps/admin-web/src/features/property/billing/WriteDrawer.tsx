@@ -13,6 +13,7 @@ export function WriteDrawer<T extends object>({
   prepare,
   done,
   children,
+  disabled = false,
 }: {
   title: string;
   form: FormInstance<T>;
@@ -20,6 +21,7 @@ export function WriteDrawer<T extends object>({
   prepare: (values: T) => BillSubmission;
   done: (result?: BillWriteResult) => void;
   children: ReactNode;
+  disabled?: boolean;
 }) {
   const operation = useBillingWrite();
   const pending = usePendingBills();
@@ -60,10 +62,10 @@ export function WriteDrawer<T extends object>({
         initialValues={initialValues}
         layout="vertical"
         autoComplete="off"
-        disabled={operation.isPending || !!pending.length}
+        disabled={disabled || operation.isPending || !!pending.length}
         onValuesChange={dirty.changed}
         onFinish={async (values: T) => {
-          if (operation.isPending || pending.length) return;
+          if (disabled || operation.isPending || pending.length) return;
           setError(undefined);
           setInputError('');
           let submission: BillSubmission;
@@ -91,7 +93,7 @@ export function WriteDrawer<T extends object>({
             htmlType="submit"
             type="primary"
             loading={operation.isPending}
-            disabled={!!pending.length}
+            disabled={disabled || !!pending.length}
           >
             确认保存
           </Button>

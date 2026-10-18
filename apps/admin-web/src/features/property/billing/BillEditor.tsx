@@ -35,7 +35,7 @@ export function BillEditor({
   done,
 }: {
   bill: Bill;
-  action: Exclude<BillAction, 'create'>;
+  action: Exclude<BillAction, 'create' | 'online_receipt'>;
   entry?: SettlementEntry;
   done: (result?: BillWriteResult) => void;
 }) {
@@ -44,6 +44,11 @@ export function BillEditor({
   const [current, setCurrent] = useState(bill);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<unknown>();
+  const blocked =
+    action !== 'update' &&
+    (current.payment_in_progress ||
+      ((action === 'correct_receipt' || action === 'reverse_receipt') &&
+        entry?.source_type !== 'offline'));
   const value = Form.useWatch('amount', form) as string | undefined;
   let after: number | undefined;
   try {
@@ -60,6 +65,7 @@ export function BillEditor({
       title={actionLabels[action]}
       form={form}
       done={done}
+      disabled={blocked}
       initialValues={{
         external_bill_no: current.external_bill_no ?? '',
         due_date: current.due_date ?? '',
@@ -73,6 +79,13 @@ export function BillEditor({
       prepare={(values) => {
         if (current.lifecycle_status !== 'active')
           throw new Error('账单已作废，请关闭后查看最新详情');
+        if (action !== 'update' && current.payment_in_progress)
+          throw new Error('该账单有支付正在处理中，请先核实原订单');
+        if (
+          (action === 'correct_receipt' || action === 'reverse_receipt') &&
+          entry?.source_type !== 'offline'
+        )
+          throw new Error('线上支付收款不能通过线下纠错或撤销处理');
         const base = { expected_row_version: current.row_version };
         const root = billRoot(current.community_id, current.id);
         if (action === 'update')
@@ -134,6 +147,18 @@ export function BillEditor({
       }}
     >
       <OperationError error={error} />
+      {blocked && (
+        <Alert
+          style={{ marginBottom: 16 }}
+          type="warning"
+          showIcon
+          title={
+            current.payment_in_progress
+              ? '该账单有支付正在处理中，请先核实原订单'
+              : '线上支付收款不能通过线下纠错或撤销处理'
+          }
+        />
+      )}
       <Alert
         style={{ marginBottom: 16 }}
         type="info"

@@ -22,7 +22,14 @@ def basis_view(item: FeeBasisVersion) -> schema.FeeBasisVersion:
     )
 
 
-def bill_view(item: Bill, basis: FeeBasisVersion | None, enabled: bool, today: date) -> schema.Bill:
+def bill_view(
+    item: Bill,
+    basis: FeeBasisVersion | None,
+    enabled: bool,
+    today: date,
+    *,
+    payment_in_progress: bool = False,
+) -> schema.Bill:
     data: dict[str, Any] = {
         column.name: getattr(item, column.name) for column in Bill.__table__.columns
     }
@@ -30,6 +37,7 @@ def bill_view(item: Bill, basis: FeeBasisVersion | None, enabled: bool, today: d
         billing_month=item.period_start.isoformat()[:7],
         basis=basis_view(basis) if basis else None,
         house_effective_enabled=enabled,
+        payment_in_progress=payment_in_progress,
         is_overdue=bool(
             item.lifecycle_status == "active"
             and item.outstanding_cents > 0
@@ -48,7 +56,7 @@ def operation_view(item: BillOperation, actor_name: str) -> schema.BillOperation
                 for name in schema.BillOperation.model_fields
                 if name != "actor_name"
             },
-            "actor_name": actor_name,
+            "actor_name": "系统" if item.actor_type == "system" else actor_name,
         }
     )
 
@@ -64,13 +72,32 @@ def entry_view(
         bill_id=item.bill_id,
         operation_id=item.operation_id,
         entry_type=cast(Literal["receipt", "reversal"], item.entry_type),
-        source_type="offline",
+        source_type=cast(Literal["offline", "online_payment"], item.source_type),
+        payment_order_item_id=item.payment_order_item_id,
         amount_cents=item.amount_cents,
         reverses_entry_id=item.reverses_entry_id,
         reversed_by_entry_id=reversed_by,
         received_on=item.received_on,
         created_at=item.created_at,
+        actor_type=cast(Literal["admin", "system"], operation.actor_type),
         actor_id=operation.actor_id,
-        actor_name=actor_name,
+        actor_name="系统" if operation.actor_type == "system" else actor_name,
         reason=operation.reason,
+    )
+
+
+def historical_write_result(result: dict[str, Any]) -> schema.BillWriteResult:
+    """Read immutable pre-payment operation snapshots through the current response contract."""
+    bill = dict(result["bill"])
+    bill.setdefault("payment_in_progress", False)
+    operation = dict(result["operation"])
+    operation.setdefault("actor_type", "admin")
+    entries = []
+    for original in result["settlement_entries"]:
+        entry = dict(original)
+        entry.setdefault("actor_type", "admin")
+        entry.setdefault("payment_order_item_id", None)
+        entries.append(entry)
+    return schema.BillWriteResult.model_validate(
+        {"bill": bill, "operation": operation, "settlement_entries": entries}
     )

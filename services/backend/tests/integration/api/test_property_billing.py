@@ -1,13 +1,71 @@
+from copy import deepcopy
 from typing import Any
 
 import pytest
 from pytest import MonkeyPatch
-from sqlalchemy import func, select
+from sqlalchemy import Connection, event, func, select
+from sqlalchemy.orm import Mapper
 from tests.support.admin import NEW_PASSWORD, TEST_PASSWORD, admin, company
 from tests.support.housing import create_house, create_node, housing_path, set_permissions
 from tests.support.workspace import PREFIX, WorkspaceHarness, create_community
 
 from backend_app.models.billing import BillOperation, BillSettlementEntry
+
+
+def test_pre_payment_result_snapshot_replays_and_reads_without_rewriting_history(
+    workspace: WorkspaceHarness,
+) -> None:
+    workspace.complete_login()
+    house = create_house(workspace, create_node(workspace)["id"])
+    root = housing_path(workspace, "/bills")
+    body = {
+        "house_id": house["id"],
+        "billing_month": "2024-01",
+        "amount_source": "manual",
+        "receivable_cents": 10000,
+        "manual_amount_reason": "历史补录",
+        "initial_receipt": {"amount_cents": 3000},
+    }
+    headers = {**workspace.headers(), "Idempotency-Key": "legacy-create"}
+
+    def serialize_old_contract(
+        mapper: Mapper[BillOperation], connection: Connection, operation: BillOperation
+    ) -> None:
+        # Reproduce the old serializer at insert time; all database guards remain active.
+        snapshot = deepcopy(operation.result)
+        snapshot["bill"].pop("payment_in_progress")
+        snapshot["operation"].pop("actor_type")
+        for entry in snapshot["settlement_entries"]:
+            entry.pop("actor_type")
+            entry.pop("payment_order_item_id")
+        operation.result = snapshot
+
+    event.listen(BillOperation, "before_insert", serialize_old_contract)
+    try:
+        created = workspace.client.post(root, json=body, headers=headers)
+    finally:
+        event.remove(BillOperation, "before_insert", serialize_old_contract)
+    assert created.status_code == 201, created.text
+    original_response = created.json()
+    with workspace.platform.factory() as db:
+        stored = db.get(BillOperation, original_response["operation"]["id"])
+        assert stored
+        original_snapshot = deepcopy(stored.result)
+        assert "payment_in_progress" not in original_snapshot["bill"]
+        assert "actor_type" not in original_snapshot["operation"]
+        assert "payment_order_item_id" not in original_snapshot["settlement_entries"][0]
+
+    replay = workspace.client.post(root, json=body, headers=headers)
+    lookup = workspace.client.get(f"{PREFIX}/bill-operation-results/legacy-create")
+    assert replay.status_code == 201, replay.text
+    assert lookup.status_code == 200, lookup.text
+    assert replay.json() == original_response
+    assert lookup.json() == {"response_status": 201, "result": original_response}
+    with workspace.platform.factory() as db:
+        stored = db.get(BillOperation, original_response["operation"]["id"])
+        assert stored and stored.result == original_snapshot
+        assert db.scalar(select(func.count()).select_from(BillOperation)) == 1
+        assert db.scalar(select(func.count()).select_from(BillSettlementEntry)) == 1
 
 
 def test_bill_receipt_correction_void_recreate_and_idempotency(workspace: WorkspaceHarness) -> None:
@@ -401,7 +459,7 @@ def test_overdue_filter_and_response_share_one_business_day(
         def now(tz: object) -> datetime:
             return next(instants)
 
-    monkeypatch.setattr("backend_app.domain.billing.datetime", AdvancingClock)
+    monkeypatch.setattr("backend_app.domain.billing.calculation.datetime", AdvancingClock)
     listed = workspace.client.get(root, params={"is_overdue": False})
     assert listed.status_code == 200, listed.text
     assert listed.json()["total"] == 1

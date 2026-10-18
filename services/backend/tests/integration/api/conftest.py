@@ -56,6 +56,21 @@ def harness(migrated_database_url: str, monkeypatch: MonkeyPatch) -> Iterator[Ha
             "bills",
             "bill_settlement_entries",
             "bill_operations",
+            "property_merchant_bindings",
+            "profit_sharing_rule_versions",
+            "profit_sharing_rule_version_items",
+            "payment_orders",
+            "payment_order_items",
+            "bill_payment_reservations",
+            "profit_sharing_allocations",
+            "profit_sharing_orders",
+            "profit_sharing_order_items",
+            "payment_unfreeze_orders",
+            "payment_tasks",
+            "payment_channel_requests",
+            "payment_channel_notifications",
+            "payment_reconciliation_runs",
+            "payment_reconciliation_discrepancies",
         }
         factory = sessionmaker(bind=engine, autoflush=False)
         with factory() as db:

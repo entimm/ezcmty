@@ -69,11 +69,13 @@ export interface Bill {
   updated_at: string;
   basis: FeeBasis | null;
   house_effective_enabled: boolean;
+  payment_in_progress: boolean;
 }
 export type BillAction =
   | 'create'
   | 'update'
   | 'receipt'
+  | 'online_receipt'
   | 'correct_receipt'
   | 'reverse_receipt'
   | 'void';
@@ -82,7 +84,8 @@ export interface BillOperation {
   bill_id: string;
   action: BillAction;
   bill_version: number;
-  actor_id: string;
+  actor_type: 'admin' | 'system';
+  actor_id: string | null;
   actor_name: string;
   reason: string | null;
   request_id: string;
@@ -93,13 +96,15 @@ export interface SettlementEntry {
   bill_id: string;
   operation_id: string;
   entry_type: 'receipt' | 'reversal';
-  source_type: 'offline';
+  source_type: 'offline' | 'online_payment';
+  payment_order_item_id: string | null;
   amount_cents: number;
   reverses_entry_id: string | null;
   reversed_by_entry_id: string | null;
   received_on: string | null;
   created_at: string;
-  actor_id: string;
+  actor_type: 'admin' | 'system';
+  actor_id: string | null;
   actor_name: string;
   reason: string | null;
 }

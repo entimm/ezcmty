@@ -241,8 +241,15 @@ class BillOperation(Base):
             name="fk_bill_operation_actor",
         ),
         CheckConstraint(
-            "action IN ('create','update','receipt','correct_receipt','reverse_receipt','void')",
+            "action IN ('create','update','receipt','online_receipt','correct_receipt',"
+            "'reverse_receipt','void')",
             name="ck_bill_operation_action",
+        ),
+        CheckConstraint(
+            "(actor_type = 'admin' AND actor_id IS NOT NULL AND response_status IS NOT NULL "
+            "AND action <> 'online_receipt') OR (actor_type = 'system' AND actor_id IS NULL "
+            "AND response_status IS NULL AND action = 'online_receipt')",
+            name="ck_bill_operation_actor",
         ),
         CheckConstraint(
             "action NOT IN ('correct_receipt','reverse_receipt','void') OR (reason "
@@ -264,9 +271,10 @@ class BillOperation(Base):
     idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
     request_fingerprint: Mapped[str] = mapped_column(CHAR(64), nullable=False)
     result: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    response_status: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    response_status: Mapped[int | None] = mapped_column(SmallInteger)
     reason: Mapped[str | None] = mapped_column(String(1000))
-    actor_id: Mapped[str] = mapped_column(UUID_TYPE, nullable=False)
+    actor_type: Mapped[str] = mapped_column(String(16), nullable=False, default="admin")
+    actor_id: Mapped[str | None] = mapped_column(UUID_TYPE)
     request_id: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(UTC_TIMESTAMP, nullable=False)
 
@@ -286,7 +294,17 @@ class BillSettlementEntry(Base):
             ["bill_settlement_entries.bill_id", "bill_settlement_entries.id"],
             name="fk_bill_entry_original",
         ),
-        CheckConstraint("source_type = 'offline'", name="ck_bill_entry_source"),
+        ForeignKeyConstraint(
+            ["bill_id", "payment_order_item_id"],
+            ["payment_order_items.bill_id", "payment_order_items.id"],
+            name="fk_bill_entry_payment_item",
+        ),
+        CheckConstraint(
+            "(source_type = 'offline' AND payment_order_item_id IS NULL) OR "
+            "(source_type = 'online_payment' AND payment_order_item_id IS NOT NULL "
+            "AND entry_type = 'receipt' AND received_on IS NOT NULL)",
+            name="ck_bill_entry_source",
+        ),
         CheckConstraint(f"amount_cents BETWEEN -{LIMIT} AND {LIMIT}", name="ck_bill_entry_range"),
         CheckConstraint(
             "(entry_type = 'receipt' AND amount_cents > 0 AND reverses_entry_id IS "
@@ -302,12 +320,20 @@ class BillSettlementEntry(Base):
         ),
         Index("ix_bill_entry_time", "bill_id", text("created_at DESC"), text("id DESC")),
         Index("ix_bill_entry_operation", "bill_id", "operation_id"),
+        Index(
+            "uq_bill_entry_payment_item",
+            "payment_order_item_id",
+            unique=True,
+            postgresql_where=text("payment_order_item_id IS NOT NULL"),
+        ),
+        Index("ix_bill_entry_payment_item_fk", "bill_id", "payment_order_item_id"),
     )
     id: Mapped[str] = mapped_column(UUID_TYPE, primary_key=True)
     bill_id: Mapped[str] = mapped_column(UUID_TYPE, nullable=False)
     operation_id: Mapped[str] = mapped_column(UUID_TYPE, nullable=False)
     entry_type: Mapped[str] = mapped_column(String(16), nullable=False)
     source_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    payment_order_item_id: Mapped[str | None] = mapped_column(UUID_TYPE)
     amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     reverses_entry_id: Mapped[str | None] = mapped_column(UUID_TYPE)
     received_on: Mapped[date | None] = mapped_column(Date)

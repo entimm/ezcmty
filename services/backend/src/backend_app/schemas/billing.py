@@ -228,6 +228,7 @@ class Bill(AdminSchema):
     updated_at: datetime
     basis: FeeBasisVersion | None
     house_effective_enabled: bool
+    payment_in_progress: bool
 
 
 class SettlementEntry(AdminSchema):
@@ -235,13 +236,15 @@ class SettlementEntry(AdminSchema):
     bill_id: Identifier
     operation_id: Identifier
     entry_type: Literal["receipt", "reversal"]
-    source_type: Literal["offline"]
+    source_type: Literal["offline", "online_payment"]
+    payment_order_item_id: Identifier | None
     amount_cents: Annotated[int, Field(ge=-MAX_CENTS, le=MAX_CENTS)]
     reverses_entry_id: Identifier | None
     reversed_by_entry_id: Identifier | None
     received_on: date | None
     created_at: datetime
-    actor_id: Identifier
+    actor_type: Literal["admin", "system"]
+    actor_id: Identifier | None
     actor_name: str
     reason: OptionalReason
 
@@ -249,9 +252,10 @@ class SettlementEntry(AdminSchema):
 class BillOperation(AdminSchema):
     id: Identifier
     bill_id: Identifier
-    action: Action
+    action: Literal[Action, "online_receipt"]
     bill_version: Version
-    actor_id: Identifier
+    actor_type: Literal["admin", "system"]
+    actor_id: Identifier | None
     actor_name: str
     reason: OptionalReason
     request_id: Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]{1,64}$")]
