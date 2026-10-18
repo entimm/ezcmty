@@ -13,4 +13,6 @@
 
 本地开发的环境准备、配置、命令、运行与质量检查见 [本地开发指南](docs/guidelines/local-development.md)。
 
+账单支付的阶段依赖、可勾选任务及验收清单见 [开发实施计划](docs/plans/payment/bill-payments.md)。
+
 执行要求及专题文档入口见 [AGENTS.md](AGENTS.md)。
