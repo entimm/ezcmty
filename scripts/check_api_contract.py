@@ -43,7 +43,29 @@ def resolve_references(
         target: Any = document
         for part in reference[2:].split("/"):
             target = target[part.replace("~1", "/").replace("~0", "~")]
-        value = {**target, **{key: item for key, item in value.items() if key != "$ref"}}
+        siblings = {key: item for key, item in value.items() if key != "$ref"}
+        value = {**target, **siblings}
+        # JSON Schema applies sibling property constraints together with a referenced schema.
+        # A shallow object overwrite drops encrypted envelope fields from specialized resources.
+        if "properties" in target and "properties" in siblings:
+            properties = dict(target["properties"])
+            for name, constraint in siblings["properties"].items():
+                original = properties.get(name)
+                if original is None or original == constraint:
+                    properties[name] = constraint
+                    continue
+                combined = {**original, **constraint}
+                incompatible = any(
+                    key in original and original[key] != item for key, item in constraint.items()
+                )
+                if incompatible:
+                    combined = {"allOf": [original, constraint]}
+                elif "const" in combined and "enum" in combined:
+                    # The constant enforces an in-domain enum; keep impossible intersections.
+                    if combined["const"] in combined["enum"]:
+                        combined.pop("enum")
+                properties[name] = combined
+            value["properties"] = properties
         seen = seen | {reference}
     return {key: resolve_references(item, document, seen) for key, item in value.items()}
 

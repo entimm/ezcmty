@@ -65,6 +65,52 @@ def test_error_catalog_detects_stale_generation(
         builder.check_catalog(changed)
 
 
+def test_reference_sibling_properties_preserve_envelope_and_specialize_kind(
+    contract_tools: tuple[ModuleType, ModuleType],
+) -> None:
+    checker, _ = contract_tools
+    document = {
+        "components": {
+            "schemas": {
+                "Envelope": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "kind": {"type": "string", "enum": ["payment", "sharing"]},
+                        "ciphertext": {"type": "string", "minLength": 1},
+                    },
+                    "required": ["kind", "ciphertext"],
+                }
+            }
+        }
+    }
+    specialized = checker.resolve_references(
+        {
+            "$ref": "#/components/schemas/Envelope",
+            "properties": {"kind": {"type": "string", "const": "payment"}},
+        },
+        document,
+    )
+    assert specialized["properties"] == {
+        "kind": {"type": "string", "const": "payment"},
+        "ciphertext": {"type": "string", "minLength": 1},
+    }
+    assert specialized["additionalProperties"] is False
+    assert specialized["required"] == ["kind", "ciphertext"]
+
+
+def test_reference_sibling_conflicting_property_constraints_are_not_discarded(
+    contract_tools: tuple[ModuleType, ModuleType],
+) -> None:
+    checker, _ = contract_tools
+    original = {"type": "string", "minLength": 10}
+    document = {"components": {"schemas": {"Value": {"properties": {"value": original}}}}}
+    resolved = checker.resolve_references(
+        {"$ref": "#/components/schemas/Value", "properties": {"value": {"minLength": 1}}}, document
+    )
+    assert resolved["properties"]["value"] == {"allOf": [original, {"minLength": 1}]}
+
+
 @pytest.mark.parametrize("runtime", RUNTIMES)
 def test_operational_contract_matches_every_runtime(
     contract_tools: tuple[ModuleType, ModuleType], bundled_contract: None, runtime: str

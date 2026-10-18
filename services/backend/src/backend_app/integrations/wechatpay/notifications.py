@@ -69,7 +69,12 @@ class Notifications:
             envelope = object_value(json.loads(raw_body))
             resource = object_value(envelope.get("resource"))
             if (
-                text_value(envelope, "event_type", 64) != "TRANSACTION.SUCCESS"
+                set(envelope)
+                != {"id", "create_time", "event_type", "resource_type", "summary", "resource"}
+                or not isinstance(envelope.get("summary"), str)
+                or set(resource)
+                - {"original_type", "algorithm", "ciphertext", "associated_data", "nonce"}
+                or text_value(envelope, "event_type", 64) != "TRANSACTION.SUCCESS"
                 or text_value(envelope, "resource_type", 64) != "encrypt-resource"
                 or text_value(resource, "original_type", 32) != original_type
                 or text_value(resource, "algorithm", 32) != "AEAD_AES_256_GCM"

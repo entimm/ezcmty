@@ -8,7 +8,36 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from tests.support.wechatpay import WechatPayHarness, sharing_response
 
 from backend_app.integrations.wechatpay.client import WechatPayError
-from backend_app.integrations.wechatpay.profit_sharing import ProfitSharing, Receiver, parse_sharing
+from backend_app.integrations.wechatpay.profit_sharing import (
+    ProfitSharing,
+    Receiver,
+    SharingFact,
+    parse_sharing,
+)
+
+
+def test_durable_sharing_fact_round_trip_checks_each_receiver() -> None:
+    fact = parse_sharing(sharing_response())
+    assert SharingFact.from_snapshot(fact.snapshot()) == fact
+    invalid = fact.snapshot()
+    invalid["receivers"][0]["finished_at"] = None
+    with pytest.raises(WechatPayError, match="INVALID_STRUCTURE"):
+        SharingFact.from_snapshot(invalid)
+
+
+def test_platform_receiver_uses_service_provider_relationship(peer: WechatPayHarness) -> None:
+    def handle(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.content)
+        assert payload["relation_type"] == "SERVICE_PROVIDER"
+        assert payload["type"] == "MERCHANT_ID"
+        assert payload["name"] != "隔离平台"
+        return peer.response(
+            {"sub_mchid": "1900000002", "type": "MERCHANT_ID", "account": "1900000001"}
+        )
+
+    ProfitSharing(peer.client(handle)).add_receiver(
+        merchant_no="1900000002", receiver_account="1900000001", receiver_name="隔离平台"
+    )
 
 
 def test_request_has_encrypted_name_and_keeps_remaining_funds_frozen(

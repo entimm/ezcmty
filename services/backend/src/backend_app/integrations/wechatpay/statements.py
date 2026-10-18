@@ -96,7 +96,9 @@ def _sharing_row(row: dict[str, str]) -> dict[str, Any]:
         "receiver_identity_digest": None if is_merchant else identity_digest(account),
         "amount_cents": _money(_field(row, "金额")),
         "payment_amount_cents": _money(_field(row, "订单金额")),
-        "channel_status": _field(row, "处理状态", 32),
+        "channel_status": {"成功": "SUCCESS"}.get(
+            _field(row, "处理状态", 32), _field(row, "处理状态", 32)
+        ),
         "channel_business_type": _field(row, "业务类型", 32),
         "finished_at": _field(row, "分账时间", 32),
     }

@@ -13,7 +13,20 @@ from cryptography.x509.oid import NameOID
 from pydantic import SecretStr
 from tests.support.wechatpay import WechatPayHarness
 
-from backend_app.integrations.wechatpay.client import WechatPayError
+from backend_app.integrations.wechatpay.client import WechatPayClient, WechatPayError
+
+
+def test_lazy_configuration_validates_before_any_http(peer: WechatPayHarness) -> None:
+    def forbidden(_: httpx.Request) -> httpx.Response:
+        raise AssertionError("Invalid configuration must never send HTTP")
+
+    client = WechatPayClient(
+        replace(peer.config, merchant_private_key=SecretStr("malformed isolated pem")),
+        transport=httpx.MockTransport(forbidden),
+        lazy=True,
+    )
+    with pytest.raises(WechatPayError, match="INVALID_CONFIGURATION"):
+        client.request("GET", "/v3/test")
 
 
 def test_signature_covers_exact_request_target_and_utf8_body(peer: WechatPayHarness) -> None:

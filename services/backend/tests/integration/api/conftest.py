@@ -16,7 +16,7 @@ from tests.support.resident import FakeWechat, ResidentHarness
 from tests.support.workspace import WorkspaceHarness, create_community
 
 from backend_app.api.admin import get_admin_session_store
-from backend_app.api.resident.identity import get_resident_session_store, get_wechat_miniapp
+from backend_app.api.resident.dependencies import get_resident_session_store, get_wechat_miniapp
 from backend_app.app_factory import create_app
 from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.config import get_settings

@@ -48,6 +48,7 @@ def test_profit_sharing_parser_keeps_receiver_and_business_kinds_separate() -> N
     result = parse_statement("profit_sharing", data)
     assert result.rows[0]["receiver_account"] == "1900000001"
     assert result.rows[0]["channel_business_type"] == "分出"
+    assert result.rows[0]["channel_status"] == "SUCCESS"
     assert result.rows[0]["amount_cents"] == 300
     assert "private" not in json.dumps(result.rows)
 

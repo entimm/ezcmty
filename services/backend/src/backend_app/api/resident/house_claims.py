@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Header, Query, Response
 from sqlalchemy.orm import Session
 
-from backend_app.api.resident.identity import Context, Store, resident_responses
+from backend_app.api.resident.dependencies import Context, Store, resident_responses
 from backend_app.db.session import get_database_session
 from backend_app.schemas import house_claims as schema
 from backend_app.schemas.admin import Identifier

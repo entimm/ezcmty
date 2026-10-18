@@ -133,6 +133,7 @@ class WechatPayClient:
         settings: Settings,
         *,
         transport: httpx.BaseTransport | None = None,
+        lazy: bool = False,
     ) -> WechatPayClient:
         return cls(
             WechatPayConfig(
@@ -146,6 +147,7 @@ class WechatPayClient:
                 payment_notify_url=settings.wechatpay_payment_notify_url,
             ),
             transport=transport,
+            lazy=lazy,
         )
 
     def __init__(
@@ -155,6 +157,7 @@ class WechatPayClient:
         transport: httpx.BaseTransport | None = None,
         clock: Callable[[], float] = time,
         nonce_factory: Callable[[], str] = _nonce,
+        lazy: bool = False,
     ) -> None:
         self.config = config
         self.transport = transport
@@ -162,6 +165,14 @@ class WechatPayClient:
         self.nonce_factory = nonce_factory
         self._private_key: rsa.RSAPrivateKey
         self._verification_keys: dict[str, VerificationKey] = {}
+        self._ready = False
+        if not lazy:
+            self._initialize()
+
+    def _initialize(self) -> None:
+        if self._ready:
+            return
+        config = self.config
         try:
             private_key = serialization.load_pem_private_key(
                 config.merchant_private_key.get_secret_value().encode(), password=None
@@ -210,13 +221,16 @@ class WechatPayClient:
                 raise ValueError
         except ValueError, TypeError:
             raise WechatPayError("INVALID_CONFIGURATION") from None
+        self._ready = True
 
     def sign(self, message: bytes) -> str:
+        self._initialize()
         return base64.b64encode(
             self._private_key.sign(message, padding.PKCS1v15(), hashes.SHA256())
         ).decode("ascii")
 
     def verify(self, headers: Mapping[str, str], raw_body: bytes) -> None:
+        self._initialize()
         normalized = {key.lower(): value for key, value in headers.items()}
         timestamp = normalized.get("wechatpay-timestamp", "")
         nonce = normalized.get("wechatpay-nonce", "")
@@ -248,6 +262,7 @@ class WechatPayClient:
             raise WechatPayError("INVALID_SIGNATURE") from None
 
     def encrypt_sensitive(self, plaintext: str) -> str:
+        self._initialize()
         try:
             key = self._verification_keys[self.config.encryption_key_id]
             now = datetime.fromtimestamp(self.clock(), UTC)

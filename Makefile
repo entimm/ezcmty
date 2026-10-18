@@ -57,7 +57,7 @@ resident: ## 前台启动居民 API（8003）
 webhook: ## 前台启动 Webhook（8004）
 	@$(DEV) start webhook
 
-worker: ## 前台启动占位 Worker（task_handlers=0）
+worker: ## 前台启动支付任务 Worker 与周期调度器
 	@$(DEV) start worker
 
 admin: ## 前台启动管理后台（5173，严格端口模式）

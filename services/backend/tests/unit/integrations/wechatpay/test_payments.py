@@ -9,7 +9,15 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from tests.support.wechatpay import WechatPayHarness, payment_response
 
 from backend_app.integrations.wechatpay.client import WechatPayError, identity_digest
-from backend_app.integrations.wechatpay.payments import Payments, parse_payment
+from backend_app.integrations.wechatpay.payments import PaymentFact, Payments, parse_payment
+
+
+def test_durable_payment_fact_round_trip_preserves_authenticated_fields() -> None:
+    fact = parse_payment(payment_response())
+    assert PaymentFact.from_snapshot(fact.snapshot()) == fact
+    invalid = fact.snapshot() | {"payer_identity_digest": "private-openid"}
+    with pytest.raises(WechatPayError, match="INVALID_STRUCTURE"):
+        PaymentFact.from_snapshot(invalid)
 
 
 def test_partner_order_freezes_funds_and_preserves_expiry(peer: WechatPayHarness) -> None:
