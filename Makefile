@@ -8,7 +8,7 @@ SEED_ARGS ?=
 BACKEND := cd services/backend && uv run --no-sync
 POSTGRESQL_TEST := cd services/backend && APP_RUN_POSTGRESQL_TESTS=1 uv run --no-sync pytest --require-all-tests
 
-.PHONY: seed seed-resume seed-list seed-plan seed-coverage install migrate dev dev-bg stop platform property resident webhook worker admin miniapp-build check check-backend check-frontend check-api test-unit test-integration test-contract test-postgresql test-full help
+.PHONY: seed seed-resume seed-list seed-plan seed-coverage install migrate db-reset init-platform-admin dev dev-bg stop platform property resident webhook worker admin miniapp-build check check-backend check-frontend check-api test-unit test-integration test-contract test-postgresql test-full help
 
 install: ## 安装前后端开发依赖
 	@printf '\n[安装] 后端开发依赖\n'
@@ -35,6 +35,15 @@ seed-coverage: ## 只读检查已迁移数据库的 seed 表覆盖
 migrate: ## 执行数据库迁移到最新版本（Alembic head）
 	@printf '\n[迁移] 升级数据库到最新版本\n'
 	$(BACKEND) alembic upgrade head
+
+db-reset: ## 清空开发数据库 public 中的数据和结构，执行时输入数据库名确认
+	$(BACKEND) python -m devtools.reset_database
+
+init-platform-admin: export LOGIN_NAME ?= bootstrap
+init-platform-admin: export DISPLAY_NAME ?= 平台管理员
+init-platform-admin: ## 初始化平台超级管理员；LOGIN_NAME=bootstrap，DISPLAY_NAME="平台管理员"
+	@printf '\n[初始化] 创建平台超级管理员\n'
+	$(BACKEND) python -m backend_app.cli init-platform-admin --login-name "$$LOGIN_NAME" --display-name "$$DISPLAY_NAME"
 
 dev: ## 前台启动四个 API、Worker 和管理后台
 	@$(DEV) start all

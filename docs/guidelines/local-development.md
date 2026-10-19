@@ -53,17 +53,37 @@ URL 中的账号、密码须按 URL 规则编码。若 Redis 需要认证，配�
 
 ### 平台后台初始化
 
-配置好已有 PostgreSQL 和 Redis 后，在仓库根目录执行数据库迁移，再进入后端目录执行受控初始化：
+配置好已有 PostgreSQL 和 Redis 后，在仓库根目录执行数据库迁移，再执行受控初始化：
 
 ```bash
 make migrate
-cd services/backend
-uv run python -m backend_app.cli init-platform-admin --login-name your-admin --display-name 平台管理员
+make init-platform-admin
+```
+
+默认登录名为 `bootstrap`，显示名称为 `平台管理员`。可通过 Make 参数覆盖：
+
+```bash
+make init-platform-admin LOGIN_NAME=your-admin DISPLAY_NAME="平台管理员"
 ```
 
 登录名输入允许任意大小写，服务端统一为小写；公司和小区编码统一为大写，接口返回规范化后的形式。规范化与唯一性约束见 [数据库规范](../database/conventions.md#字符串与约束)。
 
 初始化命令交互输入并确认密码，密码长度为 12–128 字符。已有有效超级管理员或同名账号时拒绝初始化，不能覆盖现有密码或授权。首次登录必须修改密码。
+
+需要清空本地开发数据并重新迁移时，在仓库根目录执行：
+
+```bash
+make stop
+make db-reset
+make migrate
+make init-platform-admin
+```
+
+`make db-reset` 使用后端配置连接数据库，仅允许显式配置 `APP_ENV=local/test`，并要求输入实际数据库名确认。
+
+命令在同一事务中清空并重建 `public`，删除其中全部数据、表、触发器函数和 Alembic 版本记录；依赖这些对象的其他 schema 对象也可能被级联删除。重建后恢复 `public` 的默认所有者和访问权限。
+
+数据库本身、编码和排序规则保留。连接账号应具有数据库所有者权限，无需 `CREATEDB`。
 
 管理员会话空闲和绝对有效期分别由 `APP_ADMIN_SESSION_IDLE_SECONDS`、`APP_ADMIN_SESSION_ABSOLUTE_SECONDS` 配置；绝对有效期不能短于空闲有效期。`APP_ADMIN_TRUSTED_ORIGINS` 使用 JSON 数组，列出管理页面的完整 Origin；写请求必须来自其中之一。生产环境配置实际 HTTPS Origin，Cookie 会开启 Secure。
 
