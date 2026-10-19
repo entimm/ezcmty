@@ -161,7 +161,10 @@ class PaymentConfigurationService:
             raise AppError("payment.configuration_unavailable")
         if self.channel is None and not channel_configured(self.settings):
             raise AppError("payment.configuration_unavailable")
-        channel = self.channel or ProfitSharing(WechatPayClient.from_settings(self.settings))
+        try:
+            channel = self.channel or ProfitSharing(WechatPayClient.from_settings(self.settings))
+        except WechatPayError:
+            raise AppError("payment.configuration_unavailable") from None
         factory = sessionmaker(bind=self.db.get_bind(), autoflush=False)
         self.db.rollback()  # Release actor/company locks before any network request.
 

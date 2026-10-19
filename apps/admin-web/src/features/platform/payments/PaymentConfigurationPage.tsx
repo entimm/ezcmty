@@ -360,10 +360,22 @@ function ConfigurationEditor({ companyId }: { companyId: string }) {
           </Card>
           {manage && (
             <Card title="发布完整新规则">
+              {!config.data.current_binding && (
+                <Alert
+                  type="warning"
+                  showIcon
+                  title="请先激活收款商户"
+                  description="在“商户绑定历史”中点击“核验并激活”，成功后即可发布规则；尚无绑定时请先创建。"
+                />
+              )}
               <Form
                 form={ruleForm}
                 layout="vertical"
-                disabled={operation.isPending || !!submission}
+                disabled={
+                  operation.isPending ||
+                  !!submission ||
+                  !config.data.current_binding
+                }
                 initialValues={{ rate: '3.00' }}
                 onValuesChange={(values: { rate?: string }) => {
                   dirty.changed();

@@ -1,13 +1,28 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
+import type { MerchantBinding } from '@/shared/payments/types';
 import { renderRoutes } from '../../../app/platform-harness';
 import {
   companyId,
+  configuration,
   difference,
   identity,
   mockPayments,
   paymentId,
 } from '../../../support/payments';
+const inactiveBinding: MerchantBinding = {
+  id: companyId,
+  property_company_id: companyId,
+  service_provider_merchant_no: '19000000',
+  merchant_no: '19000001',
+  merchant_name: '测试物业',
+  enabled: false,
+  max_ratio_bps: null,
+  ratio_checked_at: null,
+  row_version: 1,
+  created_at: '2026-10-19T00:00:00Z',
+  updated_at: '2026-10-19T00:00:00Z',
+};
 afterEach(() => vi.unstubAllGlobals());
 it('does not offer configuration mutations to a configuration reader', async () => {
   mockPayments(identity('platform_admin', ['platform.payment_config.read']));
@@ -21,6 +36,134 @@ it('does not offer configuration mutations to a configuration reader', async () 
   expect(
     screen.queryByRole('button', { name: '发布新版本' }),
   ).not.toBeInTheDocument();
+});
+it.each([false, true])(
+  'prevents publishing rules without an active merchant (binding history: %s)',
+  async (hasHistory) => {
+    const fetcher = mockPayments(
+      identity('platform_admin', [
+        'platform.payment_config.read',
+        'platform.payment_config.manage',
+      ]),
+      (path) => {
+        if (path.endsWith('/merchant-bindings'))
+          return Response.json({
+            items: hasHistory ? [inactiveBinding] : [],
+            total: hasHistory ? 1 : 0,
+            page: 1,
+            page_size: 20,
+          });
+      },
+    );
+    renderRoutes(
+      `/platform/property/companies/${companyId}/payment-configuration`,
+    );
+    const publish = await screen.findByRole('button', { name: '发布新版本' });
+    expect(publish).toBeDisabled();
+    expect(screen.getByLabelText('平台服务费比例（%）')).toBeDisabled();
+    expect(screen.getByText('请先激活收款商户')).toBeInTheDocument();
+    if (hasHistory)
+      expect(
+        await screen.findByRole('button', { name: '核验并激活' }),
+      ).toBeEnabled();
+    fireEvent.click(publish);
+    expect(screen.queryByText('发布新服务费规则？')).not.toBeInTheDocument();
+    expect(
+      fetcher.mock.calls.filter(
+        ([url, init]) =>
+          String(url).endsWith('/profit-sharing-rule-versions') &&
+          init?.method === 'POST',
+      ),
+    ).toHaveLength(0);
+  },
+);
+it('allows publishing the first rule after activating a merchant while payment readiness is false', async () => {
+  let activated = false;
+  const fetcher = mockPayments(
+    identity('platform_admin', [
+      'platform.payment_config.read',
+      'platform.payment_config.manage',
+    ]),
+    (path, init) => {
+      if (path.endsWith('/active-merchant-binding') && init?.method === 'PUT') {
+        activated = true;
+      }
+      const binding = {
+        ...inactiveBinding,
+        enabled: activated,
+        max_ratio_bps: activated ? 3000 : null,
+        ratio_checked_at: activated ? inactiveBinding.created_at : null,
+      };
+      if (
+        path.endsWith('/payment-configuration') ||
+        (path.endsWith('/active-merchant-binding') && init?.method === 'PUT')
+      )
+        return Response.json({
+          ...configuration,
+          current_binding: activated ? binding : null,
+          configuration_token: activated
+            ? 'activated-token'
+            : configuration.configuration_token,
+        });
+      if (path.endsWith('/merchant-bindings'))
+        return Response.json({
+          items: [binding],
+          total: 1,
+          page: 1,
+          page_size: 20,
+        });
+      if (
+        path.endsWith('/profit-sharing-rule-versions') &&
+        init?.method === 'POST'
+      )
+        return Response.json({ id: paymentId }, { status: 201 });
+    },
+  );
+  renderRoutes(
+    `/platform/property/companies/${companyId}/payment-configuration`,
+  );
+  expect(
+    await screen.findByRole('button', { name: '发布新版本' }),
+  ).toBeDisabled();
+  fireEvent.click(await screen.findByRole('button', { name: '核验并激活' }));
+  const activationDialog = await screen.findByRole('dialog');
+  fireEvent.click(
+    within(activationDialog).getByRole('button', {
+      name: '确 定',
+    }),
+  );
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: '发布新版本' })).toBeEnabled(),
+  );
+  expect(screen.getByText('当前不可收款')).toBeInTheDocument();
+  expect(screen.getByText('尚未发布')).toBeInTheDocument();
+  expect(screen.queryByText('请先激活收款商户')).not.toBeInTheDocument();
+  // jsdom 不运行 CSS 动画，在确认框开始关闭后补发过渡结束事件。
+  await waitFor(() =>
+    expect(activationDialog).toHaveClass('ant-zoom-leave-active'),
+  );
+  fireEvent.transitionEnd(activationDialog);
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
+  fireEvent.click(screen.getByRole('button', { name: '发布新版本' }));
+  fireEvent.click(
+    within(await screen.findByRole('dialog')).getByRole('button', {
+      name: '确 定',
+    }),
+  );
+  expect(
+    await screen.findByText('已发布新版本，仅影响后续新订单'),
+  ).toBeInTheDocument();
+  const write = fetcher.mock.calls.find(
+    ([url, init]) =>
+      String(url).endsWith('/profit-sharing-rule-versions') &&
+      init?.method === 'POST',
+  );
+  expect(JSON.parse(String(write?.[1]?.body))).toEqual({
+    expected_configuration_token: 'activated-token',
+    items: [{ rate_bps: 300 }],
+  });
 });
 it('replays an uncertain configuration creation with its original body and key', async () => {
   let attempts = 0;

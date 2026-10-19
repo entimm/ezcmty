@@ -1,7 +1,15 @@
+import json
+
 import pytest
+from sqlalchemy import func, select
 from tests.support.admin import NEW_PASSWORD, TEST_PASSWORD, Harness, company
 from tests.support.housing import set_permissions
+from tests.support.wechatpay import WechatPayHarness
 from tests.support.workspace import PREFIX, WorkspaceHarness
+
+from backend_app.core.config import get_settings
+from backend_app.models.admin import AdminAuditLog, utc_now
+from backend_app.models.payments import PaymentChannelRequest, PropertyMerchantBinding
 
 PLATFORM_PERMISSIONS = {
     "platform.payment_config.read",
@@ -89,8 +97,6 @@ def test_binding_creation_requires_csrf_and_keeps_durable_replay_and_no_store(
     harness: Harness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("APP_WECHATPAY_SERVICE_PROVIDER_MERCHANT_NO", "sp_test_only")
-    from backend_app.core.config import get_settings
-
     get_settings.cache_clear()
     harness.login()
     target = company(harness)
@@ -134,6 +140,102 @@ def test_binding_creation_requires_csrf_and_keeps_durable_replay_and_no_store(
         "created_at",
         "updated_at",
     }
+
+
+@pytest.mark.parametrize("operation", ["activate", "publish_rule"])
+@pytest.mark.parametrize("invalid_setting", ["private_key", "verification_keys"])
+def test_invalid_channel_credentials_reject_configuration_writes_without_changes(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, operation: str, invalid_setting: str
+) -> None:
+    peer = WechatPayHarness()
+    keys = dict(peer.config.verification_keys)
+    if invalid_setting == "verification_keys":
+        keys["WX_MERCHANT_SERIAL_NO"] = peer.config.merchant_certificate_serial
+    values = {
+        "APP_WECHAT_MINIAPP_APP_ID": peer.config.app_id,
+        "APP_WECHATPAY_SERVICE_PROVIDER_MERCHANT_NO": peer.config.service_provider_merchant_no,
+        "APP_WECHATPAY_MERCHANT_CERTIFICATE_SERIAL": peer.config.merchant_certificate_serial,
+        "APP_WECHATPAY_MERCHANT_PRIVATE_KEY": (
+            "invalid isolated private key"
+            if invalid_setting == "private_key"
+            else peer.config.merchant_private_key.get_secret_value()
+        ),
+        "APP_WECHATPAY_API_V3_KEY": peer.config.api_v3_key.get_secret_value(),
+        "APP_WECHATPAY_VERIFICATION_KEYS": json.dumps(keys),
+        "APP_WECHATPAY_ENCRYPTION_KEY_ID": peer.config.encryption_key_id,
+        "APP_WECHATPAY_PAYMENT_NOTIFY_URL": peer.config.payment_notify_url,
+        "APP_WECHATPAY_PLATFORM_RECEIVER_NAME": "隔离测试平台",
+    }
+    for name, value in values.items():
+        monkeypatch.setenv(name, value)
+    get_settings.cache_clear()
+
+    def unexpected_channel_request(*args: object, **kwargs: object) -> None:
+        raise AssertionError("Invalid configuration must not send channel requests")
+
+    monkeypatch.setattr(
+        "backend_app.integrations.wechatpay.client.WechatPayClient._send",
+        unexpected_channel_request,
+    )
+    harness.login()
+    target = company(harness)
+    root = f"/v1/property-companies/{target['id']}"
+    token = harness.client.get(root + "/payment-configuration").json()["configuration_token"]
+    created = harness.client.post(
+        root + "/merchant-bindings",
+        json={
+            "merchant_no": "1900000002",
+            "merchant_name": "隔离测试物业",
+            "expected_configuration_token": token,
+        },
+        headers={**harness.headers(), "Idempotency-Key": "binding"},
+    )
+    assert created.status_code == 201, created.text
+    if operation == "publish_rule":
+        with harness.factory() as db:
+            binding = db.get(PropertyMerchantBinding, created.json()["id"])
+            assert binding
+            binding.enabled = True
+            binding.row_version += 1
+            binding.max_ratio_bps = 3000
+            binding.ratio_checked_at = utc_now()
+            db.commit()
+    before = harness.client.get(root + "/payment-configuration").json()
+    token = before["configuration_token"]
+    if operation == "activate":
+        response = harness.client.put(
+            root + "/active-merchant-binding",
+            json={
+                "binding_id": created.json()["id"],
+                "expected_configuration_token": token,
+            },
+            headers=harness.headers(),
+        )
+    else:
+        response = harness.client.post(
+            root + "/profit-sharing-rule-versions",
+            json={"items": [{"rate_bps": 300}], "expected_configuration_token": token},
+            headers={**harness.headers(), "Idempotency-Key": "rule"},
+        )
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == "payment.configuration_unavailable"
+    assert "invalid isolated private key" not in response.text
+    assert harness.client.get(root + "/payment-configuration").json() == before
+    assert harness.client.get(root + "/profit-sharing-rule-versions").json()["total"] == 0
+    with harness.factory() as db:
+        assert db.scalar(select(func.count()).select_from(PaymentChannelRequest)) == 0
+        assert (
+            db.scalar(
+                select(func.count())
+                .select_from(AdminAuditLog)
+                .where(
+                    AdminAuditLog.action.in_(
+                        ["payment.merchant_binding.activate", "payment.profit_sharing_rule.create"]
+                    )
+                )
+            )
+            == 0
+        )
 
 
 def test_property_session_exposes_only_read_payment_permissions_and_config_routes(
