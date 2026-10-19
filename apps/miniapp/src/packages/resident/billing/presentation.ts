@@ -10,7 +10,7 @@ export const availability: Record<
   other_payment_in_progress: '其他缴费人正在处理中，请等待结果',
   settled: '账单已结清',
   voided: '账单已作废',
-  collection_unavailable: '收款配置暂不可用，请联系物业',
+  collection_unavailable: '暂不可在线缴费，请联系物业',
 };
 export const entryLabels = {
   own_payment: '本人缴纳',

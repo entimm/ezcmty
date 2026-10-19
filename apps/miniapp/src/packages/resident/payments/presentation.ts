@@ -6,6 +6,7 @@ export function paymentLabel(order: PaymentOrder): string {
     return '收款已确认，缴费正在确认，请勿重复付款';
   if (order.status === 'closed') return '支付已确认关闭';
   if (order.status === 'closing') return '正在核实并关闭原订单，请勿重复付款';
+  if (order.status === 'pending') return '正在准备支付，请稍候';
   if (order.available_actions.includes('continue_payment'))
     return '待支付，可继续原订单';
   return '结果确认中，请勿重复付款';

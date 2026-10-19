@@ -7,10 +7,14 @@ export function ConfigurationSummary({ item }: { item: PaymentConfiguration }) {
       <Alert
         type={item.ready ? 'success' : 'warning'}
         showIcon
-        title={item.ready ? '当前配置可用于新支付' : '当前不可收款'}
-        description={item.reasons
-          .map((reason) => configurationReasons[reason] || reason)
-          .join('；')}
+        title={item.ready ? '收款配置检查通过' : '当前不可收款'}
+        description={
+          item.ready
+            ? '新支付还需平台开放支付服务，提交时会再次校验账单和渠道状态。'
+            : item.reasons
+                .map((reason) => configurationReasons[reason] || reason)
+                .join('；')
+        }
       />
       <Descriptions
         style={{ marginTop: 20 }}
