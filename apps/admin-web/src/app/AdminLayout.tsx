@@ -69,7 +69,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
     <ProLayout
       title={title}
       logo={false}
-      layout="side"
+      layout="mix"
       navTheme={theme}
       location={location}
       route={{
@@ -127,11 +127,15 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
             dom
           ),
       }}
-      actionsRender={() => [
-        <Link key="portal" to="/">
-          {path === '/' ? '返回首页' : '返回入口'}
-        </Link>,
-      ]}
+      actionsRender={() =>
+        path === '/'
+          ? []
+          : [
+              <Link key="portal" to="/">
+                返回入口
+              </Link>,
+            ]
+      }
       footerRender={() => (
         <div style={{ padding: 16, textAlign: 'center' }}>{appName}</div>
       )}
