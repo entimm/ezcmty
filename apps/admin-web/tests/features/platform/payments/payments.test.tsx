@@ -31,11 +31,12 @@ it('does not offer configuration mutations to a configuration reader', async () 
   );
   expect(await screen.findByText('当前不可收款')).toBeInTheDocument();
   expect(
-    screen.queryByRole('button', { name: '创建停用绑定' }),
+    screen.queryByRole('button', { name: '创建停用商户绑定' }),
   ).not.toBeInTheDocument();
   expect(
-    screen.queryByRole('button', { name: '发布新版本' }),
+    screen.queryByRole('button', { name: '发布完整新规则' }),
   ).not.toBeInTheDocument();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 it.each([false, true])(
   'prevents publishing rules without an active merchant (binding history: %s)',
@@ -58,16 +59,20 @@ it.each([false, true])(
     renderRoutes(
       `/platform/property/companies/${companyId}/payment-configuration`,
     );
-    const publish = await screen.findByRole('button', { name: '发布新版本' });
+    const publish = await screen.findByRole('button', {
+      name: '发布完整新规则',
+    });
     expect(publish).toBeDisabled();
-    expect(screen.getByLabelText('平台服务费比例（%）')).toBeDisabled();
+    expect(
+      screen.queryByLabelText('平台服务费比例（%）'),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('请先激活收款商户')).toBeInTheDocument();
     if (hasHistory)
       expect(
         await screen.findByRole('button', { name: '核验并激活' }),
       ).toBeEnabled();
     fireEvent.click(publish);
-    expect(screen.queryByText('发布新服务费规则？')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(
       fetcher.mock.calls.filter(
         ([url, init]) =>
@@ -123,7 +128,7 @@ it('allows publishing the first rule after activating a merchant while payment r
     `/platform/property/companies/${companyId}/payment-configuration`,
   );
   expect(
-    await screen.findByRole('button', { name: '发布新版本' }),
+    await screen.findByRole('button', { name: '发布完整新规则' }),
   ).toBeDisabled();
   fireEvent.click(await screen.findByRole('button', { name: '核验并激活' }));
   const activationDialog = await screen.findByRole('dialog');
@@ -133,7 +138,9 @@ it('allows publishing the first rule after activating a merchant while payment r
     }),
   );
   await waitFor(() =>
-    expect(screen.getByRole('button', { name: '发布新版本' })).toBeEnabled(),
+    expect(
+      screen.getByRole('button', { name: '发布完整新规则' }),
+    ).toBeEnabled(),
   );
   expect(screen.getByText('当前不可收款')).toBeInTheDocument();
   expect(screen.getByText('尚未发布')).toBeInTheDocument();
@@ -146,15 +153,17 @@ it('allows publishing the first rule after activating a merchant while payment r
   await waitFor(() =>
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
   );
-  fireEvent.click(screen.getByRole('button', { name: '发布新版本' }));
+  fireEvent.click(screen.getByRole('button', { name: '发布完整新规则' }));
+  const ruleDialog = await screen.findByRole('dialog');
+  expect(within(ruleDialog).getByText('发布完整新规则')).toBeInTheDocument();
   fireEvent.click(
-    within(await screen.findByRole('dialog')).getByRole('button', {
-      name: '确 定',
-    }),
+    within(ruleDialog).getByRole('button', { name: '发布新版本' }),
   );
+  fireEvent.click(await screen.findByRole('button', { name: '确 定' }));
   expect(
     await screen.findByText('已发布新版本，仅影响后续新订单'),
   ).toBeInTheDocument();
+  expect(ruleDialog).not.toBeInTheDocument();
   const write = fetcher.mock.calls.find(
     ([url, init]) =>
       String(url).endsWith('/profit-sharing-rule-versions') &&
@@ -183,15 +192,24 @@ it('replays an uncertain configuration creation with its original body and key',
   renderRoutes(
     `/platform/property/companies/${companyId}/payment-configuration`,
   );
+  fireEvent.click(
+    await screen.findByRole('button', { name: '创建停用商户绑定' }),
+  );
+  const bindingDialog = await screen.findByRole('dialog');
+  expect(
+    within(bindingDialog).getByText('创建停用商户绑定'),
+  ).toBeInTheDocument();
   fireEvent.change(
-    await screen.findByLabelText('已在线下取得并核实的特约商户号'),
+    within(bindingDialog).getByLabelText('已在线下取得并核实的特约商户号'),
     { target: { value: '19000001' } },
   );
-  fireEvent.change(screen.getByLabelText('商户名称'), {
+  fireEvent.change(within(bindingDialog).getByLabelText('商户名称'), {
     target: { value: '测试物业' },
   });
-  fireEvent.click(screen.getByRole('button', { name: '创建停用绑定' }));
-  const replay = await screen.findByRole('button', {
+  fireEvent.click(
+    within(bindingDialog).getByRole('button', { name: '创建停用绑定' }),
+  );
+  const replay = await within(bindingDialog).findByRole('button', {
     name: '按原请求核实／重放',
   });
   await waitFor(() => expect(replay).toBeEnabled());
@@ -205,6 +223,16 @@ it('replays an uncertain configuration creation with its original body and key',
   expect(new Headers(writes[1][1]?.headers).get('Idempotency-Key')).toBe(
     new Headers(writes[0][1]?.headers).get('Idempotency-Key'),
   );
+  expect(
+    await screen.findByText('已创建停用绑定，请核验并激活后发布适用规则'),
+  ).toBeInTheDocument();
+  expect(bindingDialog).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '创建停用商户绑定' }));
+  const reopenedDialog = await screen.findByRole('dialog');
+  expect(
+    within(reopenedDialog).getByLabelText('已在线下取得并核实的特约商户号'),
+  ).toHaveValue('');
+  expect(within(reopenedDialog).getByLabelText('商户名称')).toHaveValue('');
 });
 it('accepts recovery as a scheduled task without showing funds success', async () => {
   const fetcher = mockPayments(

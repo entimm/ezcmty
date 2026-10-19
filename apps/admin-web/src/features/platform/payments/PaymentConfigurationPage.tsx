@@ -9,6 +9,7 @@ import {
   Card,
   Form,
   Input,
+  Modal,
   Pagination,
   Space,
   Spin,
@@ -49,8 +50,7 @@ function ConfigurationEditor({ companyId }: { companyId: string }) {
   const bindingPage = useListState('binding_');
   const rulePage = useListState('rule_');
   const [rate, setRate] = useState('3.00');
-  const [bindingForm] = Form.useForm();
-  const [ruleForm] = Form.useForm();
+  const [editor, setEditor] = useState<Submission['kind']>();
   const pendingKey = `payment-config:${companyId}`;
   const [submission, setSubmission] = useState<Submission | undefined>(() => {
     try {
@@ -103,9 +103,23 @@ function ConfigurationEditor({ companyId }: { companyId: string }) {
       }),
     enabled,
   });
+  const openEditor = (kind: Submission['kind']) => {
+    operation.reset();
+    setRate('3.00');
+    setEditor(kind);
+  };
+  const closeEditor = () => {
+    if (operation.isPending) return;
+    dirty.close(() => {
+      setEditor(undefined);
+      dirty.reset();
+      operation.reset();
+    });
+  };
   const finish = () => {
     if (session) removePending('platform_admin', session.subjectId, pendingKey);
     setSubmission(undefined);
+    setEditor(undefined);
     dirty.reset();
   };
   const execute = (value: Submission) => {
@@ -125,8 +139,6 @@ function ConfigurationEditor({ companyId }: { companyId: string }) {
       {
         onSuccess: () => {
           finish();
-          bindingForm.resetFields();
-          ruleForm.resetFields();
           void message.success(
             value.kind === 'binding'
               ? '已创建停用绑定，请核验并激活后发布适用规则'
@@ -166,21 +178,8 @@ function ConfigurationEditor({ companyId }: { companyId: string }) {
   } catch {
     /* Validation is also applied when submitting. */
   }
-  return (
-    <PageContainer
-      title="公司收款配置"
-      extra={
-        <Button
-          onClick={() => {
-            void config.refetch();
-            void bindings.refetch();
-            void rules.refetch();
-          }}
-        >
-          刷新核对配置
-        </Button>
-      }
-    >
+  const feedback = (
+    <>
       <OperationError error={operation.error} />
       {submission && (
         <Alert
@@ -197,7 +196,25 @@ function ConfigurationEditor({ companyId }: { companyId: string }) {
             </Button>
           }
         />
-      )}{' '}
+      )}
+    </>
+  );
+  return (
+    <PageContainer
+      title="公司收款配置"
+      extra={
+        <Button
+          onClick={() => {
+            void config.refetch();
+            void bindings.refetch();
+            void rules.refetch();
+          }}
+        >
+          刷新核对配置
+        </Button>
+      }
+    >
+      {!editor && feedback}
       {config.isPending ? (
         <Spin />
       ) : config.isError ? (
@@ -207,7 +224,20 @@ function ConfigurationEditor({ companyId }: { companyId: string }) {
           <Card>
             <ConfigurationSummary item={config.data} />
           </Card>
-          <Card title="商户绑定历史">
+          <Card
+            title="商户绑定历史"
+            extra={
+              manage && (
+                <Button
+                  type="primary"
+                  disabled={operation.isPending || !!submission}
+                  onClick={() => openEditor('binding')}
+                >
+                  创建停用商户绑定
+                </Button>
+              )
+            }
+          >
             {bindings.isError && (
               <ReadError
                 error={bindings.error}
@@ -273,58 +303,36 @@ function ConfigurationEditor({ companyId }: { companyId: string }) {
               </Button>
             )}
           </Card>
-          {manage && (
-            <Card title="创建停用商户绑定">
-              <Form
-                form={bindingForm}
-                layout="vertical"
-                disabled={operation.isPending || !!submission}
-                onValuesChange={dirty.changed}
-                onFinish={(values: {
-                  merchant_no: string;
-                  merchant_name: string;
-                }) =>
-                  execute({
-                    kind: 'binding',
-                    key: crypto.randomUUID(),
-                    body: {
-                      merchant_no: values.merchant_no.trim(),
-                      merchant_name: values.merchant_name.trim(),
-                      expected_configuration_token:
-                        config.data.configuration_token,
-                    },
-                  })
-                }
-              >
-                <Form.Item
-                  name="merchant_no"
-                  label="已在线下取得并核实的特约商户号"
-                  rules={[{ required: true, whitespace: true, max: 64 }]}
-                >
-                  <Input />
-                </Form.Item>
-                <Form.Item
-                  name="merchant_name"
-                  label="商户名称"
-                  rules={[{ required: true, whitespace: true, max: 256 }]}
-                >
-                  <Input />
-                </Form.Item>
+          <Card
+            title="服务费规则版本"
+            extra={
+              manage && (
                 <Button
-                  htmlType="submit"
                   type="primary"
-                  loading={operation.isPending}
+                  disabled={
+                    operation.isPending ||
+                    !!submission ||
+                    !config.data.current_binding
+                  }
+                  onClick={() => openEditor('rule')}
                 >
-                  创建停用绑定
+                  发布完整新规则
                 </Button>
-              </Form>
-            </Card>
-          )}
-          <Card title="服务费规则版本">
+              )
+            }
+          >
             <Alert
               type="info"
               title="按订单金额（扣渠道手续费前）计算，逐接收方四舍五入到分；渠道手续费由物业承担。历史版本不可编辑或删除。"
             />
+            {manage && !config.data.current_binding && (
+              <Alert
+                type="warning"
+                showIcon
+                title="请先激活收款商户"
+                description="在“商户绑定历史”中点击“核验并激活”，成功后即可发布规则；尚无绑定时请先创建。"
+              />
+            )}
             {rules.isError && (
               <ReadError
                 error={rules.error}
@@ -358,79 +366,143 @@ function ConfigurationEditor({ companyId }: { companyId: string }) {
               total={rules.data?.total || 0}
             />
           </Card>
-          {manage && (
-            <Card title="发布完整新规则">
-              {!config.data.current_binding && (
-                <Alert
-                  type="warning"
-                  showIcon
-                  title="请先激活收款商户"
-                  description="在“商户绑定历史”中点击“核验并激活”，成功后即可发布规则；尚无绑定时请先创建。"
-                />
-              )}
-              <Form
-                form={ruleForm}
-                layout="vertical"
-                disabled={
-                  operation.isPending ||
-                  !!submission ||
-                  !config.data.current_binding
-                }
-                initialValues={{ rate: '3.00' }}
-                onValuesChange={(values: { rate?: string }) => {
-                  dirty.changed();
-                  if (values.rate !== undefined) setRate(values.rate);
-                }}
-                onFinish={(values: { rate: string }) =>
-                  modal.confirm({
-                    title: '发布新服务费规则？',
-                    content:
-                      '新规则仅影响后续创建的支付订单，历史支付继续使用原版本。',
-                    onOk: () =>
-                      execute({
-                        kind: 'rule',
-                        key: crypto.randomUUID(),
-                        body: {
-                          expected_configuration_token:
-                            config.data.configuration_token,
-                          items: [{ rate_bps: parsePercent(values.rate) }],
-                        },
-                      }),
-                  })
-                }
-              >
-                <Form.Item
-                  label="平台服务费比例（%）"
-                  name="rate"
-                  rules={[
-                    { required: true },
-                    {
-                      validator: (_, value: string) => {
-                        try {
-                          parsePercent(value || '');
-                          return Promise.resolve();
-                        } catch (error) {
-                          return Promise.reject(error);
-                        }
+          {manage && editor && (
+            <Modal
+              open
+              title={
+                editor === 'binding' ? '创建停用商户绑定' : '发布完整新规则'
+              }
+              onCancel={closeEditor}
+              closable={!operation.isPending}
+              keyboard={!operation.isPending}
+              mask={{ closable: !operation.isPending }}
+              footer={null}
+              destroyOnHidden
+            >
+              {feedback}
+              {editor === 'binding' ? (
+                <Form
+                  layout="vertical"
+                  disabled={operation.isPending || !!submission}
+                  onValuesChange={dirty.changed}
+                  onFinish={(values: {
+                    merchant_no: string;
+                    merchant_name: string;
+                  }) =>
+                    execute({
+                      kind: 'binding',
+                      key: crypto.randomUUID(),
+                      body: {
+                        merchant_no: values.merchant_no.trim(),
+                        merchant_name: values.merchant_name.trim(),
+                        expected_configuration_token:
+                          config.data.configuration_token,
                       },
-                    },
-                  ]}
+                    })
+                  }
                 >
-                  <Input suffix="%" />
-                </Form.Item>
-                <p>
-                  示例：订单金额 ¥100.00，平台应分 {example}
-                  。实际资金结果以渠道确认为准。
-                </p>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={operation.isPending}
+                  <Form.Item
+                    name="merchant_no"
+                    label="已在线下取得并核实的特约商户号"
+                    rules={[{ required: true, whitespace: true, max: 64 }]}
+                  >
+                    <Input />
+                  </Form.Item>
+                  <Form.Item
+                    name="merchant_name"
+                    label="商户名称"
+                    rules={[{ required: true, whitespace: true, max: 256 }]}
+                  >
+                    <Input />
+                  </Form.Item>
+                  <Space>
+                    <Button
+                      htmlType="submit"
+                      type="primary"
+                      loading={operation.isPending}
+                    >
+                      创建停用绑定
+                    </Button>
+                    <Button
+                      disabled={operation.isPending}
+                      onClick={closeEditor}
+                    >
+                      取消
+                    </Button>
+                  </Space>
+                </Form>
+              ) : (
+                <Form
+                  layout="vertical"
+                  disabled={
+                    operation.isPending ||
+                    !!submission ||
+                    !config.data.current_binding
+                  }
+                  initialValues={{ rate: '3.00' }}
+                  onValuesChange={(values: { rate?: string }) => {
+                    dirty.changed();
+                    if (values.rate !== undefined) setRate(values.rate);
+                  }}
+                  onFinish={(values: { rate: string }) =>
+                    modal.confirm({
+                      title: '发布新服务费规则？',
+                      content:
+                        '新规则仅影响后续创建的支付订单，历史支付继续使用原版本。',
+                      onOk: () =>
+                        execute({
+                          kind: 'rule',
+                          key: crypto.randomUUID(),
+                          body: {
+                            expected_configuration_token:
+                              config.data.configuration_token,
+                            items: [{ rate_bps: parsePercent(values.rate) }],
+                          },
+                        }),
+                    })
+                  }
                 >
-                  发布新版本
-                </Button>
-              </Form>
-            </Card>
+                  <Form.Item
+                    label="平台服务费比例（%）"
+                    name="rate"
+                    rules={[
+                      { required: true },
+                      {
+                        validator: (_, value: string) => {
+                          try {
+                            parsePercent(value || '');
+                            return Promise.resolve();
+                          } catch (error) {
+                            return Promise.reject(error);
+                          }
+                        },
+                      },
+                    ]}
+                  >
+                    <Input suffix="%" />
+                  </Form.Item>
+                  <p>
+                    示例：订单金额 ¥100.00，平台应分 {example}
+                    。实际资金结果以渠道确认为准。
+                  </p>
+                  <Space>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      loading={operation.isPending}
+                    >
+                      发布新版本
+                    </Button>
+                    <Button
+                      disabled={operation.isPending}
+                      onClick={closeEditor}
+                    >
+                      取消
+                    </Button>
+                  </Space>
+                </Form>
+              )}
+            </Modal>
           )}
         </Space>
       )}
