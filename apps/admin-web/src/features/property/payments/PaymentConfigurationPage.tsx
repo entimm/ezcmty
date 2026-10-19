@@ -56,7 +56,7 @@ export default function PaymentConfigurationPage() {
               title="收款配置由平台维护。如有异常，请联系平台。"
             />
           </Card>
-          <Card title="商户绑定历史">
+          <Card title="收款商户">
             {bindings.isError && (
               <ReadError
                 error={bindings.error}
@@ -83,7 +83,7 @@ export default function PaymentConfigurationPage() {
               total={bindings.data?.total || 0}
             />
           </Card>
-          <Card title="服务费历史版本">
+          <Card title="服务费规则版本">
             {rules.isError && (
               <ReadError
                 error={rules.error}

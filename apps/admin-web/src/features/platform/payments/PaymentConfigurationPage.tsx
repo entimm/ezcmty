@@ -225,7 +225,7 @@ function ConfigurationEditor({ companyId }: { companyId: string }) {
             <ConfigurationSummary item={config.data} />
           </Card>
           <Card
-            title="商户绑定历史"
+            title="收款商户"
             extra={
               manage && (
                 <Button
@@ -330,7 +330,7 @@ function ConfigurationEditor({ companyId }: { companyId: string }) {
                 type="warning"
                 showIcon
                 title="请先激活收款商户"
-                description="在“商户绑定历史”中点击“核验并激活”，成功后即可发布规则；尚无绑定时请先创建。"
+                description="在“收款商户”列表中点击“核验并激活”，成功后即可发布规则；尚无绑定时请先创建。"
               />
             )}
             {rules.isError && (
