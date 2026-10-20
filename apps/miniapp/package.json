@@ -2,7 +2,7 @@
   "name": "resident-miniapp",
   "private": true,
   "scripts": {
-    "build": "node scripts/copy-static.mjs && tsc && node scripts/write-config.mjs && node scripts/check-build.mjs",
+    "build": "node --env-file-if-exists=.env.local scripts/copy-static.mjs && tsc && node --env-file-if-exists=.env.local scripts/write-config.mjs && node scripts/check-build.mjs",
     "typecheck": "tsc --noEmit && tsc --project tsconfig.test.json",
     "lint": "eslint . && node scripts/check-boundaries.mjs",
     "test": "vitest run",

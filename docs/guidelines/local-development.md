@@ -233,9 +233,18 @@ Webhook 与 Worker，已有订单仍须查单、确认入账、分账、解冻�
 
 ### 小程序构建与运行
 
-小程序使用平台统一 AppID。构建时设置 `MINIAPP_APP_ID`、可选 `MINIAPP_APP_NAME` 和 `MINIAPP_API_BASE_URL`；后者默认直连本地居民 API `http://127.0.0.1:8003`，部署时填写 HTTPS 网关地址（包含 `/api/resident`，不包含 `/v1`）。在微信开发者工具打开 `apps/miniapp/`，项目输出位于 `dist/`。真机需要可访问的 HTTPS 域名及微信后台合法域名配置，服务端配置见 `services/backend/.env.example`。
+小程序使用平台统一 AppID。构建时自动读取 `apps/miniapp/.env.local`，已有环境变量优先于该文件；本地文件不提交 Git。首次使用从[配置模板](../../apps/miniapp/.env.example)复制，已有文件直接编辑：
 
-本地构建示例（替换为对应平台小程序 AppID）：
+```bash
+cp apps/miniapp/.env.example apps/miniapp/.env.local
+make miniapp-build
+```
+
+`MINIAPP_API_BASE_URL` 指定后端地址，模板使用测试环境 IP 入口 `https://150.158.19.40:8010/api/resident`；HTTPS 网关地址包含 `/api/resident`，不包含 `/v1`。未配置时默认直连本地居民 API `http://127.0.0.1:8003`。`MINIAPP_APP_ID` 和 `MINIAPP_APP_NAME` 可覆盖项目中的 AppID 和应用名称。
+
+在微信开发者工具打开 `apps/miniapp/`，项目输出位于 `dist/`。IP 入口用于开发者工具联调，需关闭合法域名校验；真机需要可访问的 HTTPS 域名及微信后台合法域名配置，服务端配置见 `services/backend/.env.example`。
+
+连接本地后端的构建示例（替换为对应平台小程序 AppID）：
 
 ```bash
 MINIAPP_APP_ID=你的小程序AppID \
