@@ -10,7 +10,7 @@
 
 取码前核验 GitHub 主机密钥；不关闭严格主机校验，不复制私钥。网络受限时可建立临时 SSH 回环转发，覆盖连接目标但保留 `HostKeyAlias=github.com`、部署密钥和严格主机校验。转发仅用于本次取码，完成后关闭；临时网络地址不写入永久 SSH 配置。
 
-源码工作副本位于运维账号目录，运行账号不访问该目录或其 SSH 密钥。每次发布使用 `/srv/community-platform/releases/<UTC时间>-<短SHA>/`，包含 `backend/`、`admin-web/` 和无敏感信息的 `release.json`；`/srv/community-platform/current` 指向活动版本。
+源码工作副本位于运维账号目录，运行账号不访问该目录或其 SSH 密钥。每次发布使用 `/srv/xcmty/releases/<UTC时间>-<短SHA>/`，包含 `backend/`、`admin-web/` 和无敏感信息的 `release.json`；`/srv/xcmty/current` 指向活动版本。
 
 ## 构建与依赖
 
@@ -34,7 +34,7 @@ pnpm --filter admin-web build
 
 ## 配置、数据库与迁移
 
-`/etc/community-platform/staging.env` 保存运行配置，`migration.env` 保存迁移配置，均为 `root:root 600`。systemd 的 PID 1 读取 `EnvironmentFile` 后降权启动进程，应用账号无需直接读取配置文件。敏感值不出现在命令参数、日志、发布清单或 Git 中。
+`/etc/xcmty/staging.env` 保存运行配置，`migration.env` 保存迁移配置，均为 `root:root 600`。systemd 的 PID 1 读取 `EnvironmentFile` 后降权启动进程，应用账号无需直接读取配置文件。敏感值不出现在命令参数、日志、发布清单或 Git 中。
 
 字段分别参考[运行环境模板](../../deploy/staging/env/staging.env.example)和[迁移环境模板](../../deploy/staging/env/migration.env.example)，填入实际受控值后使用，不复制占位符上线。
 
@@ -43,11 +43,11 @@ pnpm --filter admin-web build
 在服务器选择待发布的实际目录后，通过独立受控任务执行迁移：
 
 ```bash
-TASK_RELEASE=/srv/community-platform/releases/<UTC时间>-<短SHA>
+TASK_RELEASE=/srv/xcmty/releases/<UTC时间>-<短SHA>
 sudo systemd-run --wait --pipe --collect \
-  --unit=community-platform-migrate \
-  -p User=community-platform -p Group=community-platform \
-  -p EnvironmentFile=/etc/community-platform/migration.env \
+  --unit=xcmty-migrate \
+  -p User=appsvc -p Group=appsvc \
+  -p EnvironmentFile=/etc/xcmty/migration.env \
   -p Environment=PYTHONDONTWRITEBYTECODE=1 \
   --working-directory="$TASK_RELEASE/backend" \
   "$TASK_RELEASE/backend/.venv/bin/python" -m alembic upgrade head
@@ -69,13 +69,13 @@ systemd 管理以下五个单元，直接执行活动版本虚拟环境中的 Py
 | `webhook`  | `backend_app.runtimes.webhook:app`            | `8004`   |
 | `worker`   | `python -m backend_app.runtimes.worker`       | 无       |
 
-完整单元名为 `community-platform-<后缀>.service`。四个 API 各一个 Uvicorn worker，仅监听 `127.0.0.1`，只信任来自回环代理的转发头。服务使用 `community-platform` 账号、只读发布文件、私有临时目录与 `NoNewPrivileges`；停止等待允许 Worker 完成 SIGTERM 清理，单进程内存上限为 512MB。
+完整单元名为 `xcmty-<后缀>.service`。四个 API 各一个 Uvicorn worker，仅监听 `127.0.0.1`，只信任来自回环代理的转发头。服务使用 `appsvc` 账号、只读发布文件、私有临时目录与 `NoNewPrivileges`；停止等待允许 Worker 完成 SIGTERM 清理，单进程内存上限为 512MB。
 
 切换版本后检查：
 
 ```bash
-sudo systemctl status 'community-platform-*.service' --no-pager
-sudo journalctl -u community-platform-worker --since '-10 min' --no-pager
+sudo systemctl status 'xcmty-*.service' --no-pager
+sudo journalctl -u xcmty-worker --since '-10 min' --no-pager
 curl -fsS http://127.0.0.1:8001/readyz
 curl -fsS http://127.0.0.1:8002/readyz
 curl -fsS http://127.0.0.1:8003/readyz
@@ -84,7 +84,7 @@ curl -fsS http://127.0.0.1:8004/readyz
 
 就绪响应须分别属于正确运行端且 PostgreSQL、Redis 均为 `ok`；Worker 须记录 `worker_ready scheduler=running task_handlers=9`，并检查周期任务错误、待处理任务及重启次数。四个就绪接口不替代迁移版本检查。
 
-首次管理员通过现有 `init-platform-admin` CLI 初始化，登录名为 `bootstrap`，首次登录必须修改密码。随机初始凭据只保存到服务器 `/etc/community-platform/bootstrap-admin.json`，权限 `600`；授权运维人员在自己的终端通过 `ssh xcmty 'sudo cat /etc/community-platform/bootstrap-admin.json'` 获取，不将结果贴入聊天或仓库。已有管理员时不重复初始化或覆盖密码。初始化任务使用运行角色和 systemd credential 注入，不把密码置于参数或日志。
+首次管理员通过现有 `init-platform-admin` CLI 初始化，登录名为 `bootstrap`，首次登录必须修改密码。随机初始凭据只保存到服务器 `/etc/xcmty/bootstrap-admin.json`，权限 `600`；授权运维人员在自己的终端通过 `ssh xcmty 'sudo cat /etc/xcmty/bootstrap-admin.json'` 获取，不将结果贴入聊天或仓库。已有管理员时不重复初始化或覆盖密码。初始化任务使用运行角色和 systemd credential 注入，不把密码置于参数或日志。
 
 ## 域名、HTTPS 与验证
 
@@ -96,13 +96,13 @@ DNS、公网 HTTP 和 ACME challenge 验证通过后签发正式证书。平台�
 
 云防火墙已放通而 HTTP-01 仍被证书机构报告连接超时时，应保留真实错误，区分操作机可达与证书机构可达。可改用四个明确域名的 DNS-01，统一收集全部 TXT 校验记录，核对公共 DNS 后再提交验证。手动 DNS 校验需要维护人员配合续期；未配置 DNS 自动化或恢复可用的 HTTP 校验链路前，不宣称证书能够无人值守续期。
 
-证书使用 Certbot 的 `community-platform` lineage，Nginx 引用 `/etc/letsencrypt/live/community-platform/fullchain.pem` 和 `privkey.pem`，私钥仅 root 可读。查看证书状态使用 `sudo /opt/community-platform-certbot/bin/certbot certificates`，同时从公网核验实际提供的证书。续期成功 hook 必须核对 `RENEWED_LINEAGE`，只对该 lineage 执行 `nginx -t`，成功后重载 Nginx；临时 DNS hook、代理地址和 `/run` 文件不保留在续期配置中。
+证书使用 Certbot 的 `xcmty` lineage，Nginx 引用 `/etc/letsencrypt/live/xcmty/fullchain.pem` 和 `privkey.pem`，私钥仅 root 可读。查看证书状态使用 `sudo /opt/xcmty-certbot/bin/certbot certificates`，同时从公网核验实际提供的证书。续期成功 hook 必须核对 `RENEWED_LINEAGE`，只对该 lineage 执行 `nginx -t`，成功后重载 Nginx；临时 DNS hook、代理地址和 `/run` 文件不保留在续期配置中。
 
 日常续期使用下述 DNSPod 自动流程。手动 DNS 仅用于应急：先确认服务器可访问 ACME HTTPS，再在交互终端执行以下命令，按本次提示更新 TXT，确认权威及公共 DNS 可查后继续。旧 TXT 不能代替本次校验值。应急命令可能改写续期参数，结束后须恢复 DNSPod authenticator 并重新通过非交互演练。
 
 ```bash
 sudo certbot certonly --manual --preferred-challenges dns \
-  --cert-name community-platform \
+  --cert-name xcmty \
   -d platform.xcmty.site -d property.xcmty.site \
   -d resident.xcmty.site -d webhook.xcmty.site
 ```
@@ -143,12 +143,12 @@ HTTP challenge 入口不可用时，可通过 DNS API 自动添加和清理 TXT�
 
 该权限限制到整个 `xcmty.site` 域，仍允许创建、删除域内其他记录，不能宣称仅有四条 challenge TXT 的记录级权限。插件正常调用无需 `DescribeDomainList` 或 `DescribeDomain`；Domain ID 由域管理员预先取得，不必授予续期密钥额外查询权限。权限定义见 [DNSPod 域资源表](https://docs.dnspod.cn/dns/cam-resource-type/)。
 
-服务器文件 `/etc/community-platform/dnspod-credentials.ini` 的字段格式见[DNSPod 凭据模板](../../deploy/staging/env/dnspod-credentials.ini.example)，所有者 `root:root`、权限 `600`，真实值不进入仓库或聊天。
+服务器文件 `/etc/xcmty/dnspod-credentials.ini` 的字段格式见[DNSPod 凭据模板](../../deploy/staging/env/dnspod-credentials.ini.example)，所有者 `root:root`、权限 `600`，真实值不进入仓库或聊天。
 
 在已有受控模板的服务器上，通过交互终端编辑：
 
 ```bash
-ssh -t xcmty 'sudo nano /etc/community-platform/dnspod-credentials.ini'
+ssh -t xcmty 'sudo nano /etc/xcmty/dnspod-credentials.ini'
 ```
 
 nano 中按 `Ctrl+O`、回车保存，按 `Ctrl+X` 退出。密钥由域管理员自行填写，代理不通过浏览器创建密钥，也不读取密钥值用于聊天交付。
@@ -157,32 +157,32 @@ nano 中按 `Ctrl+O`、回车保存，按 `Ctrl+X` 退出。密钥由域管理�
 
 ### DNSPod 自动续期运行环境与切换
 
-DNSPod 续期使用独立的 `/opt/community-platform-certbot/bin/certbot`，不复用后端虚拟环境，也不修改系统 Python。Python 使用 3.14，完整依赖版本及 wheel SHA-256 以[域名依赖锁](../../deploy/staging/certbot/domain/certbot-requirements.txt)为准，保留离线包与来源记录。离线安装后执行依赖检查、原生扩展与 CSR/JWS 检查、插件发现和不联网的凭据解析检查。这些检查不替代真实 DNS 与 ACME 验证。
+DNSPod 续期使用独立的 `/opt/xcmty-certbot/bin/certbot`，不复用后端虚拟环境，也不修改系统 Python。Python 使用 3.14，完整依赖版本及 wheel SHA-256 以[域名依赖锁](../../deploy/staging/certbot/domain/certbot-requirements.txt)为准，保留离线包与来源记录。离线安装后执行依赖检查、原生扩展与 CSR/JWS 检查、插件发现和不联网的凭据解析检查。这些检查不替代真实 DNS 与 ACME 验证。
 
 每次保存或轮换凭据后，先在受控脚本中校验所有者、权限及 INI：只含上述两个字段，值为非空字符串且无占位符。解析异常只输出失败和错误类型，不输出异常文本、原行或堆栈。直接省略插件的 `dns-tencentcloud-debug` 参数，并核对全局及 renewal 配置没有该项；字符串 `False` 会被此插件当作真值。Certbot 日志目录及备份只允许 root 访问，不将原始日志上传或贴入聊天。
 
 确认服务器独立连接生产和 staging ACME HTTPS，完成受限 DNS API 增删及权威 TXT 传播检查后，以非交互方式更新既有 lineage：
 
 ```bash
-sudo /opt/community-platform-certbot/bin/certbot reconfigure -n \
-  --cert-name community-platform \
+sudo /opt/xcmty-certbot/bin/certbot reconfigure -n \
+  --cert-name xcmty \
   --authenticator dns-tencentcloud \
-  --dns-tencentcloud-credentials /etc/community-platform/dnspod-credentials.ini \
+  --dns-tencentcloud-credentials /etc/xcmty/dnspod-credentials.ini \
   --dns-tencentcloud-propagation-seconds 120 \
   --run-deploy-hooks
 ```
 
 `reconfigure` 通过 staging 测试后才保存续期配置。`--run-deploy-hooks` 用当前有效证书验证既有限定 hook，不将 staging 证书安装到线上。验证本次 TXT 清理且原记录保留，核对持久配置的 authenticator、凭据绝对路径、传播等待值及生产 ACME server。Certbot 的成功退出不能证明 deploy hook 成功；须检查本次时间窗的 Nginx 配置检查及 systemd journal 重载成功事件。独立公网证书与页面另外核验，不能用服务器访问自身公网 IP 的结果替代。
 
-仅在 ACME 连接、DNS 验证及限定 deploy hook 演练均成功后，使用归档的[域名 Certbot drop-in](../../deploy/staging/systemd/10-community-platform-certbot.conf)配置现有 `certbot.service`，服务器目标路径见配置索引。
+仅在 ACME 连接、DNS 验证及限定 deploy hook 演练均成功后，使用归档的[域名 Certbot drop-in](../../deploy/staging/systemd/10-xcmty-certbot.conf)配置现有 `certbot.service`，服务器目标路径见配置索引。
 
-执行 `systemctl daemon-reload` 后核对实际 `ExecStart`，启动一次 `certbot.service` 验证真实 systemd 入口，检查 `Result=success`、`ExecMainStatus=0`。该服务为 oneshot，完成后 inactive 正常；证书未到续期时间时，本次服务启动不替代 staging 演练。域名 lineage 沿用现有 `certbot.timer` 及随机延迟，不为同一 lineage 增加第二个 timer 或 cron；系统包自带 cron 在 systemd 主机上应跳过。独立 IP lineage 使用下节专用运行环境与 timer。后续域名证书状态检查使用 `sudo /opt/community-platform-certbot/bin/certbot certificates`；复核演练使用同一路径的 `renew --cert-name community-platform --dry-run --run-deploy-hooks`。timer 为 active、插件安装成功或 DNS API 成功，都不代表续期演练通过。
+执行 `systemctl daemon-reload` 后核对实际 `ExecStart`，启动一次 `certbot.service` 验证真实 systemd 入口，检查 `Result=success`、`ExecMainStatus=0`。该服务为 oneshot，完成后 inactive 正常；证书未到续期时间时，本次服务启动不替代 staging 演练。域名 lineage 沿用现有 `certbot.timer` 及随机延迟，不为同一 lineage 增加第二个 timer 或 cron；系统包自带 cron 在 systemd 主机上应跳过。独立 IP lineage 使用下节专用运行环境与 timer。后续域名证书状态检查使用 `sudo /opt/xcmty-certbot/bin/certbot certificates`；复核演练使用同一路径的 `renew --cert-name xcmty --dry-run --run-deploy-hooks`。timer 为 active、插件安装成功或 DNS API 成功，都不代表续期演练通过。
 
 升级前备份 renewal 配置和服务 drop-in，保留原运行环境、离线包及哈希清单。新环境在新的最终绝对路径重建并验证，不能移动已有虚拟环境后直接使用；切换失败时恢复原兼容环境路径及配置。仅指回缺少 DNSPod 插件的系统 Certbot 不构成自动续期恢复。密钥轮换先验证新凭据及 staging 续期，再吊销旧密钥。
 
 ## IP 与端口 HTTPS 入口
 
-入口、监听和应用边界以[部署设计](../architecture/deployment.md#测试环境-ip-与端口-https-入口)为准。平台和物业分别使用独立 IP 静态产物，从 `https://150.158.19.40:8001/` 和 `https://150.158.19.40:8002/` 进入现有无前缀页面路由。IP 前端发布保持后端 `current` 与域名静态产物原状；域名证书继续使用既有 Certbot 4.0 / DNSPod、`community-platform` lineage 和 `certbot.timer`。
+入口、监听和应用边界以[部署设计](../architecture/deployment.md#测试环境-ip-与端口-https-入口)为准。平台和物业分别使用独立 IP 静态产物，从 `https://150.158.19.40:8001/` 和 `https://150.158.19.40:8002/` 进入现有无前缀页面路由。IP 前端发布保持后端 `current` 与域名静态产物原状；域名证书继续使用既有 Certbot 4.0 / DNSPod、`xcmty` lineage 和 `certbot.timer`。
 
 ### 后台根路径静态产物
 
@@ -196,9 +196,9 @@ sudo /opt/community-platform-certbot/bin/certbot reconfigure -n \
 
 首次为已部署提交补齐 IP 产物时，沿用该提交的域名产物及已核验哈希，只新建两份 IP 产物；后续常规前端发布同步准备三份产物。
 
-两份 IP 构建逐次保存各自 `dist/`，避免后一轮覆盖前一轮；清单记录完整提交 SHA、两项变量和各产物 SHA-256，传输后再核验。发布目录为 `/srv/community-platform/releases/<UTC时间>-<短SHA>-ip-admin-web/`，包含完整的 `platform/` 与 `property/`。Nginx 仅取得父目录遍历及静态文件读取权限。
+两份 IP 构建逐次保存各自 `dist/`，避免后一轮覆盖前一轮；清单记录完整提交 SHA、两项变量和各产物 SHA-256，传输后再核验。发布目录为 `/srv/xcmty/releases/<UTC时间>-<短SHA>-ip-admin-web/`，包含完整的 `platform/` 与 `property/`。Nginx 仅取得父目录遍历及静态文件读取权限。
 
-独立软链接 `/srv/community-platform/ip-admin-web` 指向该完整版本目录。8001 的 server root 为 `/srv/community-platform/ip-admin-web/platform`，8002 为 `/srv/community-platform/ip-admin-web/property`；共用静态 snippet 不固定到域名产物目录。根路径、登录页和业务深链均按各自产物的无前缀路由回退到 `index.html`，API 继续分别使用 `/api/platform/`、`/api/property/`，Cookie、CSRF、可信 Origin 和端口绑定保持既定规则。
+独立软链接 `/srv/xcmty/ip-admin-web` 指向该完整版本目录。8001 的 server root 为 `/srv/xcmty/ip-admin-web/platform`，8002 为 `/srv/xcmty/ip-admin-web/property`；共用静态 snippet 不固定到域名产物目录。根路径、登录页和业务深链均按各自产物的无前缀路由回退到 `index.html`，API 继续分别使用 `/api/platform/`、`/api/property/`，Cookie、CSRF、可信 Origin 和端口绑定保持既定规则。
 
 旧页面地址的迁移响应统一为 `302`，附 `Cache-Control: no-store`，按以下顺序处理：
 
@@ -229,55 +229,57 @@ IP 字面量必须使用 IP SAN，不能复用仅含四域 DNS SAN 的证书。�
 
 | 用途                   | 路径或名称                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------- |
-| IP 客户端              | `/opt/community-platform-certbot-ip/bin/certbot`                                |
-| 独立配置 / 工作 / 日志 | `/etc/letsencrypt-ip` / `/var/lib/letsencrypt-ip` / `/var/log/letsencrypt-ip`   |
-| HTTP-01 webroot        | `/var/www/community-platform-acme-ip`                                           |
-| 独立 lineage           | `community-platform-ip`                                                         |
-| Nginx 证书 / 私钥      | `/etc/letsencrypt-ip/live/community-platform-ip/fullchain.pem` / `privkey.pem`  |
-| 限定成功 hook          | `/usr/local/sbin/community-platform-ip-cert-deploy`                             |
-| systemd 服务 / timer   | `community-platform-certbot-ip.service` / `community-platform-certbot-ip.timer` |
+| 用途 | 路径或名称 |
+| --- | --- |
+| IP 客户端 | `/opt/xcmty-certbot-ip/bin/certbot` |
+| 独立配置 / 工作 / 日志 | `/etc/letsencrypt-ip` / `/var/lib/letsencrypt-ip` / `/var/log/letsencrypt-ip` |
+| HTTP-01 webroot | `/var/www/xcmty-acme-ip` |
+| 独立 lineage | `xcmty-ip` |
+| Nginx 证书 / 私钥 | `/etc/letsencrypt-ip/live/xcmty-ip/fullchain.pem` / `privkey.pem` |
+| 限定成功 hook | `/usr/local/sbin/xcmty-ip-cert-deploy` |
+| systemd 服务 / timer | `xcmty-certbot-ip.service` / `xcmty-certbot-ip.timer` |
 
 配置、工作目录和日志只允许 root 访问，私钥仅 root 可读。webroot 仅存放公开 challenge，不放置密钥、环境文件或日志；Nginx 仅获得 challenge 读取权限。所有 IP 客户端调用显式传入三个隔离目录，不让 Certbot 4.0 扫描 IP renewal 配置。
 
 先验证服务器可独立通过 HTTPS 连接生产及 staging ACME，校验系统时间与信任链，不依赖操作机在线、临时代理或永久 CA IP 绑定。在 IP Host 的公网 80 challenge 链路通过独立外部访问验证后，使用本次独立临时 config / work / logs 目录完成 CA staging 的真实 HTTP-01 验证，不加载 staging 证书到线上。CA 报告连接失败时保留真实错误，修复入口后再重试，不以操作机 curl 成功替代 CA 验证。
 
-生产签发使用固定客户端、`certonly --webroot --webroot-path /var/www/community-platform-acme-ip --ip-address 150.158.19.40 --required-profile shortlived --cert-name community-platform-ip`，并显式指定上述生产隔离目录。ACME 账号的条款确认和联系信息按实际受控方式配置，不放入发布包。`--required-profile shortlived` 使不支持该 profile 时明确失败，不静默退回其他 profile。核对生产 ACME server、IP SAN、完整链和 160 小时有效期后，才允许 Nginx 引用生产证书。
+生产签发使用固定客户端、`certonly --webroot --webroot-path /var/www/xcmty-acme-ip --ip-address 150.158.19.40 --required-profile shortlived --cert-name xcmty-ip`，并显式指定上述生产隔离目录。ACME 账号的条款确认和联系信息按实际受控方式配置，不放入发布包。`--required-profile shortlived` 使不支持该 profile 时明确失败，不静默退回其他 profile。核对生产 ACME server、IP SAN、完整链和 160 小时有效期后，才允许 Nginx 引用生产证书。
 
 ### 自动续期与日常维护
 
-`community-platform-ip` 的持久 renewal 配置须保留 webroot、IP 标识、生产 ACME server、`shortlived` profile 及限定 deploy hook；续期调用始终显式使用上述三个隔离目录。hook 仅接受 `RENEWED_LINEAGE=/etc/letsencrypt-ip/live/community-platform-ip`，其他 lineage 不处理。匹配后先创建 root 专用、权限 `600` 的 `/var/lib/letsencrypt-ip/deploy-failed` 标记，再执行 `nginx -t` 和 reload；两步全部成功才清除标记，失败返回非零并保留标记及日志。hook 由 root 拥有且不可由应用账号修改，不读取或输出私钥。
+`xcmty-ip` 的持久 renewal 配置须保留 webroot、IP 标识、生产 ACME server、`shortlived` profile 及限定 deploy hook；续期调用始终显式使用上述三个隔离目录。hook 仅接受 `RENEWED_LINEAGE=/etc/letsencrypt-ip/live/xcmty-ip`，其他 lineage 不处理。匹配后先创建 root 专用、权限 `600` 的 `/var/lib/letsencrypt-ip/deploy-failed` 标记，再执行 `nginx -t` 和 reload；两步全部成功才清除标记，失败返回非零并保留标记及日志。hook 由 root 拥有且不可由应用账号修改，不读取或输出私钥。
 
 复制可执行脚本后，须将它注册到 IP 实例的持久 deploy 目录；仅复制到 `/usr/local/sbin/` 不会自动运行。首次安装执行：
 
 ```bash
 sudo install -d -o root -g root -m 700 /etc/letsencrypt-ip/renewal-hooks/deploy
-sudo ln -s /usr/local/sbin/community-platform-ip-cert-deploy \
-  /etc/letsencrypt-ip/renewal-hooks/deploy/50-community-platform-ip
-sudo readlink -f /etc/letsencrypt-ip/renewal-hooks/deploy/50-community-platform-ip
+sudo ln -s /usr/local/sbin/xcmty-ip-cert-deploy \
+  /etc/letsencrypt-ip/renewal-hooks/deploy/50-xcmty-ip
+sudo readlink -f /etc/letsencrypt-ip/renewal-hooks/deploy/50-xcmty-ip
 ```
 
 链接已存在时先核对目标，不强制覆盖。Certbot 从该隔离目录发现 hook，不再重复添加命令行 `--deploy-hook`，也不注册到域名实例的目录。
 
-专用 [oneshot 服务](../../deploy/staging/systemd/community-platform-certbot-ip.service)以 root 运行独立客户端，仅续期 IP lineage，显式传入 config / work / logs 目录。专用 [timer](../../deploy/staging/systemd/community-platform-certbot-ip.timer) 按服务器时区每日 00:00、12:00 触发，最多增加 30 分钟随机延迟；`Persistent=true` 在错过触发后补跑。续期时机由 Certbot 判定，不周期性强制签发；不为 IP lineage 另设 cron，不改动域名续期服务或 timer。
+专用 [oneshot 服务](../../deploy/staging/systemd/xcmty-certbot-ip.service)以 root 运行独立客户端，仅续期 IP lineage，显式传入 config / work / logs 目录。专用 [timer](../../deploy/staging/systemd/xcmty-certbot-ip.timer) 按服务器时区每日 00:00、12:00 触发，最多增加 30 分钟随机延迟；`Persistent=true` 在错过触发后补跑。续期时机由 Certbot 判定，不周期性强制签发；不为 IP lineage 另设 cron，不改动域名续期服务或 timer。
 
-正式 unit 保留 `ProtectSystem=strict` 等隔离，通过 `ReadWritePaths=-/run/nginx.pid` 限定允许 Nginx 配置检查访问 PID 文件；不要为 hook 直接关闭 sandbox。服务在 Certbot 返回成功后，先通过 `ExecStartPost=/usr/bin/test ! -e /var/lib/letsencrypt-ip/deploy-failed` 检查 hook 失败标记，再使用 `openssl x509 -checkend 172800` 检查本机 `/etc/letsencrypt-ip/live/community-platform-ip/cert.pem` 剩余有效期是否超过 48 小时。任一检查失败均使服务失败，并记录到 systemd journal；即使 Certbot 对 hook 失败返回 `0`，残留标记仍会阻止服务报告成功。上述检查不验证公网实际证书、SAN、完整信任链或 Nginx 已加载新证书。
+正式 unit 保留 `ProtectSystem=strict` 等隔离，通过 `ReadWritePaths=-/run/nginx.pid` 限定允许 Nginx 配置检查访问 PID 文件；不要为 hook 直接关闭 sandbox。服务在 Certbot 返回成功后，先通过 `ExecStartPost=/usr/bin/test ! -e /var/lib/letsencrypt-ip/deploy-failed` 检查 hook 失败标记，再使用 `openssl x509 -checkend 172800` 检查本机 `/etc/letsencrypt-ip/live/xcmty-ip/cert.pem` 剩余有效期是否超过 48 小时。任一检查失败均使服务失败，并记录到 systemd journal；即使 Certbot 对 hook 失败返回 `0`，残留标记仍会阻止服务报告成功。上述检查不验证公网实际证书、SAN、完整信任链或 Nginx 已加载新证书。
 
 运维日常检查服务退出状态、journal 和 hook 重载事件，续期失败或本机证书剩余不足 48 小时立即处理；公网证书按下节另行人工验收及巡检，不将本机自动到期检查描述为公网监控。短期证书不能沿用域名证书提前 30 天人工提醒的维护方式。
 
 ```bash
-sudo systemctl status community-platform-certbot-ip.service community-platform-certbot-ip.timer --no-pager
-sudo systemctl list-timers community-platform-certbot-ip.timer --no-pager
-sudo journalctl -u community-platform-certbot-ip.service --since '-24 hours' --no-pager
-sudo journalctl -t community-platform-ip-cert-deploy --since '-24 hours' --no-pager
+sudo systemctl status xcmty-certbot-ip.service xcmty-certbot-ip.timer --no-pager
+sudo systemctl list-timers xcmty-certbot-ip.timer --no-pager
+sudo journalctl -u xcmty-certbot-ip.service --since '-24 hours' --no-pager
+sudo journalctl -t xcmty-ip-cert-deploy --since '-24 hours' --no-pager
 sudo journalctl -u nginx.service --since '-24 hours' --no-pager
 ```
 
-四个 TLS listener 引用生产证书且本机验收通过后，在正式 unit 的 sandbox 内执行真实非交互 staging 续期及限定 hook 演练。使用 `sudo systemctl edit --runtime community-platform-certbot-ip.service` 创建本次临时 drop-in，仅清空并覆盖 `ExecStart`，保留原 unit 的 sandbox、写入路径和两项 `ExecStartPost`：
+四个 TLS listener 引用生产证书且本机验收通过后，在正式 unit 的 sandbox 内执行真实非交互 staging 续期及限定 hook 演练。使用 `sudo systemctl edit --runtime xcmty-certbot-ip.service` 创建本次临时 drop-in，仅清空并覆盖 `ExecStart`，保留原 unit 的 sandbox、写入路径和两项 `ExecStartPost`：
 
 ```ini
 [Service]
 ExecStart=
-ExecStart=/opt/community-platform-certbot-ip/bin/certbot renew --non-interactive --cert-name community-platform-ip --config-dir /etc/letsencrypt-ip --work-dir /var/lib/letsencrypt-ip --logs-dir /var/log/letsencrypt-ip --dry-run --run-deploy-hooks --no-random-sleep-on-renew
+ExecStart=/opt/xcmty-certbot-ip/bin/certbot renew --non-interactive --cert-name xcmty-ip --config-dir /etc/letsencrypt-ip --work-dir /var/lib/letsencrypt-ip --logs-dir /var/log/letsencrypt-ip --dry-run --run-deploy-hooks --no-random-sleep-on-renew
 ```
 
 创建前记录已有 runtime drop-in；`daemon-reload` 后检查有效配置，再通过 systemd 启动本次演练。确认真实 HTTP-01、Nginx 检查和 reload 事件、失败标记不存在及两项补充检查通过；普通 root CLI 演练无法证明正式 unit 的文件系统权限和 hook 可用。演练不得用 staging 证书替换生产证书。完成后仅撤销本次测试 drop-in，恢复原 ExecStart 并 `daemon-reload`，启动一次正式 oneshot，检查 `Result=success`、`ExecMainStatus=0` 和 timer 下一次触发时间；未到续期时间的空跑不能替代上述真实演练。状态查看及证书枚举仍使用同一 IP 客户端与三个隔离目录，原始日志仅在服务器受控查看。
@@ -286,8 +288,8 @@ ExecStart=/opt/community-platform-certbot-ip/bin/certbot renew --non-interactive
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now community-platform-certbot-ip.timer
-sudo systemctl start community-platform-certbot-ip.service
+sudo systemctl enable --now xcmty-certbot-ip.timer
+sudo systemctl start xcmty-certbot-ip.service
 ```
 
 核对 timer 为 `enabled`、`active` 且存在下一次触发时间；只复制 unit、运行 `daemon-reload` 或启动 oneshot 均不能激活定时续期。
@@ -295,11 +297,11 @@ sudo systemctl start community-platform-certbot-ip.service
 失败标记存在时，先查看专用服务、hook 标签和 Nginx 日志，修复配置或 sandbox 写入权限；更改 unit 后执行 `daemon-reload`。然后用当前有效 lineage 手动重试限定 hook：
 
 ```bash
-sudo env RENEWED_LINEAGE=/etc/letsencrypt-ip/live/community-platform-ip \
-  /usr/local/sbin/community-platform-ip-cert-deploy
+sudo env RENEWED_LINEAGE=/etc/letsencrypt-ip/live/xcmty-ip \
+  /usr/local/sbin/xcmty-ip-cert-deploy
 ```
 
-确认 hook 成功清除标记后，执行 `sudo systemctl restart community-platform-certbot-ip.service` 并复核 oneshot 状态和日志；标记不手动删除，以免掩盖重载失败。修复后的正式 unit 仍须完成上述 sandbox 内真实 dry-run，确认本次配置检查、reload 与两项补充检查均通过，再恢复正常定时续期。未到续期时间的 oneshot 成功或标记不存在，均不能证明本次执行过 hook；须保留对应时间窗的 hook 和 reload 证据。
+确认 hook 成功清除标记后，执行 `sudo systemctl restart xcmty-certbot-ip.service` 并复核 oneshot 状态和日志；标记不手动删除，以免掩盖重载失败。修复后的正式 unit 仍须完成上述 sandbox 内真实 dry-run，确认本次配置检查、reload 与两项补充检查均通过，再恢复正常定时续期。未到续期时间的 oneshot 成功或标记不存在，均不能证明本次执行过 hook；须保留对应时间窗的 hook 和 reload 证据。
 
 ### 分层验收与回退
 
@@ -315,6 +317,6 @@ sudo env RENEWED_LINEAGE=/etc/letsencrypt-ip/live/community-platform-ip \
 
 ## 备份与恢复
 
-使用系统管理连接将 `pg_dump -Fc` 输出到 `/var/backups/community-platform/` 下 `root:root 600` 文件。备份后实际恢复到本次专用临时数据库，检查迁移版本及表数据；不能只用 `pg_restore --list` 代替恢复验证。清理仅针对本次创建的验证库，禁止对业务库执行测试清空或回退迁移。
+使用系统管理连接将 `pg_dump -Fc` 输出到 `/var/backups/xcmty/` 下 `root:root 600` 文件。备份后实际恢复到本次专用临时数据库，检查迁移版本及表数据；不能只用 `pg_restore --list` 代替恢复验证。清理仅针对本次创建的验证库，禁止对业务库执行测试清空或回退迁移。
 
 本机备份不具备异地容灾能力。定期备份、容量监测与异地复制按实际测试数据保留需求配置。回退应用前先检查数据库兼容，停止相关任务进程，原子切换 `current` 并重新验证；不通过删除支付事实或自动降级数据库恢复。

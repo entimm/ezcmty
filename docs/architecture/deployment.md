@@ -46,7 +46,7 @@ flowchart LR
 
 搭建前检查现有服务、监听端口、账号、目录、磁盘和 swap，复用符合要求的组件。数据库和 Redis 仅监听本机；SSH 访问验证通过后配置主机防火墙，保留实际 SSH 端口。云安全组由云平台单独管理。配置变更前保留原文件，验证配置后重载或重启；失败时恢复本次变更，不覆盖其他服务。
 
-应用使用专用非登录账号 `community-platform`。发布目录位于 `/srv/community-platform/releases/`，受控配置位于 `/etc/community-platform/`，运行数据位于 `/var/lib/community-platform/`，本机临时备份位于 `/var/backups/community-platform/`；数据库沿用系统服务的数据目录。配置和备份限制访问，运行账号不授予 sudo 权限。基础环境验收包括组件版本、服务状态、本机连接、监听范围、防火墙和 SSH 可达性；域名、证书、业务库和应用进程在后续发布时验收。
+应用使用专用非登录账号 `appsvc`。发布目录位于 `/srv/xcmty/releases/`，受控配置位于 `/etc/xcmty/`，运行数据位于 `/var/lib/xcmty/`，本机临时备份位于 `/var/backups/xcmty/`；数据库沿用系统服务的数据目录。配置和备份限制访问，运行账号不授予 sudo 权限。基础环境验收包括组件版本、服务状态、本机连接、监听范围、防火墙和 SSH 可达性；域名、证书、业务库和应用进程在后续发布时验收。
 
 组件维护、配置恢复和检查命令见[测试服务器基础环境操作指南](../guidelines/staging-environment.md)。
 
@@ -79,7 +79,7 @@ flowchart LR
 
 旧页面地址使用 `302` 和 `Cache-Control: no-store` 兼容迁移。平台端的 `/platform`、`/platform/` 及物业端的对应根路径跳转到 `/?_ip_entry=clean`，将原查询参数追加保留，利用不同的 URL 缓存键避开此前根路径 `308` 的浏览器缓存并防止循环；直接访问新 `/` 则返回 SPA，不额外添加查询参数。旧深链按现有域名路由去除所属端页面前缀，平台的 companies / communities 特殊 `sitePath` 映射优先处理，保留查询参数；另一端页面前缀返回 `404`。迁移不发送 `Clear-Site-Data`，不清理 Cookie 或浏览器 storage。
 
-两份 IP 静态产物以同一选定提交的干净源码及锁定依赖构建，发布到 `/srv/community-platform/releases/<UTC时间>-<短SHA>-ip-admin-web/{platform,property}/`，由独立的 `/srv/community-platform/ip-admin-web` 软链接指向该完整产物对。8001、8002 的静态 root 分别为软链接下的 `platform/`、`property/`；IP 前端单独发布时不切换 `current`、后端或域名产物。后续每次前端发布同步构建域名通用、平台 IP、物业 IP 三份产物，记录提交、两项构建变量及各产物哈希；IP 产物成对校验并原子切换同一个软链接，保留上一对产物供独立回退。静态资源、缓存、文件权限和回退操作见发布指南。
+两份 IP 静态产物以同一选定提交的干净源码及锁定依赖构建，发布到 `/srv/xcmty/releases/<UTC时间>-<短SHA>-ip-admin-web/{platform,property}/`，由独立的 `/srv/xcmty/ip-admin-web` 软链接指向该完整产物对。8001、8002 的静态 root 分别为软链接下的 `platform/`、`property/`；IP 前端单独发布时不切换 `current`、后端或域名产物。后续每次前端发布同步构建域名通用、平台 IP、物业 IP 三份产物，记录提交、两项构建变量及各产物哈希；IP 产物成对校验并原子切换同一个软链接，保留上一对产物供独立回退。静态资源、缓存、文件权限和回退操作见发布指南。
 
 IP 证书使用含 `150.158.19.40` IP SAN 的受信任证书，采用 Let’s Encrypt `shortlived` profile 和公网 80 的 HTTP-01 webroot 验证。独立 Certbot 5.8 运行环境、配置、工作目录、日志、lineage、成功 hook 和每 12 小时续期任务，与既有 Certbot 4.0 / DNSPod 域名证书流程隔离；不让旧客户端扫描 IP lineage。短期证书有效期为 160 小时，需完成真实 staging 验证、非交互续期及限定 Nginx 重载 hook 演练，并持续检查失败和到期时间；临时操作机代理不构成自动续期条件。
 

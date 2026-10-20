@@ -1,6 +1,6 @@
 # 测试环境证书自动续期实施计划
 
-范围：为 `community-platform` 的四域证书配置无需操作机在线的自动续期，沿用 Certbot、现有证书路径及限定 Nginx 重载 hook。用户已授权自动续期配置；不变更业务服务、现有 DNS 业务记录或支付设置。
+范围：为 `xcmty` 的四域证书配置无需操作机在线的自动续期，沿用 Certbot、现有证书路径及限定 Nginx 重载 hook。用户已授权自动续期配置；不变更业务服务、现有 DNS 业务记录或支付设置。
 
 依据：[部署约定](../../architecture/deployment.md#测试环境应用发布)、[发布指南](../../guidelines/staging-release.md#域名https-与验证)。
 

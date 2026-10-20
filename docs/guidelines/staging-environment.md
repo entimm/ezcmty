@@ -35,24 +35,24 @@ sudo ufw status numbered
 
 ## 账号与目录
 
-运行账号为 `community-platform`，使用非登录 shell，不授予 sudo 权限。系统服务沿用发行版的专用账号与数据目录。
+运行账号为 `appsvc`，使用非登录 shell，不授予 sudo 权限。系统服务沿用发行版的专用账号与数据目录。
 
 | 路径                                             | 用途         | 权限边界                                                                              |
 | ------------------------------------------------ | ------------ | ------------------------------------------------------------------------------------- |
-| `/srv/community-platform/` 及 `releases/` 子目录 | 后续应用版本 | `root:community-platform`，目录权限 `750`；静态托管时另行授予 `www-data` 必要读取权限 |
-| `/etc/community-platform/`                       | 受控应用配置 | `root:community-platform`，目录权限 `750`；密钥文件按需限制，不向其他用户开放         |
-| `/var/lib/community-platform/`                   | 应用运行数据 | `community-platform:community-platform`，目录权限 `750`                               |
-| `/var/backups/community-platform/`               | 本机临时备份 | `root:root`，目录权限 `700`，不向运行账号授权                                         |
+| `/srv/xcmty/` 及 `releases/` 子目录 | 后续应用版本 | `root:appsvc`，目录权限 `750`；静态托管时另行授予 `www-data` 必要读取权限 |
+| `/etc/xcmty/` | 受控应用配置 | `root:appsvc`，目录权限 `750`；密钥文件按需限制，不向其他用户开放 |
+| `/var/lib/xcmty/` | 应用运行数据 | `appsvc:appsvc`，目录权限 `750` |
+| `/var/backups/xcmty/` | 本机临时备份 | `root:root`，目录权限 `700`，不向运行账号授权 |
 
 检查账号和目录：
 
 ```bash
-getent passwd community-platform
-id community-platform
-sudo -l -U community-platform
-sudo stat -c '%U:%G %a %n' /srv/community-platform/releases \
-  /etc/community-platform /var/lib/community-platform \
-  /var/backups/community-platform
+getent passwd appsvc
+id appsvc
+sudo -l -U appsvc
+sudo stat -c '%U:%G %a %n' /srv/xcmty/releases \
+  /etc/xcmty /var/lib/xcmty \
+  /var/backups/xcmty
 ```
 
 目录存在不代表已部署应用。本机备份不能替代异地备份；应用发布时另行配置业务数据库备份及恢复验证，要求见[部署约定](../architecture/deployment.md#单机部署)。
@@ -84,22 +84,22 @@ uv 使用[官方 PyPI 发布](https://pypi.org/project/uv/)的固定版本 Linux
 跨用户验证 uv 时，先切换到运行账号可访问的目录，避免继承运维用户的私有工作目录：
 
 ```bash
-sudo -u community-platform sh -c \
-  'cd /var/lib/community-platform && /usr/local/bin/uv python find --system --no-managed-python 3.14'
+sudo -u appsvc sh -c \
+  'cd /var/lib/xcmty && /usr/local/bin/uv python find --system --no-managed-python 3.14'
 ```
 
 应用发布时，systemd 同样需要设置运行账号可访问的 `WorkingDirectory`。
 
 ## 配置维护与恢复
 
-修改前，将受影响文件连同属主和权限备份到 `/var/backups/community-platform/` 下独立的维护目录；备份目录权限为 `700`。保留原文件是否存在的信息，使用新增片段时避免覆盖同名的其他配置。
+修改前，将受影响文件连同属主和权限备份到 `/var/backups/xcmty/` 下独立的维护目录；备份目录权限为 `700`。保留原文件是否存在的信息，使用新增片段时避免覆盖同名的其他配置。
 
 优先修改服务支持的独立配置片段。调整 PostgreSQL 或 Redis 的参数前，确认活动配置路径及实际服务实例；不要根据默认路径覆盖整份配置。项目参数以归档片段为准，按服务器资源预算维护，不在指南重复数值：
 
 | 组件       | 项目配置来源                                                                       | 维护约束                                           |
 | ---------- | ---------------------------------------------------------------------------------- | -------------------------------------------------- |
-| PostgreSQL | [community-platform.conf](../../deploy/staging/postgresql/community-platform.conf) | 核对活动集群及实际参数，不覆盖集群主配置           |
-| Redis      | [community-platform.conf](../../deploy/staging/redis/community-platform.conf)      | 确认主配置加载项目 include，检查回环监听及有效参数 |
+| PostgreSQL | [xcmty.conf](../../deploy/staging/postgresql/xcmty.conf) | 核对活动集群及实际参数，不覆盖集群主配置           |
+| Redis      | [xcmty.conf](../../deploy/staging/redis/xcmty.conf)      | 确认主配置加载项目 include，检查回环监听及有效参数 |
 | journald   | systemd 日志配置片段，沿用服务器受控配置                                           | 持久日志上限 `256M`；应用使用 journal              |
 
 Nginx 日志沿用发行版的 logrotate 配置。Redis 达到内存上限会拒绝新增写入，应监测使用量，不能将 `noeviction` 误判为会自动释放旧会话。应用发布前结合实际进程数、数据库连接池和负载重新核对资源预算。

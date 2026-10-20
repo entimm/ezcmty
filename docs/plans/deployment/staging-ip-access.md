@@ -12,7 +12,7 @@
 - [x] 核对服务器网卡与 NAT、端口占用、回环 API、当前 release、现有 Nginx / Certbot / timer 及防火墙，备份本次相关配置并准备恢复命令。
 - [x] 固定并验证独立 Certbot 5.8 及完整依赖，安装到最终绝对路径；建立独立 config / work / logs、受控权限和 HTTP-01 webroot，保留原 Certbot 4.0 / DNSPod 环境。
 - [x] 配置仅针对 IP Host 的公网 80 challenge 入口，验证独立 ACME 出站和外部 challenge 访问；在隔离临时目录完成 CA staging 的真实 IP HTTP-01 验证。
-- [x] 签发 `community-platform-ip` 生产 `shortlived` 证书，核对 IP SAN、完整链、160 小时有效期、生产 lineage 与私钥权限，确认未安装 staging 证书。
+- [x] 签发 `xcmty-ip` 生产 `shortlived` 证书，核对 IP SAN、完整链、160 小时有效期、生产 lineage 与私钥权限，确认未安装 staging 证书。
 - [x] 配置四个 `10.0.0.2:<端口> bind ssl` listener、本端路由与 API 代理、Host 和跨端拒绝、静态缓存规则；增加两端精确 IP HTTPS Origin，保留 Cookie / CSRF 边界并验证应用就绪。
 - [x] 配置限定 `RENEWED_LINEAGE` 的 IP deploy hook、每 12 小时专用 systemd 服务与 timer、失败记录和到期检查；对最终 TLS listener 配置完成真实非交互 staging 续期及 hook 演练，核对 Nginx reload 事件和实际 systemd 入口。
 - [x] 检查并放行本次所需云端与主机 TCP 入口；从独立公网用默认 CA 信任验证四端 HTTPS、IP SAN、完整链、正确运行端、路径及拒绝规则。
@@ -21,7 +21,7 @@
 
 ## 后台根路径入口
 
-本阶段使用已部署的 `224e915` 提交干净源码构建，入口为 `https://150.158.19.40:8001/` 与 `https://150.158.19.40:8002/`。静态产物已发布到 `/srv/community-platform/releases/20261020T002202Z-224e915-ip-admin-web/{platform,property}/`，独立 `/srv/community-platform/ip-admin-web` 软链接已选中该完整产物对。
+本阶段使用已部署的 `224e915` 提交干净源码构建，入口为 `https://150.158.19.40:8001/` 与 `https://150.158.19.40:8002/`。静态产物已发布到 `/srv/xcmty/releases/20261020T002202Z-224e915-ip-admin-web/{platform,property}/`，独立 `/srv/xcmty/ip-admin-web` 软链接已选中该完整产物对。
 
 - [x] 更新正式设计、构建与回退指南及本阶段计划，完成服务器与构建变更前的文档落盘。
 - [x] 核验 `224e915` 干净源码、锁文件及与当前后端契约的兼容性，记录现有 Nginx、静态目录和软链接；准备首次切换的旧配置恢复方式。
