@@ -32,13 +32,19 @@ pnpm --filter admin-web build
 
 启用 IP 与端口入口后，后续每次前端发布同时准备域名通用、平台 IP、物业 IP 三份产物，使用同一提交及锁定依赖，逐份校验哈希；两份 IP 产物的变量、独立版本目录和切换方式见[后台根路径静态产物](#后台根路径静态产物)。
 
+## 受限部署入口
+
+自动发布使用 `/etc/ssh/sshd_config.d/60-xcmty-deployer.conf` 的专用公钥和 ForceCommand `/usr/local/libexec/xcmty/deploy-ssh`。`deployer` 只接受以下四个操作：`status`、`install <release_id> <sha256>`、`activate <release_id>`、`migrate <release_id>`。入口禁止任意 Shell、TTY、端口转发、用户 SSH 配置和通用 sudo；`seal <release_id>` 仅由管理员在服务器本地调用。
+
+root 网关在 `install` 时校验归档路径和 SHA-256 并生成 root 封存记录，在 `activate` / `migrate` 时校验封存记录和唯一 Alembic head。封存指纹忽略 Python 可再生的 `__pycache__/*.pyc`，仍校验缓存文件的属主、权限、链接数和大小；其他发布内容继续参与指纹。迁移配置 `/etc/xcmty/migration.env` 必须为 `root:root 600`，网关只从其 `APP_DATABASE_URL` 读取回环 PostgreSQL 5432 的数据库名，不输出凭据。`activate` 要求数据库当前 head 与封存 head 一致后才切换并重启服务，不自动执行数据库迁移；数据库变更必须显式调用 `migrate`。
+
 ## 配置、数据库与迁移
 
 `/etc/xcmty/staging.env` 保存运行配置，`migration.env` 保存迁移配置，均为 `root:root 600`。systemd 的 PID 1 读取 `EnvironmentFile` 后降权启动进程，应用账号无需直接读取配置文件。运行和迁移环境的 `APP_REDIS_URL` 使用 `xcmty-runtime` 的最小 ACL 身份；两者都不能包含 `xcmty-admin`、数据库管理员或其他管理凭据。敏感值不出现在命令参数、日志、发布清单或 Git 中。运维修改配置统一使用 `sudoedit`。
 
 字段分别参考[运行环境模板](../../deploy/staging/env/staging.env.example)和[迁移环境模板](../../deploy/staging/env/migration.env.example)，填入实际受控值后使用，不复制占位符上线。
 
-数据库使用测试环境配置中的业务库。独立迁移角色拥有数据库及业务 schema；运行角色仅有连接、schema 使用及业务表 DML 权限，不具备 DDL 或迁移角色成员资格。首次只在空库执行已有 Alembic 迁移，不使用 seed 或 reset 工具。
+数据库使用测试环境配置中的业务库 `xcmty`。独立迁移角色拥有数据库及业务 schema；运行角色仅有连接、schema 使用及业务表 DML 权限，不具备 DDL 或迁移角色成员资格。首次只在空库执行已有 Alembic 迁移，不使用 seed 或 reset 工具。
 
 在服务器选择待发布的实际目录后，通过独立受控任务执行迁移：
 

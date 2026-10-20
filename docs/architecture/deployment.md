@@ -46,7 +46,7 @@ flowchart LR
 
 搭建前检查现有服务、监听端口、账号、目录、磁盘和 swap，复用符合要求的组件。数据库和 Redis 仅监听本机；SSH 访问验证通过后配置主机防火墙，保留实际 SSH 端口。云安全组由云平台单独管理。配置变更前保留原文件，验证配置后重载或重启；失败时恢复本次变更，不覆盖其他服务。
 
-应用使用专用非登录账号 `appsvc`。发布目录位于 `/srv/xcmty/releases/`，受控配置位于 `/etc/xcmty/`，运行数据位于 `/var/lib/xcmty/`，本机临时备份位于 `/var/backups/xcmty/`；数据库沿用系统服务的数据目录。`appsvc-migrator` 只运行受控迁移，`appsvc-builder` 只运行隔离构建，`deployer` 只通过受限公钥命令触发发布，`app-readers` 只读代码。`ubuntu` 是人工运维账号，直接访问限于代码和日志，sudo 使用密码认证；配置修改使用 `sudoedit`。运行、迁移、DNS 和 Redis 管理配置由 root 管理并使用严格文件权限，应用账号不能读取迁移或管理凭据；`www-data` 只取得前端静态文件的读取权限。云救援账号 `lighthouse` 的完整免密 sudo 暂时保留，边界尚未核实，不作为日常运维授权。基础环境验收包括组件版本、服务状态、本机连接、监听范围、防火墙、SSH 认证策略和账号边界；域名、证书、业务库和应用进程在后续发布时验收。
+应用使用专用非登录账号 `appsvc`。发布目录位于 `/srv/xcmty/releases/`，受控配置位于 `/etc/xcmty/`，运行数据位于 `/var/lib/xcmty/`，本机临时备份位于 `/var/backups/xcmty/`；数据库沿用系统服务的数据目录。`appsvc-migrator` 只运行受控迁移，`appsvc-builder` 只运行隔离构建，`deployer` 只通过受限公钥命令触发发布，`app-readers` 只读代码。`ubuntu` 是人工运维账号，无提权直接访问限于代码和日志，sudo 使用免密授权；配置修改使用 `sudoedit`。运行、迁移、DNS 和 Redis 管理配置由 root 管理并使用严格文件权限，应用账号不能读取迁移或管理凭据；`www-data` 只取得前端静态文件的读取权限。云救援账号 `lighthouse` 的完整免密 sudo 暂时保留，边界尚未核实，不作为日常运维授权。基础环境验收包括组件版本、服务状态、本机连接、监听范围、防火墙、SSH 认证策略和账号边界；域名、证书、业务库和应用进程在后续发布时验收。
 
 测试服务器禁止 root SSH、SSH 密码认证和键盘交互认证，仅允许登记的公钥。Redis 关闭匿名用户：应用和迁移使用限制在 `app:*` 键空间的 `xcmty-runtime`，管理操作使用独立的 `xcmty-admin`；运行身份不得执行配置、管理或其他越权命令。重启 Redis 后必须复核认证、命令和键空间限制，以及 Lua、锁、重连和四端 `/readyz`。
 
@@ -55,6 +55,8 @@ flowchart LR
 ### 测试环境应用发布
 
 代码通过运维登录账号的 `github-deploy` SSH 别名访问项目仓库，核验 GitHub 主机密钥和部署密钥认证后取得默认分支或指定版本，发布记录固定到提交 SHA。部署私钥不提供给应用运行账号。服务器无法直连 GitHub 时，可通过操作机建立仅监听服务器回环地址的临时 SSH 转发，继续使用服务器部署密钥及 GitHub 主机密钥校验；完成取码后关闭转发，不修改主机校验策略。
+
+自动发布使用专用公钥和 ForceCommand 受限入口。`deployer` 只能提交 `status`、`install <release_id> <sha256>`、`activate <release_id>` 和 `migrate <release_id>`；入口拒绝 Shell、TTY、端口转发、用户 SSH 配置和通用 sudo。root 网关在发布前校验归档路径、SHA-256、root 封存记录及唯一 Alembic head；`activate` 只在数据库 head 与封存 head 一致后切换并重启服务，不自动执行迁移，迁移必须显式调用 `migrate`。`seal` 只允许管理员在服务器本地调用。
 
 发布前完成[测试规范](../conventions/testing.md#分级执行与结果判定)规定的回归。后端在最终版本目录中安装锁定的 Linux 运行依赖，不复制 macOS 虚拟环境；保留 Alembic 配置与迁移文件。前端在操作机或 CI 构建，只发布静态产物。网络受限时可传输与锁文件哈希一致的目标平台依赖，不为部署重写锁文件。
 

@@ -35,11 +35,11 @@ sudo ufw status numbered
 
 ## 账号与目录
 
-测试服务器按职责分离账号。`appsvc`、`appsvc-migrator` 和 `appsvc-builder` 使用非登录 shell；`deployer` 只接受受限公钥命令；`app-readers` 只读发布代码。`ubuntu` 是人工运维账号，加入 `app-readers`，并通过既有日志查看授权查看运维日志，但不能直接写发布目录、读取受控配置或访问运行数据。`lighthouse` 的完整免密 sudo 是暂未核实的云救援例外，不作为日常运维入口。
+测试服务器按职责分离账号。`appsvc`、`appsvc-migrator` 和 `appsvc-builder` 使用非登录 shell；`deployer` 只接受受限公钥命令；`app-readers` 只读发布代码。`ubuntu` 是人工运维账号，加入 `app-readers`，并通过既有日志查看授权查看运维日志；无提权时不能写发布目录、读取受控配置或访问运行数据，sudo 使用免密授权。`lighthouse` 的完整免密 sudo 是暂未核实的云救援例外，不作为日常运维入口。
 
 | 账号 / 组         | 职责与边界                                                                |
 | ----------------- | ------------------------------------------------------------------------- |
-| `ubuntu`          | 人工 SSH 运维；公钥登录；sudo 使用密码认证；直接只读代码和日志            |
+| `ubuntu`          | 人工 SSH 运维；公钥登录；sudo 免密授权；无提权时只读代码和日志            |
 | `appsvc`          | API 与 Worker 运行；无 SSH、无 sudo；只读发布文件，写入 `/var/lib/xcmty/` |
 | `appsvc-migrator` | 受控 Alembic 迁移与 head 检查；无 SSH、无 sudo；由 systemd 注入迁移配置   |
 | `appsvc-builder`  | 隔离构建任务；无 SSH、无 sudo；构建目录为一次性受限临时文件系统           |
@@ -183,7 +183,7 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 UFW 默认拒绝入站、允许出站，放行 TCP `22`、`80`、`443`。变更前同时核对当前 SSH 连接的服务器端口与实际监听；若 SSH 使用其他端口，也必须保留。PostgreSQL、Redis 和 API 的回环监听不直接向公网开放；可选 Nginx IP 端口按[发布指南](staging-release.md#ip-与端口-https-入口)单独核对。云安全组由云平台单独检查，UFW 不能替代它。
 
-SSH 仅允许已登记公钥；禁止 root 登录、密码认证和键盘交互认证。`ubuntu` 的 sudo 仍需密码，不能把 SSH 密码认证误当作 sudo 认证。首次启用 UFW 或修改 SSH 规则时，保持当前会话，先放行实际 SSH 端口，再启用或调整规则。从操作机另开新连接验证：
+SSH 仅允许已登记公钥；禁止 root 登录、密码认证和键盘交互认证。`ubuntu` 的 sudo 已恢复免密授权，但不改变 SSH 认证策略。首次启用 UFW 或修改 SSH 规则时，保持当前会话，先放行实际 SSH 端口，再启用或调整规则。从操作机另开新连接验证：
 
 ```bash
 ssh -o ControlMaster=no -o ControlPath=none xcmty 'true'
@@ -195,7 +195,7 @@ ssh -o ControlMaster=no -o ControlPath=none xcmty 'true'
 sudo sshd -t
 sudo sshd -T | grep -Ei '^(permitrootlogin|passwordauthentication|kbdinteractiveauthentication|challengeresponseauthentication|pubkeyauthentication) '
 sudo -k -l -U ubuntu
-sudo -k true   # 应提示输入密码；输入正确密码后再次执行应成功
+sudo -k -n true   # 应直接成功，证明 ubuntu 的 sudo 免密授权已生效
 ```
 
 新连接成功后才能结束原会话或收紧旧规则。检查 `sudo ufw status numbered` 和 `sudo ss -lntup`，确认 IPv4、IPv6 都没有数据库或 Redis 的公网监听。防火墙验证失败时，在原会话中恢复本次规则，不执行清空所有既有规则的操作。
