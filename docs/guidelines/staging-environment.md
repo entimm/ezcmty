@@ -2,6 +2,8 @@
 
 本指南用于维护[测试服务器基础环境](../architecture/deployment.md#测试服务器基础环境)。系统使用 Ubuntu 26.04 LTS，原生运行 Nginx、PostgreSQL 18 和 Redis，Python 使用 3.14，依赖管理使用 uv。
 
+已归档的项目配置及服务器目标、权限和生效检查见[配置索引](../../deploy/staging/README.md)，本指南维护组件操作与恢复流程。
+
 基础环境维护不包含业务库与业务账号创建、数据库迁移、seed、应用发布或支付操作。域名、TLS 证书、四个 API 和 Worker 在应用发布阶段配置；支付发布条件见[账单支付发布与恢复准备](../plans/payment/bill-payments-release.md)。
 
 ## 访问与操作前检查
@@ -92,13 +94,13 @@ sudo -u community-platform sh -c \
 
 修改前，将受影响文件连同属主和权限备份到 `/var/backups/community-platform/` 下独立的维护目录；备份目录权限为 `700`。保留原文件是否存在的信息，使用新增片段时避免覆盖同名的其他配置。
 
-优先修改服务支持的独立配置片段。调整 PostgreSQL 或 Redis 的参数前，确认活动配置路径及实际服务实例；不要根据默认路径覆盖整份配置。4GB 内存环境使用以下基础参数：
+优先修改服务支持的独立配置片段。调整 PostgreSQL 或 Redis 的参数前，确认活动配置路径及实际服务实例；不要根据默认路径覆盖整份配置。项目参数以归档片段为准，按服务器资源预算维护，不在指南重复数值：
 
-| 组件       | 配置位置                                          | 基础参数                                                                                                                                     |
-| ---------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| PostgreSQL | 活动集群目录下的 `conf.d/community-platform.conf` | `listen_addresses='localhost'`、`shared_buffers=256MB`、`work_mem=4MB`、`maintenance_work_mem=64MB`、`max_connections=100`、`timezone='UTC'` |
-| Redis      | 主配置 include 的 `community-platform.conf`       | `bind 127.0.0.1 -::1`、`protected-mode yes`、`maxmemory 128mb`、`maxmemory-policy noeviction`                                                |
-| journald   | systemd 日志配置片段                              | 持久日志上限 `256M`；应用后续使用 journal                                                                                                    |
+| 组件       | 项目配置来源                                                                       | 维护约束                                           |
+| ---------- | ---------------------------------------------------------------------------------- | -------------------------------------------------- |
+| PostgreSQL | [community-platform.conf](../../deploy/staging/postgresql/community-platform.conf) | 核对活动集群及实际参数，不覆盖集群主配置           |
+| Redis      | [community-platform.conf](../../deploy/staging/redis/community-platform.conf)      | 确认主配置加载项目 include，检查回环监听及有效参数 |
+| journald   | systemd 日志配置片段，沿用服务器受控配置                                           | 持久日志上限 `256M`；应用使用 journal              |
 
 Nginx 日志沿用发行版的 logrotate 配置。Redis 达到内存上限会拒绝新增写入，应监测使用量，不能将 `noeviction` 误判为会自动释放旧会话。应用发布前结合实际进程数、数据库连接池和负载重新核对资源预算。
 
@@ -147,7 +149,7 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## 防火墙与 SSH 连通性
 
-UFW 默认拒绝入站、允许出站，放行 TCP `22`、`80`、`443`。变更前同时核对当前 SSH 连接的服务器端口与实际监听；若 SSH 使用其他端口，也必须保留。PostgreSQL、Redis 和后续 API 端口不向公网放行。云安全组由云平台单独检查，UFW 不能替代它。
+UFW 默认拒绝入站、允许出站，放行 TCP `22`、`80`、`443`。变更前同时核对当前 SSH 连接的服务器端口与实际监听；若 SSH 使用其他端口，也必须保留。PostgreSQL、Redis 和 API 的回环监听不直接向公网开放；可选 Nginx IP 端口按[发布指南](staging-release.md#ip-与端口-https-入口)单独核对。云安全组由云平台单独检查，UFW 不能替代它。
 
 首次启用 UFW 或修改 SSH 规则时，保持当前会话，先放行实际 SSH 端口，再启用或调整规则。从操作机另开新连接验证：
 
