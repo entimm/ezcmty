@@ -4,6 +4,7 @@ import {
   requireSession,
   restoreSession,
 } from '../../../../auth/resident';
+import { BUILD_VERSION } from '../../../../config';
 import { errorText } from '../../../../shared/http/client';
 import { claimPage, residentHome } from '../../../../shared/wechat/ui';
 import { bindings, claims } from '../../api';
@@ -11,6 +12,7 @@ import { detailUrl } from '../../presentation';
 import { Binding } from '../../types';
 Page({
   data: {
+    buildVersion: BUILD_VERSION,
     loading: false,
     error: '',
     signedIn: false,

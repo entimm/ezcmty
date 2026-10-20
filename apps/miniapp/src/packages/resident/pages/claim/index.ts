@@ -320,9 +320,12 @@ Page({
       if (!unknown) this.operation = undefined;
       this.setData({
         unknown,
-        error: unknown
-          ? '提交结果尚未确认，请点击重试，或到“我的申请”查看。'
-          : errorText(error),
+        error: errorText(
+          error,
+          unknown
+            ? '提交结果尚未确认，请点击重试，或到“我的申请”查看。'
+            : undefined,
+        ),
       });
     } finally {
       if (epoch === this.writeEpoch) this.setData({ busy: false });

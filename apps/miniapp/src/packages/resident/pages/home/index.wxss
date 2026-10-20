@@ -1,0 +1,16 @@
+.home-screen {
+  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+}
+.build-version {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 16rpx 32rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: #f5f7fb;
+  color: #718096;
+  font-size: 22rpx;
+  text-align: center;
+  pointer-events: none;
+}

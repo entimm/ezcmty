@@ -4,7 +4,7 @@
   <view class="welcome-title">让家的每一天<view>都更方便一点。</view></view>
   <view class="subtitle">连接社区，开启你的专属生活服务。</view>
   <view class="card login-card"><view class="section-title">欢迎回家</view><view class="muted">使用微信登录后，即可认领房屋、查看审核进度。手机号在需要时由你主动授权。</view>
-    <view wx:if="{{error}}" class="error" role="alert">{{error}}</view>
+    <view wx:if="{{error}}" class="error" role="alert"><text selectable="{{true}}">{{error}}</text></view>
     <button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="login">微信登录</button>
     <view class="hint">微信身份用于创建平台账号，房屋权限由物业审核。</view>
   </view>

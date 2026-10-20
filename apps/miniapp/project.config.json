@@ -9,6 +9,7 @@
     "postcss": true,
     "minified": false,
     "urlCheck": false,
+    "scriptsEnable": true,
     "compileWorklet": false,
     "uglifyFileName": false,
     "uploadWithSourceMap": true,
@@ -29,6 +30,11 @@
   "appid": "wx3b69e45c2a10f4da",
   "projectname": "resident-miniapp",
   "simulatorPluginLibVersion": {},
+  "scripts": {
+    "beforeCompile": "sh scripts/devtools-build.sh",
+    "beforePreview": "sh scripts/devtools-build.sh",
+    "beforeUpload": "sh scripts/devtools-build.sh"
+  },
   "packOptions": {
     "ignore": [],
     "include": []

@@ -75,10 +75,22 @@ it('reuses exactly the same submission key and normalized input after an unknown
     step: 3,
   });
   api.createClaim
-    .mockRejectedValueOnce(new ApiError(0, 'network', '网络错误'))
+    .mockRejectedValueOnce(
+      new ApiError(0, 'network', '网络错误', '', {
+        method: 'POST',
+        url: 'https://api.example.test/v1/claims',
+        errMsg: 'request:fail timeout',
+        errno: 600001,
+      }),
+    )
     .mockResolvedValueOnce({ id: 'application' });
   await page.submit();
   expect(page.data.unknown).toBe(true);
+  expect(page.data.error).toContain(
+    '提交结果尚未确认，请点击重试，或到“我的申请”查看。',
+  );
+  expect(page.data.error).toContain('errMsg: request:fail timeout');
+  expect(page.data.error).toContain('errno: 600001');
   const first = api.createClaim.mock.calls[0];
   await page.submit();
   expect(api.createClaim.mock.calls[1]).toEqual(first);

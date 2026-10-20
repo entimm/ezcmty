@@ -148,9 +148,10 @@ Page({
       if (!unknown) this.operation = undefined;
       this.setData({
         pending: unknown,
-        error: unknown
-          ? '验证结果尚未确认，请点击“重试验证”恢复结果。'
-          : errorText(error),
+        error: errorText(
+          error,
+          unknown ? '验证结果尚未确认，请点击“重试验证”恢复结果。' : undefined,
+        ),
       });
     } finally {
       if (epoch === this.writeEpoch) this.setData({ busy: false });

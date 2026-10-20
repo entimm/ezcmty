@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { access, readFile } from 'node:fs/promises';
 import './check-boundaries.mjs';
 await access('dist/app.js');
+const { BUILD_VERSION } = await import('../dist/config.js');
+assert.match(BUILD_VERSION, /^\d{14}$/);
 const app = JSON.parse(await readFile('dist/app.json', 'utf8'));
 assert(Array.isArray(app.pages) && app.pages.length > 0);
 const pages = [

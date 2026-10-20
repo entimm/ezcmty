@@ -12,6 +12,11 @@
   font-weight: 600;
   color: #0f172a;
 }
+.state-error {
+  max-width: 100%;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
 .state-icon {
   font-size: 64rpx;
   color: #93b4f4;

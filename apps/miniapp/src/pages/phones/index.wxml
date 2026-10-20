@@ -4,7 +4,7 @@
   <view wx:for="{{phones}}" wx:key="id" class="card"><view class="row"><text class="address">{{item.display_phone}}</text><text class="badge {{item.status}}">{{item.status === 'active' ? '已验证' : '已解绑'}}</text></view><view class="hint">最近验证 {{item.display_time}}</view><button wx:if="{{item.status === 'active'}}" class="quiet" data-id="{{item.id}}" bindtap="unbind" disabled="{{busy || loading || pending}}">解绑此号码</button></view>
   <button wx:if="{{phones.length < total}}" class="quiet" bindtap="more" loading="{{loading}}">加载更多</button>
   <view class="card"><view class="section-title">添加手机号</view><view class="muted">可直接选微信号码，也可先填写号码，再通过微信授权核对。</view><view class="field"><input type="text" maxlength="15" value="{{input}}" placeholder="选填：输入希望绑定的手机号" bindinput="input" disabled="{{busy || pending}}"/></view>
-    <view wx:if="{{!inputValid}}" class="hint">请填写有效的大陆手机号，或清空后直接选择微信号码。</view><view wx:if="{{error}}" class="error" role="alert">{{error}}</view>
+    <view wx:if="{{!inputValid}}" class="hint">请填写有效的大陆手机号，或清空后直接选择微信号码。</view><view wx:if="{{error}}" class="error" role="alert"><text selectable="{{true}}">{{error}}</text></view>
     <button wx:if="{{pending}}" class="primary" bindtap="verify" loading="{{busy}}" disabled="{{busy}}">重试验证</button>
     <button wx:else class="primary" open-type="getPhoneNumber" bindgetphonenumber="authorize" loading="{{busy}}" disabled="{{busy || !inputValid}}">微信快速验证手机号</button>
     <view class="hint">支持多个号码。授权验证用于确认号码有效，房屋归属仍需物业审核。</view>

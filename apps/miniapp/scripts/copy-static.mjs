@@ -9,6 +9,8 @@ await cp('src', 'dist', {
 const project = JSON.parse(await readFile('project.config.json', 'utf8'));
 project.miniprogramRoot = './';
 project.appid = process.env.MINIAPP_APP_ID || project.appid;
+project.setting.scriptsEnable = false;
+delete project.scripts;
 await writeFile('dist/project.config.json', JSON.stringify(project, null, 2));
 
 const app = JSON.parse(await readFile('dist/app.json', 'utf8'));

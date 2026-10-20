@@ -78,3 +78,28 @@ it('preserves a new account phone verification when an old verification rejects 
   expect(page.operation).toBeUndefined();
   expect(wx.showToast).toHaveBeenCalledOnce();
 });
+
+it('shows network diagnostics alongside the recovery instruction for phone verification', async () => {
+  const { ApiError } = await import('../src/shared/http/client');
+  const operation = { code: 'private-code', key: 'original-key' };
+  page.operation = operation;
+  auth.bindPhone.mockRejectedValueOnce(
+    new ApiError(0, 'network', '网络错误', '', {
+      method: 'POST',
+      url: 'https://api.example.test/v1/miniapp-users/me/phone-bindings',
+      errMsg: 'request:fail timeout',
+      errno: 600001,
+    }),
+  );
+
+  await page.verify();
+
+  expect(page.data.error).toContain(
+    '验证结果尚未确认，请点击“重试验证”恢复结果。',
+  );
+  expect(page.data.error).toContain('errMsg: request:fail timeout');
+  expect(page.data.error).toContain('errno: 600001');
+  expect(page.data.error).not.toContain('private-code');
+  expect(page.data.pending).toBe(true);
+  expect(page.operation).toBe(operation);
+});

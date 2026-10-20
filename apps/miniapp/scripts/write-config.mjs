@@ -11,9 +11,16 @@ if (
   parsed.password
 )
   throw new Error('Invalid MINIAPP_API_BASE_URL');
+const buildVersion = new Date(Date.now() + 8 * 60 * 60 * 1000)
+  .toISOString()
+  .replace(/\D/g, '')
+  .slice(0, 14);
 await writeFile(
   'dist/config.js',
   '"use strict";Object.defineProperty(exports,"__esModule",{value:true});exports.API_BASE_URL=' +
     JSON.stringify(base) +
+    ';exports.BUILD_VERSION=' +
+    JSON.stringify(buildVersion) +
     ';\n',
 );
+console.log('Mini-program build version: ' + buildVersion);

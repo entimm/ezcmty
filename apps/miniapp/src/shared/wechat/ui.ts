@@ -1,4 +1,4 @@
-import { errorText } from '../http/client';
+import { ApiError, errorText } from '../http/client';
 
 export const residentHome = '/packages/resident/pages/home/index';
 export const claimPage = '/packages/resident/pages/claim/index';
@@ -35,7 +35,21 @@ export function formatTime(value: string | null): string {
 }
 export function toastError(error: unknown): void {
   const message = errorText(error);
-  if (message) wx.showToast({ title: message, icon: 'none', duration: 2600 });
+  if (!message) return;
+  if (error instanceof ApiError && error.diagnostics) {
+    wx.showModal({
+      title: '网络连接失败',
+      content: message,
+      confirmText: '复制详情',
+      cancelText: '关闭',
+      confirmColor: '#2563eb',
+      success(result) {
+        if (result.confirm) wx.setClipboardData({ data: message });
+      },
+    });
+    return;
+  }
+  wx.showToast({ title: message, icon: 'none', duration: 2600 });
 }
 export const confirm = (title: string, content: string): Promise<boolean> =>
   new Promise((resolve) =>

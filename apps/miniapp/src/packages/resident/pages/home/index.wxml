@@ -1,4 +1,4 @@
-<view class="screen">
+<view class="screen home-screen">
   <view class="row" style="margin-bottom:32rpx"><view><view class="eyebrow">XLIFE · 邻里生活</view><view class="title" style="margin-top:12rpx">你好，邻居</view></view><button class="quiet" bindtap="profile" aria-label="个人中心">我的 ↗</button></view>
   <view class="card hero"><view class="row"><view><view class="eyebrow">BETTER LIVING, TOGETHER</view><view class="title" style="margin-top:20rpx">从认领你的家开始</view></view><text class="hero-icon">⌂</text></view><view class="subtitle">连接物业，让社区服务触手可及。</view><button bindtap="claim">＋ 认领房屋</button></view>
   <view wx:if="{{!signedIn}}" class="card"><view class="section-title" style="margin-top:0">欢迎来到你的社区</view><view class="muted">微信登录，查看你的房屋和认领进度。</view><button class="primary" style="margin-top:28rpx" bindtap="login">微信登录</button></view>
@@ -12,4 +12,5 @@
     <view wx:if="{{pendingCount}}" class="notice" bindtap="claims">有 {{pendingCount}} 个认领申请正在等待物业审核　→</view>
   </block>
   <view class="muted" style="text-align:center;margin-top:48rpx">安心相邻 · 美好生活</view>
+  <view class="build-version">版本：{{buildVersion}}</view>
 </view>
