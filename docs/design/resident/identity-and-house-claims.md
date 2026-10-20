@@ -4,7 +4,7 @@
 
 本设计覆盖平台微信登录、可复用的多手机号绑定、居民房屋认领、物业人工审核、房屋解绑和撤销。居民、物业、商家共用小程序的隔离方式见 [平台微信小程序架构](../../architecture/miniapp.md)。物业组织、空间、房屋和业主档案沿用 [物业接入](../property/onboarding.md) 与 [房屋资料管理](../property/housing.md)。
 
-工程、测试、数据库和 API 分别遵循 [开发规范](../../guidelines/development.md)、[测试规范](../../conventions/testing.md)、[数据库规范](../../database/conventions.md) 和 [API 规范](../../api/conventions.md)。请求响应、错误、权限、幂等及运行进程归属以 [OpenAPI](../../api/openapi/openapi.yaml) 为唯一权威来源。
+工程、测试、数据库和 API 分别遵循 [开发规范](../../guidelines/development.md)、[测试规范](../../conventions/testing.md)、[数据库规范](../../database/conventions.md) 和 [API 规范](../../api/conventions.md)。请求响应、错误、权限、幂等及运行进程归属以 [OpenAPI](../../../openapi/openapi.yaml) 为唯一权威来源。
 
 ## 身份与手机号
 

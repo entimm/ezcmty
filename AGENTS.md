@@ -20,7 +20,7 @@
 - 系统架构：[docs/architecture/overview.md](docs/architecture/overview.md)
 - 部署约定：[docs/architecture/deployment.md](docs/architecture/deployment.md)
 - API 规范：[docs/api/conventions.md](docs/api/conventions.md)
-- OpenAPI 契约：[docs/api/openapi/](docs/api/openapi/)
+- OpenAPI 契约：[openapi/](openapi/)
 - 数据库规范：[docs/database/conventions.md](docs/database/conventions.md)
 
 开始任务前，应阅读并遵循与当前任务相关的权威文档。

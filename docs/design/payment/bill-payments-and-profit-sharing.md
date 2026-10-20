@@ -6,7 +6,7 @@
 
 本设计保留同一收款商户下合并多月账单、按小区选择收款商户及多个分账接收方的结构。当前仅向平台分账，不提供部分金额付款、退款、线上商户进件或返利抵扣。
 
-本文件维护支付新增表、与账务的关联、资金操作状态及恢复规则。业务规则、权限、渠道流程、资金核对及页面交互以 [账单支付业务设计](bill-payments.md) 为准，接口以 [OpenAPI](../../api/openapi/openapi.yaml) 为准。既有账务表的字段和不变量以 [账单设计](../property/billing.md) 为准；居民身份及房屋授权以 [居民接入设计](../resident/identity-and-house-claims.md) 为准。
+本文件维护支付新增表、与账务的关联、资金操作状态及恢复规则。业务规则、权限、渠道流程、资金核对及页面交互以 [账单支付业务设计](bill-payments.md) 为准，接口以 [OpenAPI](../../../openapi/openapi.yaml) 为准。既有账务表的字段和不变量以 [账单设计](../property/billing.md) 为准；居民身份及房屋授权以 [居民接入设计](../resident/identity-and-house-claims.md) 为准。
 
 数据库类型、事务与迁移遵循 [数据库规范](../../database/conventions.md)，分层与进程职责遵循 [系统架构](../../architecture/overview.md) 和 [后端业务边界](../../architecture/backend-services.md)。验证遵循 [测试规范](../../conventions/testing.md)。本设计不定义对外 API 契约和居民页面的明细可见字段。
 
@@ -483,7 +483,7 @@ flowchart TD
 
 应分履行核验以稳定应分记录定位，与单次执行核验分开。手续费没有独立可信的比较依据时，只记录渠道实际值，预期金额为空，不凭估算费率生成金额不符差异。
 
-`evidence` 复用 [OpenAPI 的证据白名单](../../api/openapi/components/payment-management-schemas.yaml)：保存 `check_code`、判定时间及该次来源。文件证据携带该次 `source_digest` 和对应本地渠道调用记录 ID `source_request_id`；按单查询携带对应调用 ID，摘要可空；纯内部核验两者可空。调用 ID 不是渠道返回的 `channel_request_id`，引用本地不可变证据也不授予读取诊断快照的权限。批次的最近来源摘要不能替代历史判定来源；这些信息保存在现有 JSON 快照内，不新增列。
+`evidence` 复用 [OpenAPI 的证据白名单](../../../openapi/components/payment-management-schemas.yaml)：保存 `check_code`、判定时间及该次来源。文件证据携带该次 `source_digest` 和对应本地渠道调用记录 ID `source_request_id`；按单查询携带对应调用 ID，摘要可空；纯内部核验两者可空。调用 ID 不是渠道返回的 `channel_request_id`，引用本地不可变证据也不授予读取诊断快照的权限。批次的最近来源摘要不能替代历史判定来源；这些信息保存在现有 JSON 快照内，不新增列。
 
 重核对按稳定键更新当前证据，不删除既有差异。差异消失并经可靠核对，或已核实可审计的外部处置依据后才转为已解决；再次出现重新打开，最近处置信息保留供追溯，不因打开而清空。人工恢复原因及此前人工处置保存在既有管理员审计中，自动核对依据从批次及不可变渠道调用记录追溯，不将当前状态行当作完整事件历史。来源缺失或核对失败不能批量清除差异。
 

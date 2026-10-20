@@ -2,7 +2,7 @@
 
 ## 响应与权威定义
 
-内部 API 错误使用 RFC 9457 Problem Details 和 `application/problem+json`，包含 `type/title/status/detail/instance`，扩展 `code/request_id`；校验异常还包含 `errors`。HTTP 状态与 `status` 一致，错误结构见 [公共错误 Schema](openapi/components/errors.yaml)。
+内部 API 错误使用 RFC 9457 Problem Details 和 `application/problem+json`，包含 `type/title/status/detail/instance`，扩展 `code/request_id`；校验异常还包含 `errors`。HTTP 状态与 `status` 一致，错误结构见 [公共错误 Schema](../../openapi/components/errors.yaml)。
 
 该文件的 `x-error-catalog` 是错误码、标准状态和公开标题的唯一权威来源，按领域组织并校验全局唯一。新错误码采用 `<domain>.<name>`，不得重用、随意更名或变更已有语义；必要历史错误码保留。不提前定义尚未实现业务领域的错误。
 

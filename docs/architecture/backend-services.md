@@ -121,6 +121,6 @@ Runner 按 [持久任务规则](../design/payment/bill-payments-and-profit-shari
 
 ## 接口与验证
 
-外部路径、请求、响应、错误和运行进程归属继续以 [OpenAPI 契约](../api/openapi/openapi.yaml) 为准，内部代码组织不扩大各端已有接口集合。
+外部路径、请求、响应、错误和运行进程归属继续以 [OpenAPI 契约](../../openapi/openapi.yaml) 为准，内部代码组织不扩大各端已有接口集合。
 
 验证覆盖各端路由集合、跨后台身份拒绝、公司查询隔离、受限会话、停用与会话撤销、密码变更与审计事务，以及真实 PostgreSQL/Redis 下的平台变更与物业操作并发。

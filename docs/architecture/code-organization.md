@@ -8,7 +8,7 @@
 - 后端分层、依赖、事务及任务执行边界见 [后端业务边界与公共能力](backend-services.md)。
 - 管理后台与小程序的工程边界分别见 [管理后台前端设计](admin-web.md) 和 [平台微信小程序架构](miniapp.md)。
 - 支付规则与交互见 [居民账单支付与资金处理](../design/payment/bill-payments.md)，表结构、锁序和资金不变量见 [支付数据设计](../design/payment/bill-payments-and-profit-sharing.md)。
-- 接口以 [OpenAPI](../api/openapi/openapi.yaml) 为准，测试分类与执行遵循 [测试规范](../conventions/testing.md)。
+- 接口以 [OpenAPI](../../openapi/openapi.yaml) 为准，测试分类与执行遵循 [测试规范](../conventions/testing.md)。
 
 ## 组织原则
 

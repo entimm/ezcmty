@@ -64,7 +64,7 @@
 
 ### Cookie 与 Redis
 
-Cookie 名称沿用 [OpenAPI 安全方案](../../api/openapi/components/security-schemes.yaml) 中的 `AdminSession`，即 `admin_session`。
+Cookie 名称沿用 [OpenAPI 安全方案](../../../openapi/components/security-schemes.yaml) 中的 `AdminSession`，即 `admin_session`。
 
 | 配置     | 规则                                                                                                          |
 | -------- | ------------------------------------------------------------------------------------------------------------- |
@@ -129,7 +129,7 @@ Redis 会话按后台作用域隔离，登录成功创建新的随机会话标�
 
 ## 接口范围
 
-以下表格确定平台基础框架的资源与操作范围。请求和响应 Schema、状态码、错误码、权限声明及幂等性以 [OpenAPI 契约](../../api/openapi/openapi.yaml) 为唯一权威来源，必须在对应功能实现前按 [API 规范](../../api/conventions.md) 定义。
+以下表格确定平台基础框架的资源与操作范围。请求和响应 Schema、状态码、错误码、权限声明及幂等性以 [OpenAPI 契约](../../../openapi/openapi.yaml) 为唯一权威来源，必须在对应功能实现前按 [API 规范](../../api/conventions.md) 定义。
 
 路径为后端路径，通过平台入口访问时使用 `/api/platform` 前缀。本期新增管理接口的 `x-runtimes` 只声明 `platform_admin_api`。
 

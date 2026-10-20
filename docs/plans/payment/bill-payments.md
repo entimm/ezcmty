@@ -13,7 +13,7 @@
 - [居民账单支付与资金处理](../../design/payment/bill-payments.md)：业务、权限、资金流程及交互。
 - [支付与分账数据设计](../../design/payment/bill-payments-and-profit-sharing.md)：表、约束、状态、锁序及恢复。
 - [既有账单设计](../../design/property/billing.md)：共享账务及线下收款。
-- [OpenAPI](../../api/openapi/openapi.yaml)：各运行入口的接口、权限、幂等及请求响应。
+- [OpenAPI](../../../openapi/openapi.yaml)：各运行入口的接口、权限、幂等及请求响应。
 - [代码组织与账单支付接入](../../architecture/code-organization.md)、[后端业务边界](../../architecture/backend-services.md)：模块归属、调用、事务和任务边界。
 - [管理后台架构](../../architecture/admin-web.md)、[小程序架构](../../architecture/miniapp.md)：前端目录、状态、权限及请求隔离。
 - [开发规范](../../guidelines/development.md)、[测试规范](../../conventions/testing.md)、[数据库规范](../../database/conventions.md)：实施和质量要求。

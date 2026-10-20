@@ -2,7 +2,7 @@
 
 ## OpenAPI First 与契约一致性
 
-[OpenAPI 入口](openapi/openapi.yaml) 及其引用文件是 API 契约的唯一权威来源。先设计契约，再实现 FastAPI 路由、Pydantic Schema 和测试。
+[OpenAPI 入口](../../openapi/openapi.yaml) 及其引用文件是 API 契约的唯一权威来源。先设计契约，再实现 FastAPI 路由、Pydantic Schema 和测试。
 
 使用 OpenAPI 3.1。成功响应直接返回资源、数组或查询结果，不添加统一 `code/message/data` 包装；错误处理遵循 [错误与异常规范](errors.md)。
 
@@ -11,7 +11,7 @@ FastAPI 自动生成的 OpenAPI 仅是实现结果，不作为另一套权威接
 ## 文件组织
 
 ```text
-docs/api/openapi/
+openapi/
 ├── openapi.yaml
 ├── modules/
 │   └── system.yaml

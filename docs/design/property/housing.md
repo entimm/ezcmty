@@ -4,7 +4,7 @@
 
 物业后台提供本公司小区内空间节点、房屋档案和业主登记的手工维护，以及按空间层级筛选房屋。支持创建房屋时同时录入多名业主；居民账号、居民与房屋绑定、批量导入和空间迁移不属于本设计范围。
 
-小区和公司沿用 [物业接入设计](onboarding.md)，物业身份和公司范围沿用 [物业工作台设计](workbench.md)。后端分层、前端作用域及事务通用要求分别沿用 [系统架构](../../architecture/overview.md)、[管理后台前端设计](../../architecture/admin-web.md)、[数据库规范](../../database/conventions.md) 和 [错误与异常规范](../../api/errors.md)。请求响应、字段校验、权限码、错误码和幂等行为以 [OpenAPI 契约](../../api/openapi/openapi.yaml) 为唯一权威来源。
+小区和公司沿用 [物业接入设计](onboarding.md)，物业身份和公司范围沿用 [物业工作台设计](workbench.md)。后端分层、前端作用域及事务通用要求分别沿用 [系统架构](../../architecture/overview.md)、[管理后台前端设计](../../architecture/admin-web.md)、[数据库规范](../../database/conventions.md) 和 [错误与异常规范](../../api/errors.md)。请求响应、字段校验、权限码、错误码和幂等行为以 [OpenAPI 契约](../../../openapi/openapi.yaml) 为唯一权威来源。
 
 ## 空间与房屋
 
