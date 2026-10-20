@@ -34,11 +34,11 @@ pnpm --filter admin-web build
 
 ## 配置、数据库与迁移
 
-`/etc/xcmty/staging.env` 保存运行配置，`migration.env` 保存迁移配置，均为 `root:root 600`。systemd 的 PID 1 读取 `EnvironmentFile` 后降权启动进程，应用账号无需直接读取配置文件。敏感值不出现在命令参数、日志、发布清单或 Git 中。
+`/etc/xcmty/staging.env` 保存运行配置，`migration.env` 保存迁移配置，均为 `root:root 600`。systemd 的 PID 1 读取 `EnvironmentFile` 后降权启动进程，应用账号无需直接读取配置文件。运行和迁移环境的 `APP_REDIS_URL` 使用 `xcmty-runtime` 的最小 ACL 身份；两者都不能包含 `xcmty-admin`、数据库管理员或其他管理凭据。敏感值不出现在命令参数、日志、发布清单或 Git 中。运维修改配置统一使用 `sudoedit`。
 
 字段分别参考[运行环境模板](../../deploy/staging/env/staging.env.example)和[迁移环境模板](../../deploy/staging/env/migration.env.example)，填入实际受控值后使用，不复制占位符上线。
 
-数据库为 `community_platform`。`community_platform_migrator` 拥有数据库及业务 schema；`community_platform_runtime` 仅有连接、schema 使用及业务表 DML 权限，不具备 DDL 或迁移角色成员资格。首次只在空库执行已有 Alembic 迁移，不使用 seed 或 reset 工具。
+数据库使用测试环境配置中的业务库。独立迁移角色拥有数据库及业务 schema；运行角色仅有连接、schema 使用及业务表 DML 权限，不具备 DDL 或迁移角色成员资格。首次只在空库执行已有 Alembic 迁移，不使用 seed 或 reset 工具。
 
 在服务器选择待发布的实际目录后，通过独立受控任务执行迁移：
 
@@ -46,7 +46,7 @@ pnpm --filter admin-web build
 TASK_RELEASE=/srv/xcmty/releases/<UTC时间>-<短SHA>
 sudo systemd-run --wait --pipe --collect \
   --unit=xcmty-migrate \
-  -p User=appsvc -p Group=appsvc \
+  -p User=appsvc-migrator -p Group=appsvc-migrator \
   -p EnvironmentFile=/etc/xcmty/migration.env \
   -p Environment=PYTHONDONTWRITEBYTECODE=1 \
   --working-directory="$TASK_RELEASE/backend" \
@@ -148,10 +148,10 @@ HTTP challenge 入口不可用时，可通过 DNS API 自动添加和清理 TXT�
 在已有受控模板的服务器上，通过交互终端编辑：
 
 ```bash
-ssh -t xcmty 'sudo nano /etc/xcmty/dnspod-credentials.ini'
+ssh -t xcmty 'sudoedit /etc/xcmty/dnspod-credentials.ini'
 ```
 
-nano 中按 `Ctrl+O`、回车保存，按 `Ctrl+X` 退出。密钥由域管理员自行填写，代理不通过浏览器创建密钥，也不读取密钥值用于聊天交付。
+在 `sudoedit` 使用的编辑器中保存并退出。密钥由域管理员自行填写，代理不通过浏览器创建密钥，也不读取密钥值用于聊天交付。
 
 安装插件时固定版本并验证与服务器 Python / Certbot 的兼容性，完整指定 credentials 文件，不使用环境变量凭据模式；插件来源见 [certbot-dns-tencentcloud](https://github.com/frefreak/certbot-dns-tencentcloud)。续期成功后，仅按本次返回的记录 ID 清理 challenge，不批量删除已有 TXT。切换 authenticator 前先备份现有 renewal 配置，在 staging 中完成非交互续期及限定 deploy hook 演练，成功后核对持久配置与唯一生效的定时任务；失败保留现有生产证书和 Nginx 配置。
 
@@ -227,17 +227,17 @@ TLS 站点设置 `absolute_redirect off`，API 前缀补斜杠使用相对 `308`
 
 IP 字面量必须使用 IP SAN，不能复用仅含四域 DNS SAN 的证书。独立客户端使用支持 `--ip-address` 的 Certbot 5.8 / ACME 5.8，完整 17 个依赖版本及 Linux wheel SHA-256 以[固定依赖锁](../../deploy/staging/certbot/ip/certbot-requirements.txt)为准，不在指南另存哈希。该锁针对 CPython 3.14.4、Linux x86_64、glibc ≥ 2.40，仅使用 wheel；其他目标环境须重新准备兼容依赖并核验，不直接套用。在最终绝对路径安装，离线安装使用 `--no-index`、`--find-links`、`--require-hashes` 并限制为 wheel，逐包核验哈希，执行依赖检查及原生 CSR / IP SAN 检查，不覆盖域名 Certbot 或应用虚拟环境，不修改后端 `uv.lock`。官方参数与 profile 依据见 [Certbot 使用指南](https://eff-certbot.readthedocs.io/en/stable/using.html)及 [Let’s Encrypt Profiles](https://letsencrypt.org/docs/profiles/)。
 
-| 用途                   | 路径或名称                                                                      |
-| ---------------------- | ------------------------------------------------------------------------------- |
-| 用途 | 路径或名称 |
-| --- | --- |
-| IP 客户端 | `/opt/xcmty-certbot-ip/bin/certbot` |
+| 用途                   | 路径或名称                                                                    |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| 用途                   | 路径或名称                                                                    |
+| ---                    | ---                                                                           |
+| IP 客户端              | `/opt/xcmty-certbot-ip/bin/certbot`                                           |
 | 独立配置 / 工作 / 日志 | `/etc/letsencrypt-ip` / `/var/lib/letsencrypt-ip` / `/var/log/letsencrypt-ip` |
-| HTTP-01 webroot | `/var/www/xcmty-acme-ip` |
-| 独立 lineage | `xcmty-ip` |
-| Nginx 证书 / 私钥 | `/etc/letsencrypt-ip/live/xcmty-ip/fullchain.pem` / `privkey.pem` |
-| 限定成功 hook | `/usr/local/sbin/xcmty-ip-cert-deploy` |
-| systemd 服务 / timer | `xcmty-certbot-ip.service` / `xcmty-certbot-ip.timer` |
+| HTTP-01 webroot        | `/var/www/xcmty-acme-ip`                                                      |
+| 独立 lineage           | `xcmty-ip`                                                                    |
+| Nginx 证书 / 私钥      | `/etc/letsencrypt-ip/live/xcmty-ip/fullchain.pem` / `privkey.pem`             |
+| 限定成功 hook          | `/usr/local/sbin/xcmty-ip-cert-deploy`                                        |
+| systemd 服务 / timer   | `xcmty-certbot-ip.service` / `xcmty-certbot-ip.timer`                         |
 
 配置、工作目录和日志只允许 root 访问，私钥仅 root 可读。webroot 仅存放公开 challenge，不放置密钥、环境文件或日志；Nginx 仅获得 challenge 读取权限。所有 IP 客户端调用显式传入三个隔离目录，不让 Certbot 4.0 扫描 IP renewal 配置。
 
