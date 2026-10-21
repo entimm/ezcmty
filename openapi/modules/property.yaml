@@ -1,3 +1,41 @@
+workspaceSummary:
+  get:
+    operationId: getPropertyWorkspaceSummary
+    x-runtimes:
+      - property_admin_api
+    tags:
+      - property
+    summary: 读取物业工作台运营指标
+    description: >-
+      要求物业完整会话及公司读取权限。billing_month 按 Asia/Shanghai 当前业务月份计算；应收和已收金额统计当前月有效物业费账单，待核对数量统计当前公司尚未解决的收款核对差异。无对应业务读取权限的指标返回 null。读取可安全重试。
+    x-permissions:
+      - property.company.read
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/PropertyWorkspaceSummary
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
 companies:
   get:
     operationId: listPropertyCompanies

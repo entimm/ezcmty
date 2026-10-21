@@ -12,6 +12,7 @@ from backend_app.schemas.admin import (
     Name,
     Password,
 )
+from backend_app.schemas.billing import Month
 
 Code = Annotated[
     str,
@@ -62,6 +63,14 @@ class PropertyCompany(AdminSchema):
         if value.tzinfo is None:
             raise ValueError("Timestamp must include a timezone")
         return value.astimezone(UTC)
+
+
+class PropertyWorkspaceSummary(AdminSchema):
+    billing_month: Month
+    pending_house_claims: Annotated[int, Field(ge=0)] | None
+    monthly_receivable_cents: Annotated[int, Field(ge=0)] | None
+    monthly_settled_cents: Annotated[int, Field(ge=0)] | None
+    pending_reconciliation_count: Annotated[int, Field(ge=0)] | None
 
 
 class CommunityCreate(AdminSchema):

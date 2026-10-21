@@ -1,8 +1,13 @@
-from sqlalchemy import select, update
+from datetime import date
+
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from backend_app.core.identifiers import normalize_property_code
 from backend_app.models.admin import AdminAccount
+from backend_app.models.billing import Bill
+from backend_app.models.house_claims import HouseClaim
+from backend_app.models.payments import PaymentOrder, PaymentReconciliationDiscrepancy
 from backend_app.models.property import Community, PropertyCompany
 from backend_app.repositories.pagination import page_statement, read_page
 
@@ -119,3 +124,41 @@ class PropertyRepository:
             )
             .values(session_version=AdminAccount.session_version + 1)
         )
+
+    def workspace_summary(self, company_id: str, billing_month: date) -> dict[str, int]:
+        billing = self.db.execute(
+            select(
+                func.coalesce(func.sum(Bill.receivable_cents), 0),
+                func.coalesce(func.sum(Bill.settled_cents), 0),
+            ).where(
+                Bill.property_company_id == company_id,
+                Bill.period_start == billing_month,
+                Bill.lifecycle_status == "active",
+            )
+        ).one()
+        pending_claims = self.db.scalar(
+            select(func.count())
+            .select_from(HouseClaim)
+            .where(
+                HouseClaim.property_company_id == company_id,
+                HouseClaim.status == "pending",
+            )
+        )
+        pending_reconciliation = self.db.scalar(
+            select(func.count())
+            .select_from(PaymentReconciliationDiscrepancy)
+            .join(
+                PaymentOrder,
+                PaymentOrder.id == PaymentReconciliationDiscrepancy.payment_order_id,
+            )
+            .where(
+                PaymentOrder.property_company_id == company_id,
+                PaymentReconciliationDiscrepancy.status.in_(("open", "observing")),
+            )
+        )
+        return {
+            "monthly_receivable_cents": int(billing[0] or 0),
+            "monthly_settled_cents": int(billing[1] or 0),
+            "pending_house_claims": int(pending_claims or 0),
+            "pending_reconciliation_count": int(pending_reconciliation or 0),
+        }

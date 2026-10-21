@@ -26,6 +26,7 @@ def test_platform_provisioning_to_restricted_login_password_change_and_workspace
     cookie = w.client.cookies.get("admin_session")
     assert cookie
     for path in (
+        "/property-workspace/summary",
         "/property-companies/current",
         "/communities",
         f"/communities/{w.community_id}",
@@ -87,6 +88,13 @@ def test_platform_provisioning_to_restricted_login_password_change_and_workspace
     own = w.client.get(f"{PREFIX}/property-companies/current")
     assert own.status_code == 200 and own.json()["id"] == w.company_id
     assert own.json()["contact_name"] == "联系人"
+    summary = w.client.get(f"{PREFIX}/property-workspace/summary")
+    assert summary.status_code == 200
+    assert summary.json()["billing_month"]
+    assert summary.json()["pending_house_claims"] == 0
+    assert summary.json()["monthly_receivable_cents"] == 0
+    assert summary.json()["monthly_settled_cents"] == 0
+    assert summary.json()["pending_reconciliation_count"] == 0
     listing = w.client.get(f"{PREFIX}/communities").json()
     assert listing["total"] == 1 and listing["items"][0]["id"] == w.community_id
     profile = w.client.patch(

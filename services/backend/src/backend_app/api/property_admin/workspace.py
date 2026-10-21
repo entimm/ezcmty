@@ -26,6 +26,17 @@ def create_property_workspace_router(permission: Callable[[str], DependsParamete
     Service = Annotated[PropertyWorkspaceService, Depends(service)]
 
     @router.get(
+        "/v1/property-workspace/summary",
+        response_model=schema.PropertyWorkspaceSummary,
+        operation_id="getPropertyWorkspaceSummary",
+        responses=responses,
+    )
+    def get_summary(
+        svc: Service, ctx: Annotated[AdminContext, permission("property.company.read")]
+    ) -> schema.PropertyWorkspaceSummary:
+        return svc.get_summary(ctx)
+
+    @router.get(
         "/v1/property-companies/current",
         response_model=schema.PropertyCompany,
         operation_id="getCurrentPropertyCompany",

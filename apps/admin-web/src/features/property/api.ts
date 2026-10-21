@@ -3,6 +3,14 @@ import type { Community, PropertyCompany } from '../../shared/api/property';
 import { queryString } from '../../shared/api/query-string';
 import type { AdminRequest } from '../../shared/request-client';
 
+export interface PropertyWorkspaceSummary {
+  billing_month: string;
+  pending_house_claims: number | null;
+  monthly_receivable_cents: number | null;
+  monthly_settled_cents: number | null;
+  pending_reconciliation_count: number | null;
+}
+
 export interface CommunityFilters {
   page: number;
   page_size: number;
@@ -13,6 +21,8 @@ export interface CommunityFilters {
 
 export function createPropertyWorkspaceApi(request: AdminRequest) {
   return {
+    summary: () =>
+      request<PropertyWorkspaceSummary>('/v1/property-workspace/summary'),
     currentCompany: () =>
       request<PropertyCompany>('/v1/property-companies/current'),
     communities: (filters: CommunityFilters) =>

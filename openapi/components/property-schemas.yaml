@@ -89,6 +89,45 @@ PropertyCompany:
     - enabled
     - created_at
     - updated_at
+PropertyWorkspaceSummary:
+  type: object
+  additionalProperties: false
+  description: 当前物业公司的工作台运营指标；无对应读取权限的指标返回 null。
+  properties:
+    billing_month:
+      type: string
+      pattern: ^\d{4}-(0[1-9]|1[0-2])$
+      description: 指标所属账单月份，按 Asia/Shanghai 当前业务月份计算。
+    pending_house_claims:
+      anyOf:
+        - type: integer
+          minimum: 0
+        - type: 'null'
+      description: 待审核房屋认领申请数。
+    monthly_receivable_cents:
+      anyOf:
+        - type: integer
+          minimum: 0
+        - type: 'null'
+      description: 当前月有效物业费账单的应收金额，单位为分。
+    monthly_settled_cents:
+      anyOf:
+        - type: integer
+          minimum: 0
+        - type: 'null'
+      description: 当前月有效物业费账单的已收金额，单位为分。
+    pending_reconciliation_count:
+      anyOf:
+        - type: integer
+          minimum: 0
+        - type: 'null'
+      description: 当前物业公司尚未解决的收款核对差异数。
+  required:
+    - billing_month
+    - pending_house_claims
+    - monthly_receivable_cents
+    - monthly_settled_cents
+    - pending_reconciliation_count
 CommunityCreate:
   type: object
   additionalProperties: false

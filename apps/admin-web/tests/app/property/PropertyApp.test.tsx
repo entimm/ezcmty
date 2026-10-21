@@ -25,6 +25,21 @@ const session: SessionResponse = {
   must_change_password: false,
   csrf_token: 'property-csrf',
 };
+const workspaceSession: SessionResponse = {
+  ...session,
+  permissions: [
+    'property.company.read',
+    'property.community.read',
+    'property.house.read',
+    'property.house_claim.read',
+    'property.resident_house_binding.read',
+    'property.bill.read',
+    'property.payment.read',
+    'property.payment_config.read',
+    'property.payment_reconciliation.read',
+    'property.import.read',
+  ],
+};
 const company = {
   id: '019a0000-0000-7000-8000-000000000002',
   code: 'COMPANY',
@@ -99,6 +114,14 @@ function mockPropertyApi(initial: SessionResponse | null = session) {
     }
     if (path.endsWith('/property-companies/current'))
       return Response.json(company);
+    if (path.endsWith('/property-workspace/summary'))
+      return Response.json({
+        billing_month: '2026-10',
+        pending_house_claims: 3,
+        monthly_receivable_cents: 200000,
+        monthly_settled_cents: 120000,
+        pending_reconciliation_count: 2,
+      });
     if (path.endsWith('/communities'))
       return Response.json({
         items: [community],
@@ -225,8 +248,7 @@ describe('property login and workspace', () => {
       target: { value: 'new-property-password' },
     });
     fireEvent.click(screen.getByRole('button', { name: '登 录' }));
-    expect(await screen.findByText(company.name)).toBeInTheDocument();
-    expect(screen.getByText(company.contact_phone)).toBeInTheDocument();
+    expect(await screen.findByText('物业工作台')).toBeInTheDocument();
   });
 
   it('loads community details on demand and keeps company scope out of the form', async () => {
@@ -291,13 +313,14 @@ describe('property login and workspace', () => {
     ).toBe(false);
   });
 
-  it('keeps personal account links available without requesting forbidden company data', async () => {
+  it('removes the low-frequency personal account card without requesting company data', async () => {
     const { fetcher } = mockPropertyApi({ ...session, permissions: [] });
     renderProperty('/property');
     expect(await screen.findByText('物业工作台')).toBeInTheDocument();
+    expect(screen.queryByText('个人账户')).not.toBeInTheDocument();
     expect(
-      screen.getAllByRole('link', { name: '个人资料' }).length,
-    ).toBeGreaterThan(0);
+      screen.queryByRole('link', { name: '个人资料' }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText('所属物业公司')).not.toBeInTheDocument();
     expect(screen.queryByText('小区查询')).not.toBeInTheDocument();
     expect(
@@ -325,5 +348,22 @@ describe('property login and workspace', () => {
     expect(screen.getByLabelText('新密码')).toHaveValue(
       'new-property-password',
     );
+  });
+
+  it('renders live metrics and grouped workspace shortcuts', async () => {
+    mockPropertyApi(workspaceSession);
+    renderProperty('/property');
+    expect(await screen.findByText('待审核房屋认领')).toBeInTheDocument();
+    expect(screen.getByText('本月应收物业费')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: '收费管理' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: '房屋与业主管理' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('生成、查询和处理物业费账单')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /本月应收物业费/ }),
+    ).toHaveAttribute('href', '/property/bills');
   });
 });

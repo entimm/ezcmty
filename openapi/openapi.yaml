@@ -58,6 +58,8 @@ paths:
     '$ref': './modules/property.yaml#/companies'
   '/v1/property-companies/current':
     '$ref': './modules/property.yaml#/currentCompany'
+  '/v1/property-workspace/summary':
+    '$ref': './modules/property.yaml#/workspaceSummary'
   '/v1/property-companies/{company_id}':
     '$ref': './modules/property.yaml#/company'
   '/v1/communities':

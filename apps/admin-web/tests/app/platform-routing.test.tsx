@@ -39,7 +39,12 @@ describe('platform-routing', () => {
           /^\/(platform|property)(\/|$)/,
         );
       }
-      fireEvent.click(screen.getAllByRole('link', { name: '个人资料' })[0]);
+      if (host === 'property.xlife.test') {
+        fireEvent.click(screen.getByRole('img', { name: 'user' }));
+        fireEvent.click(await screen.findByRole('link', { name: '个人资料' }));
+      } else {
+        fireEvent.click(screen.getAllByRole('link', { name: '个人资料' })[0]);
+      }
       expect(await screen.findByLabelText('显示名称')).toBeInTheDocument();
       expect(screen.getByTestId('location')).toHaveTextContent('/profile');
       expect(

@@ -11,8 +11,15 @@ import { useDirtyForm } from '../../shared/hooks/use-dirty-form';
 import { applyFormErrors } from '../../shared/form-utils';
 import { OperationError, ReadError } from '../../components/AdminFeedback';
 import type { Profile } from '../../shared/api/admin';
+import type { PropertyCompany } from '../../shared/api/property';
 
-function ProfileForm({ profile }: { profile: Profile }) {
+function ProfileForm({
+  profile,
+  company,
+}: {
+  profile: Profile;
+  company?: PropertyCompany;
+}) {
   const api = useProfileApi(),
     client = useQueryClient();
   const { updateDisplayName } = useAdminSession();
@@ -46,6 +53,11 @@ function ProfileForm({ profile }: { profile: Profile }) {
       <Form.Item label="所属后台">
         <Input value={title} readOnly />
       </Form.Item>
+      {company && (
+        <Form.Item label="所属物业公司">
+          <Input value={`${company.name}（${company.code}）`} readOnly />
+        </Form.Item>
+      )}
       <Form.Item
         name="display_name"
         label="显示名称"
@@ -61,12 +73,20 @@ function ProfileForm({ profile }: { profile: Profile }) {
 }
 export default function ProfilePage() {
   const api = useProfileApi(),
-    { status } = useAdminSession();
+    { request, scope, status, hasPermission } = useAdminSession();
   const [params, setParams] = useSearchParams();
   const query = useQuery({
     queryKey: ['profile'],
     queryFn: api.profile,
     enabled: status === 'authenticated',
+  });
+  const companyQuery = useQuery({
+    queryKey: ['property-companies', 'current'],
+    queryFn: () => request<PropertyCompany>('/v1/property-companies/current'),
+    enabled:
+      status === 'authenticated' &&
+      scope === 'property_admin' &&
+      hasPermission('property.company.read'),
   });
   const tab = params.get('tab') === 'password' ? 'password' : 'profile';
   return (
@@ -83,7 +103,7 @@ export default function ProfilePage() {
               children: query.isError ? (
                 <ReadError retry={() => void query.refetch()} />
               ) : query.data ? (
-                <ProfileForm profile={query.data} />
+                <ProfileForm profile={query.data} company={companyQuery.data} />
               ) : (
                 <Card loading />
               ),

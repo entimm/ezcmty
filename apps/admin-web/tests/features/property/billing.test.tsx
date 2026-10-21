@@ -112,6 +112,14 @@ function mockBilling(
     if (path.endsWith('/admin-sessions/current')) return Response.json(session);
     if (path.endsWith('/property-companies/current'))
       return Response.json({ id: community, name: '物业公司', enabled: true });
+    if (path.endsWith('/property-workspace/summary'))
+      return Response.json({
+        billing_month: '2026-10',
+        pending_house_claims: 0,
+        monthly_receivable_cents: 0,
+        monthly_settled_cents: 0,
+        pending_reconciliation_count: 0,
+      });
     const communityData = {
       id: community,
       property_company_id: community,

@@ -131,6 +131,14 @@ export function mockPayments(
     if (path.endsWith('/admin-sessions/current')) return Response.json(session);
     if (path.endsWith('/property-companies/current'))
       return Response.json({ id: companyId, enabled: true, name: '测试物业' });
+    if (path.endsWith('/property-workspace/summary'))
+      return Response.json({
+        billing_month: '2026-10',
+        pending_house_claims: 0,
+        monthly_receivable_cents: 0,
+        monthly_settled_cents: 0,
+        pending_reconciliation_count: 0,
+      });
     const custom = mutate?.(path, init);
     if (custom) return custom;
     const page = (items: unknown[]) =>

@@ -3,6 +3,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from backend_app.core.errors import AppError
+from backend_app.domain.billing.calculation import business_today
 from backend_app.repositories.property import PropertyRepository
 from backend_app.schemas import property as schema
 from backend_app.schemas.mappers.property import community_view
@@ -28,6 +29,37 @@ class PropertyWorkspaceService:
         if company is None or not company.enabled:
             raise AppError("auth.unauthenticated")
         return schema.PropertyCompany.model_validate(company)
+
+    def get_summary(self, context: AdminContext) -> schema.PropertyWorkspaceSummary:
+        company_id = self._company_id(context, "property.company.read")
+        company = self.repo.company(company_id)
+        if company is None or not company.enabled:
+            raise AppError("auth.unauthenticated")
+        billing_month = business_today().replace(day=1)
+        values = self.repo.workspace_summary(company_id, billing_month)
+        return schema.PropertyWorkspaceSummary(
+            billing_month=billing_month.strftime("%Y-%m"),
+            pending_house_claims=(
+                values["pending_house_claims"]
+                if "property.house_claim.read" in context.permissions
+                else None
+            ),
+            monthly_receivable_cents=(
+                values["monthly_receivable_cents"]
+                if "property.bill.read" in context.permissions
+                else None
+            ),
+            monthly_settled_cents=(
+                values["monthly_settled_cents"]
+                if "property.payment.read" in context.permissions
+                else None
+            ),
+            pending_reconciliation_count=(
+                values["pending_reconciliation_count"]
+                if "property.payment_reconciliation.read" in context.permissions
+                else None
+            ),
+        )
 
     def list_communities(self, context: AdminContext, **filters: Any) -> schema.CommunityPage:
         company_id = self._company_id(context, "property.community.read")

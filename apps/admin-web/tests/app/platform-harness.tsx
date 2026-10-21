@@ -208,6 +208,14 @@ export function mockApi(
       });
     if (path.endsWith('/property-companies/current'))
       return Response.json({ ...company, enabled: true });
+    if (path.endsWith('/property-workspace/summary'))
+      return Response.json({
+        billing_month: '2026-10',
+        pending_house_claims: 0,
+        monthly_receivable_cents: 0,
+        monthly_settled_cents: 0,
+        pending_reconciliation_count: 0,
+      });
     if (path.endsWith('/admin-accounts/me'))
       return Response.json({
         id: currentIdentity?.subject_id,

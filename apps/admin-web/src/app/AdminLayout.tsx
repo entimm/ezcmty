@@ -93,6 +93,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
         render: (_, dom) =>
           session ? (
             <Dropdown
+              trigger={['click']}
               menu={{
                 items: [
                   {
