@@ -1,0 +1,33 @@
+ImportProblem:
+  description: RFC 9457错误；使用公共ProblemDetails、X-Request-ID与no-store；状态和领域码由错误目录确定。
+  headers:
+    X-Request-ID:
+      $ref: ./headers.yaml#/RequestId
+    Cache-Control:
+      description: 敏感导入数据禁止缓存。
+      schema:
+        type: string
+        const: no-store
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/ProblemDetails
+ImportRateLimited:
+  description: 明确限流，能够承诺等待时才返回Retry-After。
+  headers:
+    X-Request-ID:
+      $ref: ./headers.yaml#/RequestId
+    Cache-Control:
+      description: 敏感导入数据禁止缓存。
+      schema:
+        type: string
+        const: no-store
+    Retry-After:
+      description: 可承诺的等待秒数，仅适用时返回。
+      schema:
+        type: integer
+        minimum: 1
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/ProblemDetails

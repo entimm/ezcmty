@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Community Property Platform API
-  version: 0.12.0
+  version: 0.13.0
   description: 社区物业消费返利与物业费抵扣平台 API 契约。
 servers:
   - url: '/'
@@ -23,6 +23,8 @@ tags:
     description: 居民账单缴费与支付渠道通知
   - name: payment-management
     description: 收款配置、支付资金记录、核对与恢复
+  - name: imports
+    description: 管理后台通用批量导入
 paths:
   '/healthz':
     '$ref': './modules/system.yaml#/health'
@@ -216,6 +218,40 @@ paths:
     $ref: ./modules/payment-webhooks.yaml#/paymentSuccess
   /webhooks/payments/wechatpay/profit-sharing:
     $ref: ./modules/payment-webhooks.yaml#/profitSharing
+  '/v1/import-types':
+    $ref: ./modules/imports.yaml#/types
+  '/v1/import-types/{type_key}/versions/{version_no}':
+    $ref: ./modules/imports.yaml#/template
+  '/v1/import-types/{type_key}/versions/{version_no}/template-file':
+    $ref: ./modules/imports.yaml#/templateFile
+  '/v1/import-batches':
+    $ref: ./modules/imports.yaml#/batches
+  '/v1/import-batches/{batch_id}':
+    $ref: ./modules/imports.yaml#/batch
+  '/v1/import-batches/{batch_id}/source-file':
+    $ref: ./modules/imports.yaml#/sourceFile
+  '/v1/import-batches/{batch_id}/rows':
+    $ref: ./modules/imports.yaml#/rows
+  '/v1/import-batches/{batch_id}/issues':
+    $ref: ./modules/imports.yaml#/issues
+  '/v1/import-batches/{batch_id}/events':
+    $ref: ./modules/imports.yaml#/events
+  '/v1/import-batches/{batch_id}/precheck':
+    $ref: ./modules/imports.yaml#/precheck
+  '/v1/import-batches/{batch_id}/confirm':
+    $ref: ./modules/imports.yaml#/confirm
+  '/v1/import-batches/{batch_id}/cancel':
+    $ref: ./modules/imports.yaml#/cancel
+  '/v1/import-batches/{batch_id}/retry-failed':
+    $ref: ./modules/imports.yaml#/retryFailed
+  '/v1/import-batches/{batch_id}/recover':
+    $ref: ./modules/imports.yaml#/recover
+  '/v1/import-batches/{batch_id}/error-file':
+    $ref: ./modules/imports.yaml#/errorFile
+  '/v1/import-batches/{batch_id}/artifacts/error-file':
+    $ref: ./modules/imports.yaml#/errorFileArtifact
+  '/v1/import-batches/{batch_id}/artifacts/error-file/download':
+    $ref: ./modules/imports.yaml#/errorFileDownload
 components:
   schemas:
     RequestId:

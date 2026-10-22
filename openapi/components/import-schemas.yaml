@@ -1,0 +1,1187 @@
+ImportHash:
+  type: string
+  pattern: ^[0-9a-f]{64}$
+  minLength: 64
+  maxLength: 64
+ImportTypeKey:
+  type: string
+  pattern: ^[a-z][a-z0-9_]*$
+  minLength: 1
+  maxLength: 64
+ImportFieldKey:
+  type: string
+  pattern: ^[a-z][a-z0-9_]*$
+  minLength: 1
+  maxLength: 64
+ImportScalar:
+  type:
+    - string
+    - integer
+    - number
+    - boolean
+    - 'null'
+ImportBatchStatus:
+  type: string
+  enum:
+    - draft
+    - uploading
+    - prechecking
+    - preview_ready
+    - executing
+    - completed
+    - partial_failed
+    - failed
+    - blocked
+    - cancel_requested
+    - cancelled
+    - expired
+ImportBatchPhase:
+  type: string
+  enum:
+    - awaiting_source_file
+    - uploading
+    - parse_queued
+    - parse
+    - precheck_queued
+    - precheck
+    - awaiting_confirmation
+    - apply_queued
+    - apply
+    - recovery_queued
+    - recovery
+    - cancelling
+    - finished
+ImportTaskPhase:
+  type: string
+  enum:
+    - parse
+    - precheck
+    - apply
+    - artifact
+ImportTaskStatus:
+  type: string
+  enum:
+    - ready
+    - running
+    - completed
+    - paused
+    - cancelled
+ImportScopeType:
+  type: string
+  enum:
+    - company
+    - community
+ImportExecutionStatus:
+  type: string
+  enum:
+    - pending
+    - created
+    - skipped
+    - failed
+    - uncertain
+    - cancelled
+    - excluded
+ImportPrecheckStatus:
+  type: string
+  enum:
+    - pending
+    - valid
+    - warning
+    - error
+ImportPlannedAction:
+  type: string
+  enum:
+    - none
+    - create
+    - skip
+    - conflict
+ImportApplyPolicy:
+  type: string
+  enum:
+    - all_rows
+    - valid_rows_only
+ImportFileFormat:
+  type: string
+  enum:
+    - csv
+    - xlsx
+ImportErrorFileStatus:
+  type: string
+  enum:
+    - not_generated
+    - queued
+    - generating
+    - ready
+    - stale
+    - failed
+    - expired
+ImportNextAction:
+  type: string
+  enum:
+    - upload_source_file
+    - precheck
+    - confirm
+    - cancel
+    - retry_failed
+    - recover
+    - generate_error_file
+    - download_error_file
+ImportVersion:
+  type: object
+  additionalProperties: false
+  required:
+    - version_no
+    - config_hash
+    - available_for_new_batches
+    - template_downloadable
+    - released_at
+    - release_notes
+  properties:
+    version_no:
+      type: integer
+      minimum: 1
+    config_hash:
+      $ref: ./import-schemas.yaml#/ImportHash
+    available_for_new_batches:
+      type: boolean
+    template_downloadable:
+      type: boolean
+    released_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应为 UTC Z。
+    release_notes:
+      type: string
+      maxLength: 2000
+ImportType:
+  type: object
+  additionalProperties: false
+  required:
+    - key
+    - name
+    - allowed_scope_types
+    - supported_modes
+    - versions
+  properties:
+    key:
+      $ref: ./import-schemas.yaml#/ImportTypeKey
+    name:
+      type: string
+      minLength: 1
+      maxLength: 128
+    allowed_scope_types:
+      type: array
+      items:
+        $ref: ./import-schemas.yaml#/ImportScopeType
+    supported_modes:
+      type: array
+      items:
+        type: string
+        enum:
+          - create
+    versions:
+      type: array
+      items:
+        $ref: ./import-schemas.yaml#/ImportVersion
+ImportTypeList:
+  type: object
+  additionalProperties: false
+  required:
+    - items
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./import-schemas.yaml#/ImportType
+  description: 不分页；无生产适配器或无授权类型时 items=[]，不返回测试类型。
+ImportTemplateField:
+  type: object
+  additionalProperties: false
+  required:
+    - key
+    - label
+    - order
+    - required
+    - data_type
+    - max_length
+    - format
+    - enum_values
+    - example
+    - description
+    - normalization_rules
+  properties:
+    key:
+      $ref: ./import-schemas.yaml#/ImportFieldKey
+    label:
+      type: string
+      minLength: 1
+      maxLength: 128
+    order:
+      type: integer
+      minimum: 1
+    required:
+      type: boolean
+    data_type:
+      type: string
+      enum:
+        - string
+        - integer
+        - decimal
+        - boolean
+        - date
+        - datetime
+    max_length:
+      anyOf:
+        - type: integer
+          minimum: 1
+        - type: 'null'
+    format:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 128
+        - type: 'null'
+    enum_values:
+      type: array
+      items:
+        $ref: ./import-schemas.yaml#/ImportScalar
+    example:
+      $ref: ./import-schemas.yaml#/ImportScalar
+    description:
+      type: string
+      maxLength: 1000
+    normalization_rules:
+      type: array
+      items:
+        type: string
+        minLength: 1
+        maxLength: 500
+ImportTemplate:
+  type: object
+  additionalProperties: false
+  required:
+    - key
+    - name
+    - version_no
+    - config_hash
+    - available_for_new_batches
+    - released_at
+    - release_notes
+    - fields
+  properties:
+    key:
+      $ref: ./import-schemas.yaml#/ImportTypeKey
+    name:
+      type: string
+      minLength: 1
+      maxLength: 128
+    version_no:
+      type: integer
+      minimum: 1
+    config_hash:
+      $ref: ./import-schemas.yaml#/ImportHash
+    available_for_new_batches:
+      type: boolean
+    released_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应为 UTC Z。
+    release_notes:
+      type: string
+      maxLength: 2000
+    fields:
+      type: array
+      items:
+        $ref: ./import-schemas.yaml#/ImportTemplateField
+ImportScopeInput:
+  type: object
+  additionalProperties: false
+  required:
+    - type
+    - id
+  properties:
+    type:
+      $ref: ./import-schemas.yaml#/ImportScopeType
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+ImportScope:
+  type: object
+  additionalProperties: false
+  required:
+    - type
+    - id
+    - name
+  properties:
+    type:
+      $ref: ./import-schemas.yaml#/ImportScopeType
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    name:
+      type: string
+      minLength: 1
+      maxLength: 128
+ImportTemplateIdentity:
+  type: object
+  additionalProperties: false
+  required:
+    - key
+    - version_no
+    - config_hash
+  properties:
+    key:
+      $ref: ./import-schemas.yaml#/ImportTypeKey
+    version_no:
+      type: integer
+      minimum: 1
+    config_hash:
+      $ref: ./import-schemas.yaml#/ImportHash
+ImportTaskIdentity:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - phase
+    - status
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    phase:
+      $ref: ./import-schemas.yaml#/ImportTaskPhase
+    status:
+      $ref: ./import-schemas.yaml#/ImportTaskStatus
+  description: 可持久化到请求幂等响应的最小任务投影。
+ImportTaskProgress:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - phase
+    - status
+    - progress_done
+    - progress_total
+    - updated_at
+    - last_error_code
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    phase:
+      $ref: ./import-schemas.yaml#/ImportTaskPhase
+    status:
+      $ref: ./import-schemas.yaml#/ImportTaskStatus
+    progress_done:
+      type: integer
+      minimum: 0
+    progress_total:
+      anyOf:
+        - type: integer
+          minimum: 0
+        - type: 'null'
+    updated_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应为 UTC Z。
+    last_error_code:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 128
+        - type: 'null'
+ImportSourceIdentity:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - size_bytes
+    - sha256
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    size_bytes:
+      type: integer
+      minimum: 0
+      maximum: 10485760
+    sha256:
+      $ref: ./import-schemas.yaml#/ImportHash
+  description: 不含原文件名、私有路径和下载地址。
+ImportSourceArtifact:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - file_name
+    - media_type
+    - size_bytes
+    - sha256
+    - expires_at
+    - available
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    file_name:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 255
+        - type: 'null'
+    media_type:
+      type: string
+      enum:
+        - text/csv
+        - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+    size_bytes:
+      type: integer
+      minimum: 0
+      maximum: 10485760
+    sha256:
+      $ref: ./import-schemas.yaml#/ImportHash
+    expires_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应为 UTC Z。
+    available:
+      type: boolean
+  description: 原文件名经过安全处理并仅在保留期内按权限返回，清理后为 null。
+ImportPreview:
+  type: object
+  additionalProperties: false
+  required:
+    - version
+    - fingerprint
+    - generated_at
+    - expires_at
+  properties:
+    version:
+      type: integer
+      minimum: 1
+    fingerprint:
+      $ref: ./import-schemas.yaml#/ImportHash
+    generated_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应为 UTC Z。
+    expires_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应为 UTC Z。
+  description: 整次预检成功后原子发布；解析和重新预检期间不返回旧预览。有效期最多24小时且不超过retention_until。
+  x-preview-ttl-hours: 24
+ImportPreviewStatistics:
+  type: object
+  additionalProperties: false
+  required:
+    - create_rows
+    - update_rows
+    - skip_rows
+    - warning_rows
+    - error_rows
+  properties:
+    create_rows:
+      type: integer
+      minimum: 0
+    update_rows:
+      type: integer
+      minimum: 0
+    skip_rows:
+      type: integer
+      minimum: 0
+    warning_rows:
+      type: integer
+      minimum: 0
+    error_rows:
+      type: integer
+      minimum: 0
+ImportExecutionStatistics:
+  type: object
+  additionalProperties: false
+  required:
+    - created_rows
+    - updated_rows
+    - skipped_rows
+    - failed_rows
+    - uncertain_rows
+    - cancelled_rows
+    - excluded_rows
+    - processed_rows
+    - retryable_failed_rows
+  properties:
+    created_rows:
+      type: integer
+      minimum: 0
+    updated_rows:
+      type: integer
+      minimum: 0
+    skipped_rows:
+      type: integer
+      minimum: 0
+    failed_rows:
+      type: integer
+      minimum: 0
+    uncertain_rows:
+      type: integer
+      minimum: 0
+    cancelled_rows:
+      type: integer
+      minimum: 0
+    excluded_rows:
+      type: integer
+      minimum: 0
+    processed_rows:
+      type: integer
+      minimum: 0
+    retryable_failed_rows:
+      type: integer
+      minimum: 0
+ImportStatistics:
+  type: object
+  additionalProperties: false
+  required:
+    - total_rows
+    - preview
+    - execution
+  properties:
+    total_rows:
+      type: integer
+      minimum: 0
+    preview:
+      $ref: ./import-schemas.yaml#/ImportPreviewStatistics
+    execution:
+      $ref: ./import-schemas.yaml#/ImportExecutionStatistics
+  description: 执行事实读取本批次结果快照；重跑共享操作不会改写旧批次实际执行历史。retryable_failed_rows为当前可用动作计数，可随账本、权限或保留窗口变化。更新计数本期为0。
+ImportActor:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - name
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    name:
+      type: string
+      minLength: 1
+      maxLength: 128
+ImportBatch:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - parent_batch_id
+    - import_type
+    - import_type_name
+    - property_company_id
+    - template
+    - scope
+    - mode
+    - status
+    - phase
+    - last_error_code
+    - blocked_reason
+    - preview
+    - apply_policy
+    - include_warning_rows
+    - statistics
+    - source_artifact
+    - active_task
+    - created_by
+    - created_at
+    - updated_at
+    - retention_until
+    - confirmed_at
+    - started_at
+    - finished_at
+    - next_actions
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    parent_batch_id:
+      anyOf:
+        - $ref: ./schemas.yaml#/UUIDIdentifier
+        - type: 'null'
+    import_type:
+      $ref: ./import-schemas.yaml#/ImportTypeKey
+    import_type_name:
+      type: string
+      minLength: 1
+      maxLength: 128
+    property_company_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    template:
+      $ref: ./import-schemas.yaml#/ImportTemplateIdentity
+    scope:
+      $ref: ./import-schemas.yaml#/ImportScope
+    mode:
+      type: string
+      enum:
+        - create
+    status:
+      $ref: ./import-schemas.yaml#/ImportBatchStatus
+    phase:
+      $ref: ./import-schemas.yaml#/ImportBatchPhase
+    last_error_code:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 128
+        - type: 'null'
+    blocked_reason:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 1000
+        - type: 'null'
+    preview:
+      anyOf:
+        - $ref: ./import-schemas.yaml#/ImportPreview
+        - type: 'null'
+    apply_policy:
+      anyOf:
+        - $ref: ./import-schemas.yaml#/ImportApplyPolicy
+        - type: 'null'
+    include_warning_rows:
+      anyOf:
+        - type: boolean
+        - type: 'null'
+    statistics:
+      $ref: ./import-schemas.yaml#/ImportStatistics
+    source_artifact:
+      anyOf:
+        - $ref: ./import-schemas.yaml#/ImportSourceArtifact
+        - type: 'null'
+    active_task:
+      anyOf:
+        - $ref: ./import-schemas.yaml#/ImportTaskProgress
+        - type: 'null'
+    created_by:
+      $ref: ./import-schemas.yaml#/ImportActor
+    created_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应为 UTC Z。
+    updated_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应为 UTC Z。
+    retention_until:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应为 UTC Z。
+    confirmed_at:
+      anyOf:
+        - type: string
+          format: date-time
+          description: 带时区 RFC 3339；响应为 UTC Z。
+        - type: 'null'
+    started_at:
+      anyOf:
+        - type: string
+          format: date-time
+          description: 带时区 RFC 3339；响应为 UTC Z。
+        - type: 'null'
+    finished_at:
+      anyOf:
+        - type: string
+          format: date-time
+          description: 带时区 RFC 3339；响应为 UTC Z。
+        - type: 'null'
+    next_actions:
+      type: array
+      items:
+        $ref: ./import-schemas.yaml#/ImportNextAction
+  x-sensitive-retention-days: 30
+ImportBatchAction:
+  type: object
+  additionalProperties: false
+  required:
+    - batch_id
+    - status
+    - phase
+    - preview_version
+    - active_task
+    - source_artifact
+  properties:
+    batch_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    status:
+      $ref: ./import-schemas.yaml#/ImportBatchStatus
+    phase:
+      $ref: ./import-schemas.yaml#/ImportBatchPhase
+    preview_version:
+      type: integer
+      minimum: 0
+    active_task:
+      anyOf:
+        - $ref: ./import-schemas.yaml#/ImportTaskIdentity
+        - type: 'null'
+    source_artifact:
+      anyOf:
+        - $ref: ./import-schemas.yaml#/ImportSourceIdentity
+        - type: 'null'
+  description: 所有批次写操作的首次成功白名单响应；不含行值、自然键、原文件名或下载地址。幂等重放返回首次状态与本响应，不用当前状态替代。
+ImportBatchCreate:
+  type: object
+  additionalProperties: false
+  required:
+    - import_type
+    - template_version_no
+    - scope
+    - mode
+  properties:
+    import_type:
+      $ref: ./import-schemas.yaml#/ImportTypeKey
+    template_version_no:
+      type: integer
+      minimum: 1
+    property_company_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    scope:
+      $ref: ./import-schemas.yaml#/ImportScopeInput
+    mode:
+      type: string
+      enum:
+        - create
+  description: 平台必须传 property_company_id；物业禁止传该字段，公司从身份取得。公司scope.id必须等于目标公司，小区scope.id必须属于目标公司。
+ImportPrecheck:
+  type: object
+  additionalProperties: false
+  required:
+    - preview_version
+  properties:
+    preview_version:
+      type: integer
+      minimum: 0
+ImportConfirm:
+  type: object
+  additionalProperties: false
+  required:
+    - preview_version
+    - preview_fingerprint
+    - apply_policy
+    - include_warning_rows
+  properties:
+    preview_version:
+      type: integer
+      minimum: 1
+    preview_fingerprint:
+      $ref: ./import-schemas.yaml#/ImportHash
+    apply_policy:
+      $ref: ./import-schemas.yaml#/ImportApplyPolicy
+    include_warning_rows:
+      type: boolean
+ImportRetry:
+  type: object
+  additionalProperties: false
+  required:
+    - selection
+  properties:
+    selection:
+      type: string
+      enum:
+        - retryable_only
+ImportRetryResult:
+  type: object
+  additionalProperties: false
+  required:
+    - source_batch_id
+    - selected_rows
+    - batch
+  properties:
+    source_batch_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    selected_rows:
+      type: integer
+      minimum: 1
+    batch:
+      $ref: ./import-schemas.yaml#/ImportBatchAction
+  description: 新批次安排预检，必须查看新预览并再次确认；不沿用原确认策略自动执行。
+ImportRecover:
+  type: object
+  additionalProperties: false
+  required:
+    - reason
+  properties:
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 500
+ImportErrorFileCreate:
+  type: object
+  additionalProperties: false
+  required:
+    - format
+    - preview_version
+  properties:
+    format:
+      $ref: ./import-schemas.yaml#/ImportFileFormat
+    preview_version:
+      type: integer
+      minimum: 1
+ImportErrorFileAction:
+  type: object
+  additionalProperties: false
+  required:
+    - batch_id
+    - status
+    - generation
+    - source_preview_version
+    - task
+  properties:
+    batch_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    status:
+      $ref: ./import-schemas.yaml#/ImportErrorFileStatus
+    generation:
+      type: integer
+      minimum: 1
+    source_preview_version:
+      type: integer
+      minimum: 1
+    task:
+      $ref: ./import-schemas.yaml#/ImportTaskIdentity
+  description: 错误文件写请求的最小持久幂等响应；不包含文件名和下载地址。
+ImportErrorFile:
+  type: object
+  additionalProperties: false
+  required:
+    - batch_id
+    - status
+    - generation
+    - source_preview_version
+    - format
+    - task
+    - file_name
+    - media_type
+    - size_bytes
+    - sha256
+    - generated_at
+    - expires_at
+    - last_error_code
+    - downloadable
+  properties:
+    batch_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    status:
+      $ref: ./import-schemas.yaml#/ImportErrorFileStatus
+    generation:
+      anyOf:
+        - type: integer
+          minimum: 1
+        - type: 'null'
+    source_preview_version:
+      anyOf:
+        - type: integer
+          minimum: 1
+        - type: 'null'
+    format:
+      anyOf:
+        - $ref: ./import-schemas.yaml#/ImportFileFormat
+        - type: 'null'
+    task:
+      anyOf:
+        - $ref: ./import-schemas.yaml#/ImportTaskProgress
+        - type: 'null'
+    file_name:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 255
+        - type: 'null'
+    media_type:
+      anyOf:
+        - type: string
+          enum:
+            - text/csv
+            - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+        - type: 'null'
+    size_bytes:
+      anyOf:
+        - type: integer
+          minimum: 0
+        - type: 'null'
+    sha256:
+      anyOf:
+        - $ref: ./import-schemas.yaml#/ImportHash
+        - type: 'null'
+    generated_at:
+      anyOf:
+        - type: string
+          format: date-time
+          description: 带时区 RFC 3339；响应为 UTC Z。
+        - type: 'null'
+    expires_at:
+      anyOf:
+        - type: string
+          format: date-time
+          description: 带时区 RFC 3339；响应为 UTC Z。
+        - type: 'null'
+    last_error_code:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 128
+        - type: 'null'
+    downloadable:
+      type: boolean
+  description: 未生成返回not_generated和空元数据。文件固定最小安全投影，敏感字段始终脱敏，不按生成者权限扩展。stale表示预览或执行事实已变化，旧代次不可下载。代次和source_preview_version固定，生成不延长源批次保留期。
+ImportValues:
+  type: object
+  additionalProperties:
+    $ref: ./import-schemas.yaml#/ImportScalar
+  description: 键仅来自固定模板，值由服务端规范化并按权限投影。保留期外的敏感快照读取返回410。
+ImportRow:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - row_no
+    - precheck_status
+    - planned_action
+    - raw_values
+    - normalized_values
+    - issue_count
+    - execution_status
+    - result_code
+    - result_message
+    - result_at
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    row_no:
+      type: integer
+      minimum: 1
+    precheck_status:
+      $ref: ./import-schemas.yaml#/ImportPrecheckStatus
+    planned_action:
+      $ref: ./import-schemas.yaml#/ImportPlannedAction
+    raw_values:
+      $ref: ./import-schemas.yaml#/ImportValues
+    normalized_values:
+      anyOf:
+        - $ref: ./import-schemas.yaml#/ImportValues
+        - type: 'null'
+    issue_count:
+      type: integer
+      minimum: 0
+    execution_status:
+      $ref: ./import-schemas.yaml#/ImportExecutionStatus
+    result_code:
+      anyOf:
+        - type: string
+          description: 从本批次校验结果、保存策略及本批次问题快照派生，不能读取共享操作最新错误改写旧历史。
+          minLength: 1
+          maxLength: 128
+        - type: 'null'
+    result_message:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 1000
+        - type: 'null'
+    result_at:
+      anyOf:
+        - type: string
+          format: date-time
+          description: 带时区 RFC 3339；响应为 UTC Z。
+        - type: 'null'
+ImportIssue:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - preview_version
+    - phase
+    - row_no
+    - column_index
+    - column_name
+    - field_key
+    - cell_reference
+    - severity
+    - code
+    - message
+    - suggestion
+    - raw_value
+    - normalized_value
+    - retryable
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    preview_version:
+      type: integer
+      minimum: 0
+    phase:
+      type: string
+      enum:
+        - parse
+        - precheck
+        - apply
+    row_no:
+      anyOf:
+        - type: integer
+          minimum: 1
+        - type: 'null'
+    column_index:
+      anyOf:
+        - type: integer
+          minimum: 1
+        - type: 'null'
+    column_name:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 128
+        - type: 'null'
+    field_key:
+      anyOf:
+        - $ref: ./import-schemas.yaml#/ImportFieldKey
+        - type: 'null'
+    cell_reference:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 32
+        - type: 'null'
+    severity:
+      type: string
+      enum:
+        - warning
+        - error
+    code:
+      type: string
+      minLength: 1
+      maxLength: 128
+    message:
+      type: string
+      minLength: 1
+      maxLength: 1000
+    suggestion:
+      anyOf:
+        - type: string
+          minLength: 1
+          maxLength: 1000
+        - type: 'null'
+    raw_value:
+      $ref: ./import-schemas.yaml#/ImportScalar
+    normalized_value:
+      $ref: ./import-schemas.yaml#/ImportScalar
+    retryable:
+      type: boolean
+ImportEvent:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - event_type
+    - phase
+    - message
+    - created_at
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    event_type:
+      type: string
+      minLength: 1
+      maxLength: 64
+    phase:
+      anyOf:
+        - $ref: ./import-schemas.yaml#/ImportTaskPhase
+        - type: 'null'
+    message:
+      type: string
+      minLength: 1
+      maxLength: 1000
+    created_at:
+      type: string
+      format: date-time
+      description: 带时区 RFC 3339；响应为 UTC Z。
+  description: 安全白名单时间线，不含原始值、自然键、内部异常或租约，不替代管理员审计。
+ImportBatchPage:
+  type: object
+  additionalProperties: false
+  required:
+    - items
+    - total
+    - page
+    - page_size
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./import-schemas.yaml#/ImportBatch
+    total:
+      type: integer
+      minimum: 0
+    page:
+      type: integer
+      minimum: 1
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
+ImportRowPage:
+  type: object
+  additionalProperties: false
+  required:
+    - items
+    - total
+    - page
+    - page_size
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./import-schemas.yaml#/ImportRow
+    total:
+      type: integer
+      minimum: 0
+    page:
+      type: integer
+      minimum: 1
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
+ImportIssuePage:
+  type: object
+  additionalProperties: false
+  required:
+    - items
+    - total
+    - page
+    - page_size
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./import-schemas.yaml#/ImportIssue
+    total:
+      type: integer
+      minimum: 0
+    page:
+      type: integer
+      minimum: 1
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
+ImportEventPage:
+  type: object
+  additionalProperties: false
+  required:
+    - items
+    - total
+    - page
+    - page_size
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./import-schemas.yaml#/ImportEvent
+    total:
+      type: integer
+      minimum: 0
+    page:
+      type: integer
+      minimum: 1
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
