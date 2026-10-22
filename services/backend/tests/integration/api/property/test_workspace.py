@@ -57,6 +57,16 @@ def test_platform_provisioning_to_restricted_login_password_change_and_workspace
     full = w.login(NEW_PASSWORD)
     assert not full["must_change_password"]
     assert set(full["permissions"]) == {
+        "property.import.read",
+        "property.import.create",
+        "property.import.upload",
+        "property.import.precheck",
+        "property.import.execute",
+        "property.import.cancel",
+        "property.import.retry",
+        "property.import.recover",
+        "property.import.generate_error_file",
+        "property.import.download",
         "property.company.read",
         "property.house_claim.read",
         "property.house_claim.review",

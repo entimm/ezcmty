@@ -12,8 +12,28 @@ class PermissionDefinition:
 
 
 def permission_catalog(scope: AdminScope) -> list[PermissionDefinition]:
+    imports = [
+        PermissionDefinition(
+            code=f"{'platform' if scope == 'platform_admin' else 'property'}.import.{code}",
+            name=name,
+            group="批量导入",
+            assignable=True,
+        )
+        for code, name in (
+            ("read", "查看导入"),
+            ("create", "新建导入"),
+            ("upload", "上传导入文件"),
+            ("precheck", "预检导入"),
+            ("execute", "执行导入"),
+            ("cancel", "取消导入"),
+            ("retry", "重跑失败行"),
+            ("recover", "恢复原任务"),
+            ("generate_error_file", "生成错误文件"),
+            ("download", "下载错误文件"),
+        )
+    ]
     if scope == "property_admin":
-        return [
+        return imports + [
             PermissionDefinition(code=c, name=n, group=g, assignable=True)
             for c, n, g in (
                 ("property.company.read", "查看本公司资料", "物业公司"),
@@ -74,6 +94,6 @@ def permission_catalog(scope: AdminScope) -> list[PermissionDefinition]:
         ("property.admin.update", "编辑及启停公司管理员", "公司管理员", False),
         ("property.admin.reset_password", "重置公司管理员密码", "公司管理员", False),
     ]
-    return [
+    return imports + [
         PermissionDefinition(code=c, name=n, group=g, assignable=a) for c, n, g, a in definitions
     ]

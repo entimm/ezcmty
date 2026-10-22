@@ -19,6 +19,7 @@ from backend_app.core.config import get_settings
 def reset_database_url(database_url: str, monkeypatch: MonkeyPatch, tmp_path: Path) -> str:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.setenv("APP_IMPORT_STORAGE_ROOT", str(tmp_path / "private-imports"))
     get_settings.cache_clear()
     return database_url
 

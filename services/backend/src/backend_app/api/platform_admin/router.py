@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from backend_app.api.admin import create_admin_auth_router
+from backend_app.api.imports import create_import_router
 from backend_app.api.payment_management import create_payment_management_router
 from backend_app.api.platform_admin.admin import create_platform_management_router
 from backend_app.api.platform_admin.payment_configuration import create_payment_configuration_router
@@ -18,4 +19,5 @@ def create_platform_admin_router() -> APIRouter:
     router.include_router(create_payment_configuration_router(auth.permission, auth.check_write))
     router.include_router(create_payment_management_router("platform_admin", auth.permission))
     router.include_router(create_payment_recovery_router(auth.permission, auth.check_write))
+    router.include_router(create_import_router("platform_admin", auth.permission, auth.check_write))
     return router

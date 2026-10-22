@@ -210,7 +210,7 @@
 
 认证、CSRF、权限、不可见资源、参数、基础设施及未知异常复用既有 `401/403/404/422/503/500` 分类。阻断原因 `import.scope_mismatch/import.result_uncertain/import.task_paused` 保存为批次原因或问题码，不能自动当成未登记 HTTP 错误；请求范围不合法按授权与校验规则处理。
 
-行级问题码与 HTTP 目录职责不同，稳定问题包括 `import.required/import.invalid_format/import.invalid_enum/import.duplicate_in_file/import.duplicate_in_system/import.scope_mismatch/import.conflict/import.system_error` 及适配器业务领域码。响应、事件、审计与日志不含 SQL、堆栈、存储地址或未授权值；原始值、规范化值、自然键不进普通日志。
+行级问题码与 HTTP 目录职责不同，稳定问题包括 `import.required/import.invalid_format/import.invalid_enum/import.duplicate_in_file/import.duplicate_in_system/import.scope_mismatch/import.conflict/import.system_error/import.execution_failed` 及适配器业务领域码。`import.system_error` 只用于明确允许安全重试的执行失败；未允许重试的系统执行失败使用 `import.execution_failed`，不进入失败重跑集合。响应、事件、审计与日志不含 SQL、堆栈、存储地址或未授权值；原始值、规范化值、自然键不进普通日志。
 
 ## 验证要求
 

@@ -10,13 +10,19 @@ from backend_app.integrations.wechatpay.client import WechatPayClient
 from backend_app.integrations.wechatpay.payments import Payments
 from backend_app.integrations.wechatpay.profit_sharing import ProfitSharing
 from backend_app.integrations.wechatpay.statements import Statements
+from backend_app.services.worker.imports.pipeline import ImportWorkerService
+from backend_app.services.worker.imports.retention import ImportRetentionService
 from backend_app.services.worker.payments.notifications import NotificationService
 from backend_app.services.worker.payments.orders import OrderService
 from backend_app.services.worker.payments.profit_sharing import ProfitSharingService
 from backend_app.services.worker.payments.reconciliation import ReconciliationService
 from backend_app.services.worker.payments.unfreezing import UnfreezingService
+from backend_app.tasks.handlers.imports import IMPORT_TASK_PHASES, ImportHandlers
 from backend_app.tasks.handlers.payments import PaymentHandlers
 from backend_app.tasks.runner import run_worker
+from backend_app.tasks.sources.imports import ImportTaskSource
+from backend_app.tasks.sources.payments import PaymentTaskSource
+from backend_app.tasks.types import TaskSource
 
 
 def build_handlers(factory: sessionmaker[Session], settings: Settings) -> PaymentHandlers:
@@ -60,6 +66,20 @@ def build_handlers(factory: sessionmaker[Session], settings: Settings) -> Paymen
     )
 
 
+def build_sources(factory: sessionmaker[Session], settings: Settings) -> tuple[TaskSource, ...]:
+    imports = ImportWorkerService(factory, settings)
+    retention = ImportRetentionService(factory, settings)
+    import_handlers = ImportHandlers(
+        tasks={task_type: imports.run for task_type in IMPORT_TASK_PHASES},
+        periodic_checks={"import_retention": retention.scan},
+        on_close=retention.close,
+    )
+    return (
+        PaymentTaskSource(build_handlers(factory, settings)),
+        ImportTaskSource(import_handlers),
+    )
+
+
 def main() -> None:
     settings = get_settings()
     configure_logging(settings.log_level, "worker")
@@ -67,7 +87,7 @@ def main() -> None:
     signal.signal(signal.SIGINT, lambda *_: stop_event.set())
     signal.signal(signal.SIGTERM, lambda *_: stop_event.set())
     factory = get_session_factory()
-    run_worker(stop_event, factory=factory, handlers=build_handlers(factory, settings))
+    run_worker(stop_event, factory=factory, sources=build_sources(factory, settings))
 
 
 if __name__ == "__main__":

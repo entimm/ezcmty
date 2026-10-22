@@ -5,6 +5,7 @@ from backend_app.models import (  # noqa: F401
     billing,
     house_claims,
     housing,
+    imports,
     miniapp,
     payments,
     property,

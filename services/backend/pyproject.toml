@@ -18,18 +18,27 @@ dependencies = [
   "sqlalchemy>=2.0,<3.0",
   "uvicorn[standard]>=0.34,<1.0",
   "cryptography>=50.0.2,<51",
+  "python-multipart>=0.0.21,<1.0",
+  "openpyxl>=3.1.5,<4.0",
+  "defusedxml>=0.7.1,<1.0",
 ]
 
 [project.optional-dependencies]
 dev = [
+  "setuptools>=75,<81",
   "mypy>=1.14,<2.0",
   "pytest>=8.3,<9.0",
   "ruff>=0.9,<1.0",
   "types-redis>=4.6,<5.0",
+  "types-openpyxl>=3.1.5,<4.0",
+  "types-defusedxml>=0.7.0,<1.0",
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"backend_app.import_definitions" = ["**/*.json"]
 
 [tool.ruff]
 line-length = 100

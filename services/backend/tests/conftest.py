@@ -83,7 +83,8 @@ def pytest_terminal_summary(terminalreporter: TerminalReporter, config: pytest.C
 
 
 @pytest.fixture(autouse=True)
-def configure_test_environment(monkeypatch: MonkeyPatch) -> Iterator[None]:
+def configure_test_environment(monkeypatch: MonkeyPatch, tmp_path: Path) -> Iterator[None]:
+    monkeypatch.setenv("APP_IMPORT_STORAGE_ROOT", str(tmp_path / "private-imports"))
     monkeypatch.setenv("APP_DATABASE_URL", "postgresql+psycopg://127.0.0.1/test")
     monkeypatch.setenv("APP_REDIS_URL", "redis://127.0.0.1:6379/0")
     monkeypatch.setenv("APP_VERSION", CONTRACT_VERSION)

@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr, model_validator
@@ -26,6 +27,7 @@ class Settings(BaseSettings):
     wechat_miniapp_app_id: str = ""
     wechat_miniapp_app_secret: SecretStr = SecretStr("")
     payment_new_orders_enabled: bool = False
+    import_storage_root: str = ".dev/imports"
     wechatpay_service_provider_merchant_no: str = ""
     wechatpay_merchant_certificate_serial: str = ""
     wechatpay_merchant_private_key: SecretStr = SecretStr("")
@@ -52,6 +54,13 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_service_urls(self) -> Settings:
+        if not self.import_storage_root.strip() or (
+            self.env in {"staging", "production"}
+            and not Path(self.import_storage_root).is_absolute()
+        ):
+            raise ValueError(
+                "APP_IMPORT_STORAGE_ROOT must be an absolute private persistent directory"
+            )
         if self.version != CONTRACT_VERSION:
             raise ValueError("APP_VERSION must match the generated API contract revision")
         if not self.database_url.get_secret_value():

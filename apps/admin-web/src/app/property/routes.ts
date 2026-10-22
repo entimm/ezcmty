@@ -2,6 +2,30 @@ import type { AdminRoute } from '../../shared/admin-app-context';
 
 export const propertyRoutes: AdminRoute[] = [
   {
+    path: '/property/imports',
+    component: '@/features/property/imports/CenterPage',
+    title: '导入中心',
+    menu: true,
+    permission: 'property.import.read',
+    states: ['authenticated'],
+  },
+  {
+    path: '/property/imports/new',
+    component: '@/features/property/imports/NewPage',
+    title: '新建导入',
+    menuParent: '/property/imports',
+    permission: 'property.import.create',
+    states: ['authenticated'],
+  },
+  {
+    path: '/property/imports/:batch_id',
+    component: '@/features/property/imports/DetailPage',
+    title: '导入批次详情',
+    menuParent: '/property/imports',
+    permission: 'property.import.read',
+    states: ['authenticated'],
+  },
+  {
     path: '/property/payments',
     component: '@/features/property/payments/PaymentOrdersPage',
     title: '收款记录',

@@ -17,6 +17,13 @@ def create_app(service_name: str) -> FastAPI:
         version=settings.version,
         description=f"{service_name} API",
     )
+    if service_name in {"platform-admin-api", "property-admin-api"}:
+        from backend_app.api.import_upload import ImportUploadLimitMiddleware
+        from backend_app.import_definitions.catalog import get_import_registry
+
+        get_import_registry()
+
+        app.add_middleware(ImportUploadLimitMiddleware)
     app.add_middleware(RequestIdMiddleware, no_store=service_name == "resident-api")
     register_exception_handlers(app)
     app.include_router(create_system_router(service_name))

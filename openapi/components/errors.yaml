@@ -249,6 +249,52 @@ ProblemDetails:
         status: 422
         title: 暂仅支持中国大陆手机号
 
+    import:
+      import.template_unavailable:
+        status: 409
+        title: 导入模板不可用
+      import.template_drift:
+        status: 409
+        title: 导入模板摘要不一致
+      import.preview_stale:
+        status: 409
+        title: 导入预览已失效
+      import.batch_state_conflict:
+        status: 409
+        title: 当前导入状态不允许此操作
+      import.no_executable_rows:
+        status: 409
+        title: 没有可执行的导入行
+      import.no_retryable_rows:
+        status: 409
+        title: 没有可重跑的失败行
+      import.recovery_not_allowed:
+        status: 409
+        title: 当前导入任务不允许恢复
+      import.idempotency_conflict:
+        status: 409
+        title: 导入请求键对应不同输入
+      import.no_error_rows:
+        status: 409
+        title: 没有可导出的问题行
+      import.error_file_not_ready:
+        status: 409
+        title: 导入错误文件尚未就绪
+      import.artifact_expired:
+        status: 410
+        title: 导入文件已过期
+      import.data_expired:
+        status: 410
+        title: 导入输入已过期
+      import.file_too_large:
+        status: 413
+        title: 导入文件超过大小限制
+      import.file_type_unsupported:
+        status: 415
+        title: 导入文件格式不支持
+      import.file_invalid:
+        status: 422
+        title: 导入文件无效
 ValidationIssue:
   type: object
   required:

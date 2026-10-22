@@ -16,7 +16,38 @@ export type AdminRequestOptions = Omit<
   'credentials' | 'redirect'
 > & {
   ignoreUnauthorized?: boolean;
+  responseType?: 'download';
+  onUploadProgress?: (loaded: number, total: number | null) => void;
 };
+
+export interface AdminDownload {
+  blob: Blob;
+  fileName: string;
+}
+
+function downloadName(disposition: string | null): string {
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition || '')?.[1];
+  let name = /filename="?([^";]+)/i.exec(disposition || '')?.[1] || 'download';
+  if (encoded) {
+    try {
+      name = decodeURIComponent(encoded);
+    } catch {
+      /* Use ASCII fallback. */
+    }
+  }
+  return (
+    [...name]
+      .map((character) =>
+        character.charCodeAt(0) < 32 ||
+        character.charCodeAt(0) === 127 ||
+        '/\\'.includes(character)
+          ? '_'
+          : character,
+      )
+      .join('')
+      .slice(0, 255) || 'download'
+  );
+}
 
 export type AdminRequest = <T>(
   path: string,
@@ -118,7 +149,12 @@ export function createAdminRequestClient({
 
     try {
       assertCurrent();
-      const { ignoreUnauthorized, ...fetchOptions } = options;
+      const {
+        ignoreUnauthorized,
+        responseType,
+        onUploadProgress,
+        ...fetchOptions
+      } = options;
       const headers = new Headers(fetchOptions.headers);
       if (!headers.has('Accept')) headers.set('Accept', 'application/json');
       const csrf = getCsrfToken?.();
@@ -130,14 +166,26 @@ export function createAdminRequestClient({
       ) {
         headers.set('X-CSRF-Token', csrf);
       }
-      const response = await fetch(url.toString(), {
+      const transportOptions: RequestInit = {
         ...fetchOptions,
         headers,
         credentials: 'same-origin',
         redirect: 'error',
         signal: controller.signal,
-      });
+      };
+      onUploadProgress?.(0, null);
+      const response = await fetch(url.toString(), transportOptions);
+      onUploadProgress?.(1, 1);
       assertCurrent();
+
+      if (response.ok && responseType === 'download') {
+        const blob = await response.blob();
+        assertCurrent();
+        return {
+          blob,
+          fileName: downloadName(response.headers.get('Content-Disposition')),
+        } as T;
+      }
 
       const text = await response.text();
       assertCurrent();

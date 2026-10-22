@@ -154,6 +154,14 @@ REGISTRY = {
     ),
 }
 EXCLUDED_TABLES = {
+    "import_batches": "通用导入运行事实仅由导入流程生成，不填充生产测试类型",
+    "import_requests": "通用导入运行事实仅由导入流程生成，不填充生产测试类型",
+    "import_artifacts": "通用导入运行事实仅由导入流程生成，不填充生产测试类型",
+    "import_operations": "通用导入运行事实仅由导入流程生成，不填充生产测试类型",
+    "import_rows": "通用导入运行事实仅由导入流程生成，不填充生产测试类型",
+    "import_issues": "通用导入运行事实仅由导入流程生成，不填充生产测试类型",
+    "import_tasks": "通用导入运行事实仅由导入流程生成，不填充生产测试类型",
+    "import_batch_events": "通用导入运行事实仅由导入流程生成，不填充生产测试类型",
     "alembic_version": "Alembic migration bookkeeping",
     "house_claim_applications": "认领与审核需由授权用户发起，不在后台开发数据场景中伪造",
     "resident_house_bindings": "房屋授权来源于认领审批，不在后台开发数据场景中伪造",

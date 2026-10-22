@@ -2,6 +2,30 @@ import type { AdminRoute } from '../../shared/admin-app-context';
 
 export const platformRoutes: AdminRoute[] = [
   {
+    path: '/platform/imports',
+    component: '@/features/platform/imports/CenterPage',
+    title: '导入中心',
+    menu: true,
+    permission: 'platform.import.read',
+    states: ['authenticated'],
+  },
+  {
+    path: '/platform/imports/new',
+    component: '@/features/platform/imports/NewPage',
+    title: '新建导入',
+    menuParent: '/platform/imports',
+    permission: 'platform.import.create',
+    states: ['authenticated'],
+  },
+  {
+    path: '/platform/imports/:batch_id',
+    component: '@/features/platform/imports/DetailPage',
+    title: '导入批次详情',
+    menuParent: '/platform/imports',
+    permission: 'platform.import.read',
+    states: ['authenticated'],
+  },
+  {
     path: '/platform/payments',
     component: '@/features/platform/payments/PaymentOrdersPage',
     title: '支付记录',

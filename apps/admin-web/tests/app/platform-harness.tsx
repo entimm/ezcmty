@@ -60,7 +60,20 @@ import PropertyReconciliation from '@/features/property/payments/ReconciliationP
 
 import type { SessionResponse } from '@/shared/api/admin';
 
+import PlatformImportsCenterPage from '@/features/platform/imports/CenterPage';
+import PlatformImportsNewPage from '@/features/platform/imports/NewPage';
+import PlatformImportsDetailPage from '@/features/platform/imports/DetailPage';
+import PropertyImportsCenterPage from '@/features/property/imports/CenterPage';
+import PropertyImportsNewPage from '@/features/property/imports/NewPage';
+import PropertyImportsDetailPage from '@/features/property/imports/DetailPage';
+
 const pages = {
+  '@/features/platform/imports/CenterPage': PlatformImportsCenterPage,
+  '@/features/platform/imports/NewPage': PlatformImportsNewPage,
+  '@/features/platform/imports/DetailPage': PlatformImportsDetailPage,
+  '@/features/property/imports/CenterPage': PropertyImportsCenterPage,
+  '@/features/property/imports/NewPage': PropertyImportsNewPage,
+  '@/features/property/imports/DetailPage': PropertyImportsDetailPage,
   '@/features/platform/payments/PaymentOrdersPage': PlatformPaymentOrders,
   '@/features/platform/payments/PaymentDetailPage': PlatformPaymentDetail,
   '@/features/platform/payments/PaymentConfigurationPage':

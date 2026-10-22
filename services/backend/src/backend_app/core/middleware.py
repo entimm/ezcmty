@@ -48,7 +48,7 @@ class RequestIdMiddleware:
                 headers.append((b"x-request-id", request_id.encode()))
                 route_path = getattr(scope.get("route"), "path", "")
                 if self.no_store or route_path.startswith(
-                    ("/v1/house-claims", "/v1/resident-house-bindings")
+                    ("/v1/house-claims", "/v1/resident-house-bindings", "/v1/import-")
                 ):
                     headers = [(k, v) for k, v in headers if k.lower() != b"cache-control"]
                     headers.append((b"cache-control", b"no-store"))

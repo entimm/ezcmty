@@ -161,3 +161,101 @@ describe('scoped API requests', () => {
     expect(fetcher).toHaveBeenCalledOnce();
   });
 });
+
+describe('scoped import file transport', () => {
+  it('downloads binary data with the server filename and preserves same-origin isolation', async () => {
+    const fetcher = vi.fn(
+      async () =>
+        new Response('name\nexample', {
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition':
+              "attachment; filename=errors.csv; filename*=UTF-8''%E9%94%99%E8%AF%AF.csv",
+          },
+        }),
+    );
+    vi.stubGlobal('fetch', fetcher);
+    const result = await client('property_admin').request<{
+      blob: Blob;
+      fileName: string;
+    }>('/v1/import-batches/test/artifacts/error-file/download?generation=2', {
+      responseType: 'download',
+    });
+    expect(result.fileName).toBe('错误.csv');
+    expect(await result.blob.text()).toBe('name\nexample');
+    expect(fetcher.mock.calls[0]).toEqual([
+      expect.stringContaining('/api/property/'),
+      expect.objectContaining({
+        credentials: 'same-origin',
+        redirect: 'error',
+      }),
+    ]);
+  });
+  it('rejects a downloaded body when its session changes during body reading', async () => {
+    let finish!: (blob: Blob) => void;
+    const response = new Response('data');
+    vi.spyOn(response, 'blob').mockImplementation(
+      () =>
+        new Promise<Blob>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response),
+    );
+    const api = client();
+    const pending = api.request('/v1/file', { responseType: 'download' });
+    await Promise.resolve();
+    api.cancel();
+    finish(new Blob(['old identity']));
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  });
+  it('sends multipart upload with scoped CSRF and honors browser cancellation', async () => {
+    const fetcher = vi.fn<typeof fetch>(async () =>
+      Response.json({ batch_id: 'test' }),
+    );
+    vi.stubGlobal('fetch', fetcher);
+    const api = createAdminRequestClient({
+      scope: 'platform_admin',
+      basePath: '/api/platform',
+      getCsrfToken: () => 'csrf-test',
+      onUnauthorized: vi.fn(),
+    });
+    const body = new FormData();
+    body.append('file', new Blob(['a\nb']), 'input.csv');
+    const progress = vi.fn();
+    const controller = new AbortController();
+    await api.request('/v1/import-batches/test/source-file', {
+      method: 'POST',
+      body,
+      headers: { 'Idempotency-Key': 'original-key' },
+      signal: controller.signal,
+      onUploadProgress: progress,
+    });
+    const options = fetcher.mock.calls[0][1]!;
+    expect(options.body).toBe(body);
+    expect(new Headers(options.headers).get('X-CSRF-Token')).toBe('csrf-test');
+    expect(new Headers(options.headers).has('Content-Type')).toBe(false);
+    expect(progress).toHaveBeenNthCalledWith(1, 0, null);
+    expect(progress).toHaveBeenLastCalledWith(1, 1);
+  });
+  it('parses download errors as Problem Details and invalidates only its own session', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json(problem(401), {
+          status: 401,
+          headers: { 'Content-Type': 'application/problem+json' },
+        }),
+      ),
+    );
+    const own = client(),
+      peer = client('property_admin');
+    await expect(
+      own.request('/v1/file', { responseType: 'download' }),
+    ).rejects.toMatchObject({ status: 401 });
+    expect(own.onUnauthorized).toHaveBeenCalledOnce();
+    expect(peer.onUnauthorized).not.toHaveBeenCalled();
+  });
+});

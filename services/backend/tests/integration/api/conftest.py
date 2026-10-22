@@ -37,6 +37,14 @@ def harness(migrated_database_url: str, monkeypatch: MonkeyPatch) -> Iterator[Ha
     try:
         assert set(inspect(engine).get_table_names()) == {
             "alembic_version",
+            "import_batches",
+            "import_requests",
+            "import_artifacts",
+            "import_operations",
+            "import_rows",
+            "import_issues",
+            "import_tasks",
+            "import_batch_events",
             "house_claim_applications",
             "resident_house_bindings",
             "miniapp_users",
