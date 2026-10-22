@@ -56,7 +56,13 @@ def main() -> int:
         signal.signal(signal.SIGINT, lambda *_: stop.set())
         print(
             json.dumps(
-                {"service": "worker", "message": "worker_ready scheduler=running task_handlers=1"}
+                {
+                    "service": "worker",
+                    "message": (
+                        "worker_ready scheduler=running task_handlers=1 "
+                        "task_sources=2 total_handlers=5"
+                    ),
+                }
             ),
             flush=True,
         )

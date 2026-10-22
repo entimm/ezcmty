@@ -158,8 +158,8 @@ class RunningService:
                     isinstance(record, dict)
                     and record.get("service") == "worker"
                     and isinstance(record.get("message"), str)
-                    and re.fullmatch(
-                        r"worker_ready scheduler=running task_handlers=[1-9][0-9]*",
+                    and re.match(
+                        r"worker_ready scheduler=running task_handlers=[1-9][0-9]*(?: |$)",
                         record["message"],
                     )
                 ):
@@ -583,7 +583,15 @@ def attach(
                 return result
             batch = registry.read_batch(batch_id)
             if not reported and time.monotonic() >= deadline and process.poll() is None:
-                reason = f"启动总超时（{timing.startup:g} 秒）；{batch['reason']}"
+                details = (
+                    "; ".join(
+                        f"{name}: {service['reason']}"
+                        for name, service in batch["services"].items()
+                        if not service["ready"]
+                    )
+                    or batch["reason"]
+                )
+                reason = f"启动总超时（{timing.startup:g} 秒）：{details}"
                 announce(reason)
                 return stop_attached(registry, batch_id, process, timing, failure=reason)
             if batch["status"] == "running" and not reported and process.poll() is None:

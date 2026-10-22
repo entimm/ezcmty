@@ -83,3 +83,21 @@ def test_worker_liveness_without_start_marker_is_not_ready(harness: Harness) -> 
     batch, coordinator = harness.start([worker], timing=replace(harness.timing, startup=2))
     assert coordinator.wait(timeout=8) != 0
     assert "启动总超时" in harness.registry.read_batch(batch)["reason"]
+
+
+@pytest.mark.parametrize("background", [False, True], ids=["foreground", "background"])
+def test_launcher_timeout_identifies_unready_worker(harness: Harness, background: bool) -> None:
+    from scripts.dev.services import Service
+
+    harness.timing = replace(harness.timing, startup=2)
+    worker = Service(
+        "worker",
+        [sys.executable, str(HELPER), "exit", "30", "0"],
+        str(harness.registry.root),
+        worker=True,
+    )
+    client = harness.client([worker], background=background)
+    output, _ = client.communicate(timeout=10)
+
+    assert client.returncode != 0
+    assert "启动总超时（2 秒）：worker: 等待服务启动" in output.decode()
