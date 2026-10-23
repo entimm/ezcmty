@@ -15,6 +15,7 @@ export function ImportsRuntime({ children }: { children: ReactNode }) {
       can: (action: string) => hasPermission(`platform.import.${action}`),
       companies: scopes.companies,
       communities: scopes.communities,
+      community: scopes.community,
     };
   }, [request, scope, session?.subjectId, hasPermission]);
   return (

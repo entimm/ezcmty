@@ -16,6 +16,11 @@ def business_today() -> date:
     return datetime.now(UTC).astimezone(ZoneInfo("Asia/Shanghai")).date()
 
 
+def validate_receipt_date(value: date | None) -> None:
+    if value is not None and value > business_today():
+        raise ValueError("Receipt date cannot be in the future")
+
+
 def month_date(value: str) -> date:
     return date.fromisoformat(value + "-01")
 

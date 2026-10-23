@@ -171,7 +171,10 @@ def test_billing_downgrade_refuses_populated_history(billing_setup: BillingSetup
         assert bill and bill.settled_cents == 3000
         assert db.get(BillOperation, created.operation.id) is not None
         assert db.get(BillSettlementEntry, created.settlement_entries[0].id) is not None
-        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "20261022_imports"
+        assert (
+            db.scalar(text("SELECT version_num FROM alembic_version"))
+            == "20261023_import_preparation"
+        )
 
 
 def test_independent_bills_share_parent_locks_without_serializing(

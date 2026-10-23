@@ -38,8 +38,8 @@
 | `domain/admin/identity.py`    | 账号状态、会话版本、密码变更和 RBAC 规则。                                                            |
 | `domain/admin/permissions.py` | 按后台定义的权限目录。                                                                                |
 | `domain/admin/audit.py`       | 审计写入归属、读取权限与数据范围，返回业务记录。                                                      |
-| `domain/housing.py`           | 空间父子类型、所属路径有效状态和业主手机号规范化规则。                                                |
-| `domain/billing/`             | 保留原 billing.py 的金额、期间和日期能力，提供参与调用方事务的共享入账。                              |
+| `domain/housing.py`           | 空间父子类型、所属路径有效状态、完整位置定位与复核及业主手机号规范化规则。                            |
+| `domain/billing/`             | 维护金额、期间、建账校验、原始创建事实比对和参与调用方事务的共享账务写入。                            |
 | `domain/payments/`            | 配置适用性、规则计算、支付事实与状态、占用、应分履行、解冻及差异判定规则。                            |
 | `schemas/mappers/admin.py`    | 会话、管理员、角色、权限和审计的纯响应转换。                                                          |
 | `schemas/mappers/property.py` | 小区和公司管理员的纯响应转换。                                                                        |
@@ -59,7 +59,7 @@
 
 空间、房屋及业主维护沿用公司、账号锁定和身份复核，再按小区、空间祖先、房屋、业主的顺序协调资源；状态、范围和原子提交规则见 [房屋资料管理设计](../design/property/housing.md)。
 
-计费依据、账单收款及纠错的事务和共享保护锁见 [账单设计](../design/property/billing.md#锁模式)，允许公司内独立账单并行写入。
+计费依据、账单收款及纠错的事务和共享保护锁见 [账单设计](../design/property/billing.md#锁模式)，允许公司内独立账单并行写入。手工与导入共同调用 [共享建账能力](../design/property/billing.md#共享建账能力)，房屋定位统一使用 [房屋领域能力](../design/property/housing.md#房屋完整位置定位与复核)；入口只转换输入和编排流程，业务规则及写入不依赖导入框架。
 
 公共审计和 Repository 使用明确的后台、公司归属；未知账号登录失败的归属及审计字段遵循 [管理后台基础框架设计](../design/admin/foundation.md#审计与代码组织)。Cookie、Redis 会话和权限目录按所属后台隔离。
 

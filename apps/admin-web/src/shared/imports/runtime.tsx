@@ -15,7 +15,7 @@ import {
   removePending,
 } from '../pending-requests';
 import type { ImportsApi } from './api';
-import type { Filters, Page } from './types';
+import type { Filters, Page, ScopeType } from './types';
 export interface ScopeOption {
   id: string;
   name: string;
@@ -30,6 +30,17 @@ export interface ImportsRuntime {
   companies: (filters: Filters) => Promise<Page<ScopeOption>>;
   currentCompany?: () => Promise<ScopeOption>;
   communities: (filters: Filters) => Promise<Page<ScopeOption>>;
+  community: (id: string) => Promise<ScopeOption>;
+  businessDestination?: (
+    importType: string,
+    scope: { type: ScopeType; id: string },
+  ) => {
+    label: string;
+    path: string;
+    canNavigate: boolean;
+    confirmationNotice?: string;
+    prepareNavigation: () => Promise<void>;
+  } | null;
 }
 export const ImportsContext = createContext<ImportsRuntime | null>(null);
 export function useImports() {

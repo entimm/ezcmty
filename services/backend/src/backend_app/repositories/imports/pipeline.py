@@ -2,12 +2,23 @@
 
 from collections.abc import Iterator
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import func, select, tuple_, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from backend_app.models.imports import ImportOperation, ImportRow
+from backend_app.models.imports import ImportRow
+
+
+def iter_inputs(
+    db: Session, batch_id: str
+) -> Iterator[tuple[dict[str, Any] | None, dict[str, Any] | None]]:
+    rows = db.execute(
+        select(ImportRow.raw_values, ImportRow.normalized_values)
+        .where(ImportRow.batch_id == batch_id)
+        .execution_options(yield_per=200)
+    )
+    return cast(Iterator[tuple[dict[str, Any] | None, dict[str, Any] | None]], iter(rows))
 
 
 def validated_count(db: Session, batch_id: str, version: int) -> int:
@@ -24,20 +35,19 @@ def validated_count(db: Session, batch_id: str, version: int) -> int:
 def duplicate_natural_key_rows(
     db: Session, batch_id: str, *, chunk_size: int
 ) -> Iterator[ImportRow]:
+    identity = ImportRow.normalized_values["_identity"]
     duplicates = (
-        select(ImportOperation.operation_type, ImportOperation.natural_key)
-        .join(ImportRow, ImportRow.operation_id == ImportOperation.id)
-        .where(ImportRow.batch_id == batch_id)
-        .group_by(ImportOperation.operation_type, ImportOperation.natural_key)
+        select(identity)
+        .where(ImportRow.batch_id == batch_id, identity.astext.is_not(None))
+        .group_by(identity)
         .having(func.count() > 1)
     )
     return iter(
         db.scalars(
             select(ImportRow)
-            .join(ImportOperation, ImportOperation.id == ImportRow.operation_id)
             .where(
                 ImportRow.batch_id == batch_id,
-                tuple_(ImportOperation.operation_type, ImportOperation.natural_key).in_(duplicates),
+                identity.in_(duplicates),
             )
             .execution_options(yield_per=chunk_size)
         )

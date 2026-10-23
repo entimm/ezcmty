@@ -61,7 +61,7 @@ def _guard(
     permissions = identity.effective_permissions(account.id)
     prefix = "platform" if batch.created_by_scope == "platform_admin" else "property"
     if f"{prefix}.import.generate_error_file" not in permissions or not set(
-        definition.required_permissions
+        definition.read_permissions
     ) <= set(permissions):
         raise ValueError("auth.forbidden")
     company = PropertyRepository(db).company(batch.property_company_id)

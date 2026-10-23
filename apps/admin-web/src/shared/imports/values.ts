@@ -57,3 +57,14 @@ export const time = (value: string | null) =>
   value ? new Date(value).toLocaleString('zh-CN', { hour12: false }) : '—';
 export const cell = (value: unknown) =>
   value === null || value === undefined ? '—' : String(value);
+export function businessValue(
+  value: unknown,
+  format: 'text' | 'integer' | 'money_cents',
+): string {
+  if (format === 'text') return cell(value);
+  const text = String(value);
+  if (!/^(0|[1-9][0-9]*)$/.test(text)) return '—';
+  if (format === 'integer') return text;
+  const cents = BigInt(text);
+  return `¥${cents / 100n}.${String(cents % 100n).padStart(2, '0')}`;
+}

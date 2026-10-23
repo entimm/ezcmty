@@ -19,6 +19,7 @@ from backend_app.domain.billing import (
     month_date,
     next_month,
 )
+from backend_app.domain.billing.creation import BillCreationCommand, creation_permissions
 from backend_app.domain.billing.posting import append_receipt
 from backend_app.models.admin import AdminAccount, utc_now
 from backend_app.models.billing import Bill, BillOperation, BillSettlementEntry, FeeBasisVersion
@@ -35,6 +36,7 @@ from backend_app.schemas.mappers.billing import (
     historical_write_result,
     operation_view,
 )
+from backend_app.services.bill_creation import create_bill
 from backend_app.services.contracts.admin import AdminContext
 
 PERMISSIONS: dict[Action, str] = {
@@ -358,9 +360,10 @@ class PropertyBillingService:
         identity: AdminIdentity, actor: AdminAccount, *, has_basis: bool, has_receipt: bool
     ) -> None:
         permissions = identity.effective_permissions(actor.id)
-        if (has_basis and "property.fee_basis.read" not in permissions) or (
-            has_receipt and "property.bill_receipt.create" not in permissions
-        ):
+        if not creation_permissions(
+            initial_paid_cents=1 if has_receipt else 0,
+            basis_version_id="reference" if has_basis else None,
+        ) <= set(permissions):
             raise AppError("auth.forbidden")
 
     @staticmethod
@@ -397,16 +400,12 @@ class PropertyBillingService:
         entry_id: str | None = None,
     ) -> schema.BillWriteResult:
         fingerprint = self._fingerprint(ctx, community_id, action, bill_id, entry_id, data)
+        if action == "create":
+            assert isinstance(data, schema.BillCreate)
+            return self._create(ctx, community_id, data, key, fingerprint, request_id)
         try:
             repo, identity, actor, community = self._protect(ctx, PERMISSIONS[action], community_id)
             assert community
-            if isinstance(data, schema.BillCreate):
-                self._require_creation_permissions(
-                    identity,
-                    actor,
-                    has_basis=data.basis_version_id is not None,
-                    has_receipt=data.initial_receipt is not None,
-                )
             replay = self._replay(repo, ctx, key, fingerprint)
             if replay is not None:
                 return replay
@@ -414,151 +413,82 @@ class PropertyBillingService:
             operation_id = new_id()
             entries: list[BillSettlementEntry] = []
             reason: str | None = None
-            if action == "create":
-                assert isinstance(data, schema.BillCreate)
-                house, path = self._house(repo, community, data.house_id, lock=True, exclusive=True)
-                replay = self._replay(repo, ctx, key, fingerprint)
-                if replay is not None:
-                    return replay
+            assert bill_id is not None
+            existing = repo.bill(community_id, bill_id)
+            if existing is None:
+                raise AppError("resource.not_found")
+            house, path = self._house(repo, community, existing.house_id, lock=True)
+            bill_model = repo.bill(community_id, bill_id, lock=True)
+            assert bill_model
+            bill = bill_model
+            replay = self._replay(repo, ctx, key, fingerprint)
+            if replay is not None:
+                return replay
+            if action != "update" and repo.reservation(bill.id) is not None:
+                raise AppError("payment.bill_reserved")
+            if bill.lifecycle_status != "active":
+                raise AppError("billing.bill_voided")
+            assert isinstance(
+                data,
+                (
+                    schema.BillUpdate,
+                    schema.BillReasonAction,
+                    schema.ReceiptCreate,
+                    schema.ReceiptCorrection,
+                ),
+            )
+            if data.expected_row_version != bill.row_version:
+                raise AppError("billing.version_conflict")
+            bill.row_version += 1
+            bill.updated_at = now
+            if action == "update":
+                assert isinstance(data, schema.BillUpdate)
+                for field in data.model_fields_set - {"expected_row_version"}:
+                    setattr(bill, field, getattr(data, field))
+            elif action == "void":
+                assert isinstance(data, schema.BillReasonAction)
+                if bill.settled_cents:
+                    raise AppError("billing.bill_has_settlement")
+                reason = data.reason
+                bill.lifecycle_status = "voided"
+                bill.void_reason, bill.voided_at, bill.voided_by = reason, now, actor.id
+            elif action == "receipt":
+                assert isinstance(data, schema.ReceiptCreate)
                 self._require_enabled(community, house, path)
-                start = month_date(data.billing_month)
-                basis = (
-                    repo.basis(house.id, data.basis_version_id) if data.basis_version_id else None
-                )
-                if data.amount_source == "basis":
-                    effective = repo.effective_basis(house.id, start)
-                    if effective is None:
-                        raise AppError("billing.basis_missing")
-                    amount = calculate_amount(
-                        effective.area_sqm, effective.unit_price_cents, effective.fixed_amount_cents
-                    )
-                    if (
-                        effective.id != data.basis_version_id
-                        or data.expected_calculation_rule_version != RULE_VERSION
-                        or data.expected_receivable_cents != amount
-                    ):
-                        raise AppError("billing.basis_changed")
-                else:
-                    assert data.receivable_cents is not None
-                    amount = data.receivable_cents
-                    if data.basis_version_id and (
-                        basis is None or basis.effective_from_month > start
-                    ):
-                        raise AppError("billing.invalid_reference")
-                paid = data.initial_receipt.amount_cents if data.initial_receipt else 0
-                if paid > amount:
+                reason = data.reason
+                if bill.settled_cents + data.amount_cents > bill.receivable_cents:
                     raise AppError("billing.overpayment")
-                bill = Bill(
-                    id=new_id(),
-                    property_company_id=repo.company_id,
-                    community_id=community_id,
-                    house_id=house.id,
-                    bill_type="property_fee",
-                    period_granularity="month",
-                    period_start=start,
-                    period_end=next_month(start),
-                    external_bill_no=data.external_bill_no,
-                    basis_version_id=data.basis_version_id,
-                    amount_source=data.amount_source,
-                    calculation_rule_version=RULE_VERSION
-                    if data.amount_source == "basis"
-                    else None,
-                    receivable_cents=amount,
-                    settled_cents=0,
-                    lifecycle_status="active",
-                    due_date=data.due_date,
-                    house_label_snapshot=self._label(community, house, path),
-                    manual_amount_reason=data.manual_amount_reason,
-                    row_version=1,
-                    created_by=actor.id,
-                    created_at=now,
-                    updated_at=now,
+                entries.append(
+                    append_receipt(bill, operation_id, data.amount_cents, data.received_on)
                 )
-                self.db.add(bill)
-                if data.initial_receipt:
-                    reason = data.initial_receipt.reason
-                    entries.append(
-                        append_receipt(bill, operation_id, paid, data.initial_receipt.received_on)
-                    )
             else:
-                assert bill_id is not None
-                existing = repo.bill(community_id, bill_id)
-                if existing is None:
+                assert isinstance(data, (schema.ReceiptCorrection, schema.BillReasonAction))
+                original = repo.entry(bill.id, entry_id or "")
+                if original is None:
                     raise AppError("resource.not_found")
-                house, path = self._house(repo, community, existing.house_id, lock=True)
-                bill_model = repo.bill(community_id, bill_id, lock=True)
-                assert bill_model
-                bill = bill_model
-                replay = self._replay(repo, ctx, key, fingerprint)
-                if replay is not None:
-                    return replay
-                if action != "update" and repo.reservation(bill.id) is not None:
-                    raise AppError("payment.bill_reserved")
-                if bill.lifecycle_status != "active":
-                    raise AppError("billing.bill_voided")
-                assert isinstance(
-                    data,
-                    (
-                        schema.BillUpdate,
-                        schema.BillReasonAction,
-                        schema.ReceiptCreate,
-                        schema.ReceiptCorrection,
-                    ),
+                if original.entry_type != "receipt" or original.source_type != "offline":
+                    raise AppError("billing.invalid_receipt")
+                if repo.reversals([original.id]):
+                    raise AppError("billing.receipt_already_reversed")
+                reason = data.reason
+                bill.settled_cents -= original.amount_cents
+                entries.append(
+                    self._entry(bill.id, operation_id, -original.amount_cents, None, original.id)
                 )
-                if data.expected_row_version != bill.row_version:
-                    raise AppError("billing.version_conflict")
-                bill.row_version += 1
-                bill.updated_at = now
-                if action == "update":
-                    assert isinstance(data, schema.BillUpdate)
-                    for field in data.model_fields_set - {"expected_row_version"}:
-                        setattr(bill, field, getattr(data, field))
-                elif action == "void":
-                    assert isinstance(data, schema.BillReasonAction)
-                    if bill.settled_cents:
-                        raise AppError("billing.bill_has_settlement")
-                    reason = data.reason
-                    bill.lifecycle_status = "voided"
-                    bill.void_reason, bill.voided_at, bill.voided_by = reason, now, actor.id
-                elif action == "receipt":
-                    assert isinstance(data, schema.ReceiptCreate)
-                    self._require_enabled(community, house, path)
-                    reason = data.reason
-                    if bill.settled_cents + data.amount_cents > bill.receivable_cents:
+                if action == "correct_receipt":
+                    assert isinstance(data, schema.ReceiptCorrection)
+                    if bill.settled_cents + data.corrected_amount_cents > bill.receivable_cents:
                         raise AppError("billing.overpayment")
                     entries.append(
-                        append_receipt(bill, operation_id, data.amount_cents, data.received_on)
-                    )
-                else:
-                    assert isinstance(data, (schema.ReceiptCorrection, schema.BillReasonAction))
-                    original = repo.entry(bill.id, entry_id or "")
-                    if original is None:
-                        raise AppError("resource.not_found")
-                    if original.entry_type != "receipt" or original.source_type != "offline":
-                        raise AppError("billing.invalid_receipt")
-                    if repo.reversals([original.id]):
-                        raise AppError("billing.receipt_already_reversed")
-                    reason = data.reason
-                    bill.settled_cents -= original.amount_cents
-                    entries.append(
-                        self._entry(
-                            bill.id, operation_id, -original.amount_cents, None, original.id
+                        append_receipt(
+                            bill,
+                            operation_id,
+                            data.corrected_amount_cents,
+                            data.corrected_received_on,
                         )
                     )
-                    if action == "correct_receipt":
-                        assert isinstance(data, schema.ReceiptCorrection)
-                        if bill.settled_cents + data.corrected_amount_cents > bill.receivable_cents:
-                            raise AppError("billing.overpayment")
-                        entries.append(
-                            append_receipt(
-                                bill,
-                                operation_id,
-                                data.corrected_amount_cents,
-                                data.corrected_received_on,
-                            )
-                        )
-                if not 0 <= bill.settled_cents <= bill.receivable_cents:
-                    raise AppError("billing.overpayment")
+            if not 0 <= bill.settled_cents <= bill.receivable_cents:
+                raise AppError("billing.overpayment")
             self.db.flush()
             self.db.refresh(bill)
             operation = BillOperation(
@@ -621,6 +551,50 @@ class PropertyBillingService:
             ]:
                 if is_unique_violation(exc, constraint):
                     raise AppError(code) from exc
+            raise
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def _create(
+        self,
+        ctx: AdminContext,
+        community_id: str,
+        data: schema.BillCreate,
+        key: str,
+        fingerprint: str,
+        request_id: str,
+    ) -> schema.BillWriteResult:
+        try:
+            self._protect(ctx, "property.bill.create", community_id)
+            result = create_bill(
+                self.db,
+                company_id=ctx.property_company_id or "",
+                community_id=community_id,
+                actor_id=ctx.account_id,
+                command=BillCreationCommand.from_input(data.model_dump(mode="json")),
+                key=key,
+                fingerprint=fingerprint,
+                request_id=request_id,
+                input_fields=frozenset(data.model_fields_set),
+            )
+            self.db.commit()
+            return historical_write_result(result.result)
+        except IntegrityError as error:
+            self.db.rollback()
+            if is_unique_violation(error, "uq_bill_operation_key"):
+                repo, identity, actor, _ = self._protect(ctx, "property.bill.create", community_id)
+                self._require_creation_permissions(
+                    identity,
+                    actor,
+                    has_basis=data.basis_version_id is not None,
+                    has_receipt=data.initial_receipt is not None,
+                )
+                replay = self._replay(repo, ctx, key, fingerprint)
+                if replay is not None:
+                    return replay
+            if is_unique_violation(error, "uq_bills_active_house_month"):
+                raise AppError("billing.bill_exists") from error
             raise
         except Exception:
             self.db.rollback()

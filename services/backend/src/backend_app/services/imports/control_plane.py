@@ -103,9 +103,19 @@ class ImportControlPlane:
             previous = self._previous(args)
             if previous is None:
                 raise
-            self.access.target(
+            replay_batch = self.access.target(
                 ctx, str(previous.get("batch_id") or previous.get("source_batch_id"))
             )
+            self.access.check_scope(replay_batch)
+            self.access.definition(
+                replay_batch.template_key,
+                replay_batch.template_version_no,
+                current_permissions,
+                replay_batch.template_config_hash,
+                for_write=action not in {"cancel", "error_file"},
+            )
+            if action in {"precheck", "confirm", "retry_failed", "recover"}:
+                self.access.check_business_permissions(replay_batch, current_permissions)
             return previous
 
     def create(
@@ -197,7 +207,10 @@ class ImportControlPlane:
         batch = self.access.target(ctx, batch_id)
         self.access.check_scope(batch)
         self.access.definition(
-            batch.template_key, batch.template_version_no, permissions, batch.template_config_hash
+            batch.template_key,
+            batch.template_version_no,
+            permissions,
+            batch.template_config_hash,
         )
         company_id = batch.property_company_id
         retention = batch.retention_until
@@ -345,8 +358,14 @@ class ImportControlPlane:
         batch = self.access.target(ctx, batch_id, lock=True)
         self.access.check_scope(batch)
         self.access.definition(
-            batch.template_key, batch.template_version_no, permissions, batch.template_config_hash
+            batch.template_key,
+            batch.template_version_no,
+            permissions,
+            batch.template_config_hash,
+            for_write=action not in {"cancel", "error_file"},
         )
+        if action in {"precheck", "confirm", "retry_failed", "recover"}:
+            self.access.check_business_permissions(batch, permissions)
         args = self._request_args(
             ctx,
             batch.property_company_id,
@@ -465,6 +484,7 @@ class ImportControlPlane:
                         batch_id=new.id,
                         source_row_no=row.source_row_no,
                         raw_values=row.raw_values,
+                        normalized_values=row.normalized_values,
                         operation_id=row.operation_id,
                         created_at=now,
                         updated_at=now,

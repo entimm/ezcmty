@@ -306,8 +306,32 @@ export function BillsTable({
             />
           ),
         }}
-        toolBarRender={() =>
-          hasPermission('property.bill.create')
+        toolBarRender={() => [
+          ...(!house &&
+          hasPermission('property.bill.create') &&
+          hasPermission('property.import.create') &&
+          hasPermission('property.import.read')
+            ? [
+                <Button
+                  key="import"
+                  disabled={!enabled}
+                  onClick={() =>
+                    navigate(
+                      path(
+                        `/property/imports/new?${new URLSearchParams({
+                          import_type: 'property_fee_bills',
+                          scope_type: 'community',
+                          scope_id: communityId,
+                        })}`,
+                      ),
+                    )
+                  }
+                >
+                  批量导入
+                </Button>,
+              ]
+            : []),
+          ...(hasPermission('property.bill.create')
             ? [
                 <Button
                   key="create"
@@ -318,8 +342,8 @@ export function BillsTable({
                   新增账单
                 </Button>,
               ]
-            : []
-        }
+            : []),
+        ]}
       />
       {creating && (
         <CreateBillDrawer

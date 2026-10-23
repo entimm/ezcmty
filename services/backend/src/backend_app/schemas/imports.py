@@ -208,6 +208,25 @@ class ImportActor(AdminSchema):
     name: Annotated[str, Field(min_length=1, max_length=128)]
 
 
+class ImportBusinessField(AdminSchema):
+    key: ImportFieldKey
+    label: Annotated[str, Field(min_length=1, max_length=128)]
+    format: Literal["text", "money_cents"]
+
+
+class ImportBusinessSummary(AdminSchema):
+    key: ImportFieldKey
+    label: Annotated[str, Field(min_length=1, max_length=128)]
+    format: Literal["integer", "money_cents"]
+    without_warning_rows: Annotated[str, Field(pattern="^(0|[1-9][0-9]*)$")]
+    with_warning_rows: Annotated[str, Field(pattern="^(0|[1-9][0-9]*)$")]
+
+
+class ImportBusinessPreview(AdminSchema):
+    fields: list[ImportBusinessField]
+    summary: list[ImportBusinessSummary]
+
+
 class ImportBatch(AdminSchema):
     model_config = ConfigDict(json_schema_extra={"x-sensitive-retention-days": 30})
     id: Identifier
@@ -236,6 +255,7 @@ class ImportBatch(AdminSchema):
     started_at: AwareDatetime | None
     finished_at: AwareDatetime | None
     next_actions: list[ImportNextAction]
+    business_preview: ImportBusinessPreview | None = None
 
 
 class ImportBatchAction(AdminSchema):
@@ -340,6 +360,7 @@ class ImportErrorFile(AdminSchema):
 
 
 ImportValues = dict[str, ImportScalar]
+ImportBusinessValues = dict[str, ImportScalar]
 
 
 class ImportRow(AdminSchema):
@@ -354,6 +375,7 @@ class ImportRow(AdminSchema):
     result_code: Annotated[str, Field(min_length=1, max_length=128)] | None
     result_message: Annotated[str, Field(min_length=1, max_length=1000)] | None
     result_at: AwareDatetime | None
+    business_values: ImportBusinessValues | None = None
 
 
 class ImportIssue(AdminSchema):

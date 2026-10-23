@@ -8,7 +8,7 @@ def test_property_production_catalogue_does_not_expose_test_types(
     workspace.complete_login()
     result = workspace.client.get(f"{PREFIX}/import-types")
     assert result.status_code == 200, result.text
-    assert result.json() == {"items": []}
+    assert all(item["key"] != "test_records" for item in result.json()["items"])
     assert result.headers["cache-control"] == "no-store"
     rejected = workspace.client.post(
         f"{PREFIX}/import-batches",

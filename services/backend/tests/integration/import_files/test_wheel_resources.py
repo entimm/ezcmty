@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 import sys
+import sysconfig
 import venv
 from pathlib import Path
 from zipfile import ZipFile
@@ -73,7 +74,7 @@ imports_fixture = ["*.json"]
     interpreter = isolated / "bin" / "python"
     uv = shutil.which("uv")
     assert uv is not None
-    environment = {**os.environ, "UV_CACHE_DIR": str(tmp_path / "uv-cache")}
+    environment = dict(os.environ)
     environment.pop("PYTHONPATH", None)
     subprocess.run(
         [
@@ -94,17 +95,32 @@ imports_fixture = ["*.json"]
     )
     detached = tmp_path / "detached"
     detached.mkdir()
+    # Reuse installed dependency packages without executing their editable-source .pth files.
+    # The application itself must still load exclusively from the newly installed wheel.
+    dependency_paths = list({sysconfig.get_path("purelib"), sysconfig.get_path("platlib")})
     script = """import json
+import sys
+from pathlib import Path
+sys.path.extend(json.loads(sys.argv[1]))
+import backend_app
+assert Path(backend_app.__file__).is_relative_to(Path(sys.prefix))
 from importlib.resources import files
 from backend_app.import_definitions.catalog import JsonImportRegistry, get_import_registry
-names = ("normalize", "precheck", "build_operation_key", "plan", "execute")
+names = ("normalize", "prepare", "required_permissions", "plan", "revalidate",
+         "execute", "resolve_operation")
 methods = {name: lambda *a: None for name in names}
 adapter = type("Adapter", (), methods)()
 registry = JsonImportRegistry.from_resources(
     "imports_fixture", ("v1.json", "v2.json"),
     adapters={"fixture_v1": adapter, "fixture_v2": adapter},
 )
-assert get_import_registry().list() == ()
+production = get_import_registry()
+assert [item.key for item in production.list()] == ["property_fee_bills"]
+current = production.get("property_fee_bills", 1)
+assert current.allowed_actor_scopes == ("property_admin",)
+assert current.allowed_scope_types == ("community",)
+assert production.get_adapter(current.adapter_key).__class__.__name__ == "BillImportAdapter"
+assert files("backend_app.import_definitions").joinpath("property_fee_bills/v1.json").is_file()
 assert files("backend_app.import_definitions").joinpath("catalog.py").is_file()
 assert registry.get("fixture", 1).release_notes == "v1"
 assert registry.get("fixture", 2).release_notes == "v2"
@@ -112,7 +128,7 @@ assert registry.get("fixture", 1, registry.get("fixture", 1).config_hash).versio
 print(json.dumps([definition.config_hash for definition in registry.list()]))
 """
     completed = subprocess.run(
-        [str(interpreter), "-I", "-c", script],
+        [str(interpreter), "-I", "-c", script, json.dumps(dependency_paths)],
         cwd=detached,
         env=environment,
         check=True,

@@ -12,7 +12,7 @@ types:
     tags:
       - imports
     summary: 查询当前可用导入类型
-    description: 目录不分页，仅返回当前后台支持且同时具备导入与业务创建权限的类型；无生产适配器时items=[]。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 目录不分页，仅返回当前后台支持且同时具备导入与业务创建权限的类型；无授权类型时items=[]。生产类型property_fee_bills仅属于property_admin、community范围、create模式，要求property.bill.create；平台端不返回该类型。初始已缴大于零的输入行还要求property.bill_receipt.create。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -364,7 +364,7 @@ batch:
     tags:
       - imports
     summary: 读取批次详情
-    description: 解析/预检中preview=null，行结果与统计不得暴露半成新预检或可确认旧预览。保留期外仍返回最小历史，源文件名清空且available=false。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 解析/预检中preview=null，行结果与统计不得暴露半成新预检或可确认旧预览。business_preview仅投影当前完整发布预览的白名单字段和完整新增集合合计；跳过、错误行不计入，警告行分别返回包含和排除的合计。金额合计为整数字符串，不能用分页行求和或用账单当前余额重算历史实际金额。保留期外仍返回最小历史，源文件名清空且available=false，业务预览投影不可用。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -495,7 +495,7 @@ rows:
     tags:
       - imports
     summary: 分页读取当前预览及本批次行结果
-    description: 按source_row_no,id升序。预检处理中返回409，不能读取半成品预检或旧预览。值按字段权限脱敏；保留期外410。excluded为校验或策略排除，cancelled只属于本批次。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 按source_row_no,id升序。预检处理中返回409，不能读取半成品预检或旧预览。值按字段权限脱敏；business_values仅返回business_preview.fields声明的安全标量业务字段，不暴露内部_prepared、命令或位置核验快照。保留期外410。excluded为校验或策略排除，cancelled只属于本批次。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -788,7 +788,7 @@ confirm:
     tags:
       - imports
     summary: 确认预览并安排业务执行
-    description: 校验预览版本/摘要/有效期、固定配置、当前权限和范围。all_rows要求无普通错误，valid_rows_only是显式部分执行；include_warning_rows显式决定警告行。边界错误始终阻断，无可执行行409。策略、确认时间、任务、审计、首次响应同事务保存，Worker只读取保存策略。202表示排队，phase=apply_queued。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 校验预览版本/摘要/有效期、固定配置、当前权限和范围。all_rows要求无普通错误，valid_rows_only是显式部分执行；include_warning_rows显式决定警告行。边界错误始终阻断，无可执行行409。property_fee_bills要求property.bill.create；任一输入行初始已缴可解释为正金额时，即使该行其他字段有错，也要求property.bill_receipt.create。条件权限检查覆盖全部输入行，不能通过仅执行通过行、排除警告行或幂等成功复用绕过；确认、执行、重跑、恢复及结果复用前均复核。策略、确认时间、任务、审计、首次响应同事务保存，Worker只读取保存策略。202表示排队，phase=apply_queued。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:

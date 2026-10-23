@@ -14,7 +14,7 @@ import {
 import { ReadError } from '../../components/AdminFeedback';
 import { useListState } from '../hooks/use-list-state';
 import { useImports } from './runtime';
-import { actionNames, cell, resultNames } from './values';
+import { actionNames, businessValue, cell, resultNames } from './values';
 import type { Batch, Filters, ImportRow, Issue } from './types';
 export function RowsPanel({ batch }: { batch: Batch }) {
   const { api, can } = useImports(),
@@ -214,6 +214,17 @@ export function RowsPanel({ batch }: { batch: Batch }) {
                           </Button>
                         ),
                       },
+                      ...(batch.business_preview?.fields || []).map(
+                        (field) => ({
+                          title: field.label,
+                          key: `business_${field.key}`,
+                          render: (_: unknown, row: ImportRow) =>
+                            businessValue(
+                              row.business_values?.[field.key],
+                              field.format,
+                            ),
+                        }),
+                      ),
                       ...keys.map((field) => ({
                         title: field.label,
                         key: field.key,
@@ -313,6 +324,20 @@ export function RowsPanel({ batch }: { batch: Batch }) {
       >
         {selected && (
           <>
+            {batch.business_preview && (
+              <Descriptions
+                title="业务预览"
+                column={1}
+                items={batch.business_preview.fields.map((field) => ({
+                  key: field.key,
+                  label: field.label,
+                  children: businessValue(
+                    selected.business_values?.[field.key],
+                    field.format,
+                  ),
+                }))}
+              />
+            )}
             <Descriptions
               title="原始值与规范化值"
               column={1}

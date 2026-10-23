@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import cast
 
 from sqlalchemy.orm import Session
 
@@ -15,6 +16,8 @@ from backend_app.repositories.admin import AdminRepository
 from backend_app.repositories.imports.batches import get_batch
 from backend_app.repositories.property import PropertyRepository
 from backend_app.services.contracts.admin import AdminContext
+from backend_app.services.imports.permissions import batch_permissions, require_permissions
+from backend_app.services.worker.imports.adapters.base import ImportAdapter
 
 
 class ImportAccess:
@@ -73,6 +76,7 @@ class ImportAccess:
         config_hash: str | None = None,
         *,
         missing_not_found: bool = False,
+        for_write: bool = True,
     ) -> ImportDefinition:
         try:
             definition = self.registry.get(key, version, config_hash)
@@ -88,7 +92,8 @@ class ImportAccess:
             ) from None
         if self.scope not in definition.allowed_actor_scopes:
             raise AppError("resource.not_found")
-        if not set(definition.required_permissions) <= permissions:
+        required = definition.required_permissions if for_write else definition.read_permissions
+        if not set(required) <= permissions:
             raise AppError("auth.forbidden")
         return definition
 
@@ -118,6 +123,13 @@ class ImportAccess:
                 raise AppError("resource.not_found")
             if writing and (not community.enabled):
                 raise AppError("auth.forbidden")
+
+    def check_business_permissions(self, batch: ImportBatch, permissions: frozenset[str]) -> None:
+        definition = self.definition(
+            batch.template_key, batch.template_version_no, permissions, batch.template_config_hash
+        )
+        adapter = cast(ImportAdapter, self.registry.get_adapter(definition.adapter_key))
+        require_permissions(batch_permissions(self.db, batch, definition, adapter), permissions)
 
     @staticmethod
     def alive(batch: ImportBatch, now: datetime) -> None:

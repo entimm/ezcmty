@@ -139,6 +139,15 @@ ProblemDetails:
       property.housing_disabled:
         status: 409
         title: 所属小区、空间或房屋已停用
+      property.house_location_invalid:
+        status: 409
+        title: 房屋完整位置不存在或不符合层级
+      property.house_external_code_mismatch:
+        status: 409
+        title: 房屋外部编号与定位房屋不一致
+      property.house_location_changed:
+        status: 409
+        title: 房屋位置或辅助编号已变化，请重新核对
     billing:
       billing.basis_changed:
         status: 409

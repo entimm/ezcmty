@@ -33,6 +33,7 @@ def install_http_registry(
     *,
     sensitive: bool = False,
     required_permissions: tuple[str, ...] = (),
+    read_permissions: tuple[str, ...] = (),
     adapter: TestRecordAdapter | None = None,
 ) -> tuple[ImportDefinition, LocalImportStorage]:
     definition = definition_factory()
@@ -43,6 +44,7 @@ def install_http_registry(
             for field in definition.fields
         ),
         required_permissions=required_permissions,
+        read_permissions=read_permissions,
         released_at="2026-10-23T00:00:00Z",
     )
     registry = JsonImportRegistry((definition,), {"test_records": adapter or TestRecordAdapter()})
@@ -96,7 +98,11 @@ def publish_http_preview(
                 batch_id=batch_id,
                 source_row_no=number,
                 raw_values={"code": f"c{number}", "name": "private-value"},
-                normalized_values={"code": f"C{number}", "name": "private-value"},
+                normalized_values={
+                    "code": f"C{number}",
+                    "name": "private-value",
+                    "_prepared": {"code": f"C{number}", "name": "private-value"},
+                },
                 validation_status="invalid" if bad else "valid",
                 validation_version=1,
                 planned_action="none" if bad else "create",
@@ -108,7 +114,7 @@ def publish_http_preview(
                     operation_key=fingerprint({"batch": batch_id, "row": number}),
                     operation_type="test_record.create",
                     natural_key={"code": f"C{number}"},
-                    input_fingerprint=fingerprint(row.normalized_values),
+                    input_fingerprint=fingerprint({"code": f"C{number}", "name": "private-value"}),
                 )
                 db.add(operation)
                 db.flush()

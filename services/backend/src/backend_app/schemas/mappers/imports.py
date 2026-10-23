@@ -137,6 +137,7 @@ def batch_view(
     next_actions: list[str],
     retryable_count: int,
     excluded_count: int,
+    business_preview: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     precheck = next((t for t in tasks if t.phase == "precheck"), None)
     preview = None
@@ -216,11 +217,15 @@ def batch_view(
         started_at=batch.started_at,
         finished_at=batch.finished_at,
         next_actions=next_actions,
+        business_preview=business_preview,
     )
 
 
 def row_view(
-    row: ImportRow, issues: list[ImportIssue], field_keys: frozenset[str]
+    row: ImportRow,
+    issues: list[ImportIssue],
+    field_keys: frozenset[str],
+    business_values: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     result = next((i for i in issues if i.phase == "apply"), None)
     code = result.code if result else None
@@ -257,6 +262,7 @@ def row_view(
         result_code=code,
         result_message=message,
         result_at=row.result_at,
+        business_values=business_values,
     )
 
 

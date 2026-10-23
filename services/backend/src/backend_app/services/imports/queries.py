@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 
 from backend_app.core.errors import AppError
 from backend_app.domain.imports.registry import ImportDefinition
@@ -10,8 +10,11 @@ from backend_app.repositories.admin import AdminRepository
 from backend_app.repositories.imports import queries
 from backend_app.schemas.mappers import imports as view
 from backend_app.services.contracts.admin import AdminContext
+from backend_app.services.imports import presentation
 from backend_app.services.imports.access import ImportAccess
 from backend_app.services.imports.artifacts import FileDownload
+from backend_app.services.imports.permissions import batch_permissions, prepared_values
+from backend_app.services.worker.imports.adapters.base import ImportAdapter
 
 
 class ImportQueries:
@@ -27,6 +30,7 @@ class ImportQueries:
                 batch.template_version_no,
                 permissions,
                 batch.template_config_hash,
+                for_write=False,
             )
         except AppError as error:
             if error.code in {"import.template_unavailable", "import.template_drift"}:
@@ -50,6 +54,14 @@ class ImportQueries:
         active = any(t.status in {"ready", "running"} for t in tasks)
         paused = any(t.status == "paused" and t.phase != "artifact" for t in tasks)
         actions = []
+        write_allowed = False
+        if definition is not None and set(definition.required_permissions) <= permissions:
+            adapter = cast(ImportAdapter, self.access.registry.get_adapter(definition.adapter_key))
+            write_allowed = (
+                batch_permissions(self.access.db, batch, definition, adapter) <= permissions
+            )
+        if not write_allowed:
+            retryable = 0
 
         def allow(action: str, permission: str, condition: bool) -> None:
             if condition and f"{self.access.prefix}.import.{permission}" in permissions:
@@ -59,7 +71,7 @@ class ImportQueries:
         allow(
             "upload_source_file",
             "upload",
-            bool(definition)
+            write_allowed
             and alive
             and (batch.status == "draft")
             and (now < batch.created_at + timedelta(hours=24)),
@@ -67,7 +79,7 @@ class ImportQueries:
         allow(
             "precheck",
             "precheck",
-            bool(definition)
+            write_allowed
             and alive
             and (batch.confirmed_at is None)
             and (batch.status in {"preview_ready", "blocked"})
@@ -78,7 +90,7 @@ class ImportQueries:
         allow(
             "confirm",
             "execute",
-            bool(definition)
+            write_allowed
             and alive
             and (batch.status == "preview_ready")
             and (batch.preview_expires_at is not None)
@@ -93,11 +105,15 @@ class ImportQueries:
             and batch.status != "cancel_requested"
             and (not batch.uncertain_rows),
         )
-        allow("retry_failed", "retry", retryable > 0 and batch.status in view.TERMINAL)
+        allow(
+            "retry_failed",
+            "retry",
+            write_allowed and retryable > 0 and batch.status in view.TERMINAL,
+        )
         allow(
             "recover",
             "recover",
-            bool(definition) and (batch.status == "blocked" or paused) and (not active),
+            write_allowed and (batch.status == "blocked" or paused) and (not active),
         )
         allow(
             "generate_error_file",
@@ -132,6 +148,15 @@ class ImportQueries:
             next_actions=actions,
             retryable_count=retryable,
             excluded_count=excluded_count(self.access.db, batch.id),
+            business_preview=presentation.preview(
+                self.access.db, batch, self.access.registry.get_adapter(definition.adapter_key)
+            )
+            if definition
+            and alive
+            and batch.preview_version > 0
+            and batch.status != "prechecking"
+            and not view.unpublished_input(tasks)
+            else None,
         )
 
     def batches(self, ctx: AdminContext, **filters: Any) -> dict[str, Any]:
@@ -169,7 +194,11 @@ class ImportQueries:
         ):
             raise AppError("import.batch_state_conflict")
         definition = self.access.definition(
-            batch.template_key, batch.template_version_no, permissions, batch.template_config_hash
+            batch.template_key,
+            batch.template_version_no,
+            permissions,
+            batch.template_config_hash,
+            for_write=False,
         )
         return (batch, frozenset(f.key for f in definition.fields if not f.sensitive))
 
@@ -177,9 +206,18 @@ class ImportQueries:
         batch, fields = self._read_rows(ctx, batch_id)
         rows, total = queries.rows(self.access.db, batch, filters)
         issues = queries.row_issues(self.access.db, batch, [r.id for r in rows])
+        definition = self.access.registry.get(
+            batch.template_key, batch.template_version_no, batch.template_config_hash
+        )
+        adapter = self.access.registry.get_adapter(definition.adapter_key)
         return dict(
             items=[
-                view.row_view(row, [i for i in issues if i.row_id == row.id], fields)
+                view.row_view(
+                    row,
+                    [i for i in issues if i.row_id == row.id],
+                    fields,
+                    presentation.values(adapter, prepared_values(row.normalized_values)),
+                )
                 for row in rows
             ],
             total=total,
@@ -212,8 +250,9 @@ class ImportQueries:
         )
 
     def events(self, ctx: AdminContext, batch_id: str, **filters: Any) -> dict[str, Any]:
-        self.access.authorize(ctx, "read")
+        _, _, permissions = self.access.authorize(ctx, "read")
         batch = self.access.target(ctx, batch_id)
+        self._batch_definition(batch, permissions)
         items, total = queries.events(self.access.db, batch.id, filters)
         return dict(
             items=[
@@ -261,7 +300,11 @@ class ImportQueries:
         identity, actor, permissions = self.access.authorize(ctx, "download")
         batch = self.access.target(ctx, batch_id)
         self.access.definition(
-            batch.template_key, batch.template_version_no, permissions, batch.template_config_hash
+            batch.template_key,
+            batch.template_version_no,
+            permissions,
+            batch.template_config_hash,
+            for_write=False,
         )
         self.access.check_scope(batch)
         now = utc_now()

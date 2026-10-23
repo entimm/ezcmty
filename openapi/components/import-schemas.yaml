@@ -193,7 +193,7 @@ ImportTypeList:
       type: array
       items:
         $ref: ./import-schemas.yaml#/ImportType
-  description: 不分页；无生产适配器或无授权类型时 items=[]，不返回测试类型。
+  description: 不分页；无授权类型时 items=[]，不返回测试类型。生产类型 property_fee_bills 仅向具有物业账单创建权限的 property_admin 开放，范围仅 community，模式仅 create；platform_admin 不提供该类型。
 ImportTemplateField:
   type: object
   additionalProperties: false
@@ -560,6 +560,72 @@ ImportActor:
       type: string
       minLength: 1
       maxLength: 128
+ImportBusinessField:
+  type: object
+  additionalProperties: false
+  required:
+    - key
+    - label
+    - format
+  properties:
+    key:
+      $ref: ./import-schemas.yaml#/ImportFieldKey
+    label:
+      type: string
+      minLength: 1
+      maxLength: 128
+    format:
+      type: string
+      enum:
+        - text
+        - money_cents
+  description: 服务端声明的业务预览白名单字段，money_cents 使用整数分，前端按元展示；字段值从同行 business_values 读取。
+ImportBusinessSummary:
+  type: object
+  additionalProperties: false
+  required:
+    - key
+    - label
+    - format
+    - without_warning_rows
+    - with_warning_rows
+  properties:
+    key:
+      $ref: ./import-schemas.yaml#/ImportFieldKey
+    label:
+      type: string
+      minLength: 1
+      maxLength: 128
+    format:
+      type: string
+      enum:
+        - integer
+        - money_cents
+    without_warning_rows:
+      type: string
+      pattern: ^(0|[1-9][0-9]*)$
+      description: 只汇总 precheck_status=valid 且 planned_action=create 的完整预览行集合。
+    with_warning_rows:
+      type: string
+      pattern: ^(0|[1-9][0-9]*)$
+      description: 汇总 precheck_status=valid 或 warning 且 planned_action=create 的完整预览行集合。
+  description: 非负整数用十进制字符串传输，避免整批金额超过 JavaScript 安全整数范围；money_cents 单位为分。跳过、错误及非新增行不计入合计；用户选择是否执行警告行后使用对应合计，不从分页明细推算。all_rows 遇到错误仍禁止确认，valid_rows_only 也不能绕过边界或条件权限。
+ImportBusinessPreview:
+  type: object
+  additionalProperties: false
+  required:
+    - fields
+    - summary
+  properties:
+    fields:
+      type: array
+      items:
+        $ref: ./import-schemas.yaml#/ImportBusinessField
+    summary:
+      type: array
+      items:
+        $ref: ./import-schemas.yaml#/ImportBusinessSummary
+  description: 与当前已发布预览身份一致的安全业务投影。不存在业务投影、尚未发布预览或准备数据已清理时可省略或为 null。合计表达预计新增影响，不是历史实际入账金额，不从账单当前余额重算。字段顺序由数组决定，内部命令、位置核验快照和 _prepared 不返回。
 ImportBatch:
   type: object
   additionalProperties: false
@@ -643,6 +709,10 @@ ImportBatch:
         - type: 'null'
     statistics:
       $ref: ./import-schemas.yaml#/ImportStatistics
+    business_preview:
+      anyOf:
+        - $ref: ./import-schemas.yaml#/ImportBusinessPreview
+        - type: 'null'
     source_artifact:
       anyOf:
         - $ref: ./import-schemas.yaml#/ImportSourceArtifact
@@ -927,6 +997,11 @@ ImportValues:
   additionalProperties:
     $ref: ./import-schemas.yaml#/ImportScalar
   description: 键仅来自固定模板，值由服务端规范化并按权限投影。保留期外的敏感快照读取返回410。
+ImportBusinessValues:
+  type: object
+  additionalProperties:
+    $ref: ./import-schemas.yaml#/ImportScalar
+  description: 仅包含本批次 business_preview.fields 声明且当前身份可读取的安全业务字段。值为标量，不返回内部命令、嵌套准备快照或 _prepared。money_cents 字段为非负安全整数分；内部准备数据不可用时省略或返回 null。
 ImportRow:
   type: object
   additionalProperties: false
@@ -957,6 +1032,10 @@ ImportRow:
     normalized_values:
       anyOf:
         - $ref: ./import-schemas.yaml#/ImportValues
+        - type: 'null'
+    business_values:
+      anyOf:
+        - $ref: ./import-schemas.yaml#/ImportBusinessValues
         - type: 'null'
     issue_count:
       type: integer

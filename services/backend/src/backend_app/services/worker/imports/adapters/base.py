@@ -3,7 +3,12 @@ from typing import Any, Protocol
 
 from sqlalchemy.orm import Session
 
-from backend_app.domain.imports.types import ImportContext, ImportPlan, ImportProblem
+from backend_app.domain.imports.types import (
+    ImportContext,
+    ImportPlan,
+    ImportPreparation,
+    ImportProblem,
+)
 
 
 class ImportAdapter(Protocol):
@@ -11,14 +16,38 @@ class ImportAdapter(Protocol):
 
     def normalize(self, row: Mapping[str, Any]) -> dict[str, Any]: ...
 
-    def precheck(
-        self, normalized_row: Mapping[str, Any], context: ImportContext, db: Session
+    def prepare(
+        self,
+        normalized_input: Mapping[str, Any],
+        context: ImportContext,
+        db: Session,
+        *,
+        fixed_prepared: Mapping[str, Any] | None = None,
+    ) -> ImportPreparation: ...
+
+    def required_permissions(
+        self, normalized_input: Mapping[str, Any], prepared: Mapping[str, Any] | None = None
+    ) -> frozenset[str]: ...
+
+    def plan(self, prepared: Mapping[str, Any]) -> ImportPlan: ...
+
+    def revalidate(
+        self,
+        prepared: Mapping[str, Any],
+        context: ImportContext,
+        db: Session,
+        *,
+        target: Mapping[str, str] | None = None,
     ) -> Sequence[ImportProblem]: ...
-
-    def build_operation_key(self, row: Mapping[str, Any]) -> str: ...
-
-    def plan(self, row: Mapping[str, Any]) -> ImportPlan: ...
 
     def execute(
         self, operation: ImportPlan, context: ImportContext, db: Session
     ) -> Mapping[str, Any]: ...
+
+    def resolve_operation(
+        self,
+        operation_key: str,
+        prepared: Mapping[str, Any],
+        context: ImportContext,
+        db: Session,
+    ) -> Mapping[str, Any] | None: ...

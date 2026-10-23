@@ -1,10 +1,12 @@
 """Bounded import stages with durable coordinates and transaction-owned business writes."""
 
 import hashlib
+import json
 import re
 from collections.abc import Mapping
 from dataclasses import replace
 from datetime import datetime, timedelta
+from types import MappingProxyType
 from typing import Any, cast
 
 from sqlalchemy.exc import DBAPIError, IntegrityError
@@ -18,7 +20,7 @@ from backend_app.domain.imports.checkpoint import validate_checkpoint
 from backend_app.domain.imports.errors import ImportExecutionFailure, ImportOutcomeUnknown
 from backend_app.domain.imports.fingerprints import canonical_json, fingerprint
 from backend_app.domain.imports.lifecycle import validate_transition
-from backend_app.domain.imports.operation_keys import operation_key, validate_digest
+from backend_app.domain.imports.operation_keys import operation_key
 from backend_app.domain.imports.registry import ImportDefinition, ImportRegistry
 from backend_app.domain.imports.types import ImportContext, ImportProblem, ImportScope
 from backend_app.domain.imports.validation import normalize_fields, validate_fields
@@ -47,6 +49,12 @@ from backend_app.repositories.imports.tasks import (
     reschedule_task,
 )
 from backend_app.repositories.property import PropertyRepository
+from backend_app.services.imports.permissions import (
+    batch_permissions,
+    prepared_values,
+    require_permissions,
+    source_values,
+)
 from backend_app.services.worker.imports.adapters.base import ImportAdapter
 
 CHUNK_ROWS = 200
@@ -67,6 +75,13 @@ class ImportWorkerService:
 
     def run(self, lease: TaskLease) -> None:
         try:
+            with self.factory() as db:
+                batch = get_batch(db, lease.batch_id, lock=True)
+                if batch is not None and batch.status == "cancel_requested":
+                    require_current_lease(db, lease, now=utc_now())
+                    self._cancel(db, batch, lease, utc_now())
+                    db.commit()
+                    return
             if lease.phase == "parse":
                 self._parse(lease)
             elif lease.phase == "precheck":
@@ -388,16 +403,52 @@ class ImportWorkerService:
             for row in rows:
                 if row.raw_values is None:
                     raise ValueError("import.data_expired")
-                normalized = adapter.normalize(normalize_fields(definition, row.raw_values))
+                fixed = prepared_values(row.normalized_values) if batch.parent_batch_id else None
+                if batch.parent_batch_id and (fixed is None or row.operation_id is None):
+                    raise ValueError("import.operation_identity_mismatch")
+                normalized = (
+                    source_values(row.normalized_values or {})
+                    if fixed is not None
+                    else adapter.normalize(normalize_fields(definition, row.raw_values))
+                )
+                require_permissions(
+                    adapter.required_permissions(normalized, fixed), context.permissions
+                )
                 problems = validate_fields(definition, normalized)
-                if not problems:
-                    problems.extend(adapter.precheck(normalized, context, db))
-                row.normalized_values = normalized
+                preparation = adapter.prepare(
+                    MappingProxyType(normalized),
+                    context,
+                    db,
+                    fixed_prepared=json.loads(canonical_json(fixed)) if fixed is not None else None,
+                )
+                problems.extend(preparation.problems)
+                if fixed is not None and preparation.prepared not in (None, fixed):
+                    raise ValueError("import.operation_identity_mismatch")
+                prepared = fixed if fixed is not None else preparation.prepared
+                identity = (
+                    (row.normalized_values or {}).get("_identity")
+                    if fixed is not None
+                    else preparation.identity
+                )
+                if identity is not None and (
+                    not isinstance(identity, dict)
+                    or set(identity) != {"operation_type", "natural_key"}
+                    or not isinstance(identity["operation_type"], str)
+                    or not identity["operation_type"]
+                    or not isinstance(identity["natural_key"], dict)
+                    or not identity["natural_key"]
+                ):
+                    raise ValueError("import.adapter_result_invalid")
+                require_permissions(
+                    adapter.required_permissions(normalized, prepared), context.permissions
+                )
                 plan = (
-                    adapter.plan(normalized)
-                    if not any(p.severity == "error" for p in problems)
+                    adapter.plan(prepared)
+                    if prepared is not None and not any(p.severity == "error" for p in problems)
                     else None
                 )
+                if prepared is None and not any(p.severity == "error" for p in problems):
+                    problems.append(ImportProblem("import.conflict", "未获得可执行的业务准备结果"))
                 if plan is not None and (
                     plan.action not in {"create", "skip"}
                     or not plan.operation_type
@@ -405,14 +456,16 @@ class ImportWorkerService:
                 ):
                     problems.append(ImportProblem("import.conflict", "无法建立创建操作计划"))
                     plan = None
-                row.warning_count = sum(p.severity == "warning" for p in problems)
-                row.error_count = sum(p.severity == "error" for p in problems)
-                row.validation_status = "invalid" if row.error_count else "valid"
-                row.planned_action = plan.action if plan is not None else "conflict"
-                row.validation_version = version
-                row.updated_at = now
                 if plan is not None:
-                    input_hash = plan.input_fingerprint or fingerprint(normalized)
+                    planned_identity = {
+                        "operation_type": plan.operation_type,
+                        "natural_key": plan.natural_key,
+                    }
+                    if identity is not None and identity != planned_identity:
+                        raise ValueError("import.operation_identity_mismatch")
+                    if fixed is None:
+                        identity = planned_identity
+                    input_hash = plan.input_fingerprint or fingerprint(prepared)
                     stable_key = operation_key(
                         batch.property_company_id,
                         batch.template_key,
@@ -420,9 +473,8 @@ class ImportWorkerService:
                         plan.natural_key or {},
                         input_hash,
                     )
-                    # Exercise and validate the adapter's stable natural-operation identity.
-                    validate_digest(adapter.build_operation_key(normalized))
-                    if row.operation_id:
+                    if batch.parent_batch_id:
+                        assert row.operation_id is not None
                         operation = get_operation(db, row.operation_id, lock=True)
                         if (
                             operation is None
@@ -445,8 +497,41 @@ class ImportWorkerService:
                             now=now,
                         )
                         row.operation_id = operation.id
-                else:
+                    if operation.status in {"succeeded", "skipped"}:
+                        assert prepared is not None
+                        problems.extend(
+                            adapter.revalidate(
+                                prepared,
+                                context,
+                                db,
+                                target={
+                                    "target_type": operation.target_type or "",
+                                    "target_id": operation.target_id or "",
+                                },
+                            )
+                        )
+                if plan is None or any(p.severity == "error" for p in problems):
+                    plan = None
+                if plan is None and not batch.parent_batch_id:
                     row.operation_id = None
+                if any(p.code in {"auth.forbidden", "auth.unauthenticated"} for p in problems):
+                    raise AppError("auth.forbidden")
+                if fixed is None:
+                    row.normalized_values = json.loads(
+                        canonical_json(
+                            {
+                                **normalized,
+                                "_prepared": prepared,
+                                "_identity": identity,
+                            }
+                        )
+                    )
+                row.warning_count = sum(p.severity == "warning" for p in problems)
+                row.error_count = sum(p.severity == "error" for p in problems)
+                row.validation_status = "invalid" if row.error_count else "valid"
+                row.planned_action = plan.action if plan is not None else "conflict"
+                row.validation_version = version
+                row.updated_at = now
                 for problem in problems:
                     self._issue(db, batch, row, version, problem, now)
             db.flush()
@@ -463,6 +548,9 @@ class ImportWorkerService:
                 progress_total=batch.total_rows,
             )
             if done:
+                require_permissions(
+                    batch_permissions(db, batch, definition, adapter), context.permissions
+                )
                 self._publish_preview(db, batch, version, now)
                 complete_task(db, lease, now=utc_now())
             else:
@@ -483,11 +571,9 @@ class ImportWorkerService:
                 ImportProblem("import.duplicate_in_file", "文件内存在重复业务标识"),
                 now,
             )
-            row.validation_status, row.planned_action, row.operation_id = (
-                "invalid",
-                "conflict",
-                None,
-            )
+            row.validation_status, row.planned_action = "invalid", "conflict"
+            if batch.parent_batch_id is None:
+                row.operation_id = None
             row.error_count += 1
             if index % CHUNK_ROWS == CHUNK_ROWS - 1:
                 db.flush()
@@ -517,11 +603,17 @@ class ImportWorkerService:
         control.event(db, batch, f"preview:{version}", "preview_ready", now)
 
     def _apply(self, lease: TaskLease) -> None:
+        with self.factory() as db:
+            batch, _, definition, context = self._guard(db, lease)
+            adapter = cast(ImportAdapter, self.registry.get_adapter(definition.adapter_key))
+            required = batch_permissions(db, batch, definition, adapter)
+            require_permissions(required, context.permissions)
         for _ in range(CHUNK_ROWS):
             row_id: str | None = None
             try:
                 with self.factory() as db:
                     batch, task, definition, context = self._guard(db, lease)
+                    require_permissions(required, context.permissions)
                     now = utc_now()
                     if self._cancel(db, batch, lease, now):
                         db.commit()
@@ -556,26 +648,72 @@ class ImportWorkerService:
                     ):
                         raise ValueError("import.operation_identity_mismatch")
                     adapter = cast(ImportAdapter, self.registry.get_adapter(definition.adapter_key))
-                    plan = adapter.plan(row.normalized_values)
+                    prepared = prepared_values(row.normalized_values)
+                    if prepared is None:
+                        raise ValueError("import.operation_identity_mismatch")
+                    source = source_values(row.normalized_values)
+                    require_permissions(
+                        adapter.required_permissions(source, prepared), context.permissions
+                    )
+                    plan = adapter.plan(prepared)
                     if (
                         plan.operation_type != operation.operation_type
-                        or (plan.input_fingerprint or fingerprint(row.normalized_values))
+                        or (plan.input_fingerprint or fingerprint(prepared))
                         != operation.input_fingerprint
+                        or operation_key(
+                            batch.property_company_id,
+                            batch.template_key,
+                            plan.operation_type or "",
+                            plan.natural_key or {},
+                            plan.input_fingerprint or fingerprint(prepared),
+                        )
+                        != operation.operation_key
                     ):
                         raise ValueError("import.operation_identity_mismatch")
                     result: Mapping[str, Any] | None
-                    if operation.status in {"succeeded", "skipped"}:
+                    succeeded = operation.status in {"succeeded", "skipped"}
+                    uncertain = not succeeded and (
+                        operation.status == "uncertain" or row.execution_status == "uncertain"
+                    )
+                    problems = (
+                        []
+                        if uncertain
+                        else list(
+                            adapter.revalidate(
+                                prepared,
+                                context,
+                                db,
+                                target={
+                                    "target_type": operation.target_type or "",
+                                    "target_id": operation.target_id or "",
+                                }
+                                if succeeded
+                                else None,
+                            )
+                        )
+                    )
+                    for problem in problems:
+                        if problem.code in {"auth.forbidden", "auth.unauthenticated"}:
+                            raise AppError("auth.forbidden")
+                        if problem.code == "import.scope_mismatch":
+                            raise ValueError("import.scope_mismatch")
+                        self._issue(
+                            db, batch, row, batch.preview_version, problem, now, phase="apply"
+                        )
+                    if any(problem.severity == "error" for problem in problems):
+                        row.execution_status, row.result_at = "failed", now
+                        if not succeeded:
+                            operation.status, operation.processed_at = "failed", now
+                        result = None
+                    elif succeeded:
                         result = {
                             "status": "skipped",
                             "target_type": operation.target_type,
                             "target_id": operation.target_id,
                         }
-                    elif operation.status == "uncertain" or row.execution_status == "uncertain":
-                        resolver = getattr(adapter, "resolve_operation", None)
-                        result = (
-                            resolver(operation.operation_key, plan, context, db)
-                            if callable(resolver)
-                            else None
+                    elif uncertain:
+                        result = adapter.resolve_operation(
+                            operation.operation_key, prepared, context, db
                         )
                         if not result:
                             self._block_unknown(db, batch, row, operation, lease, now)
@@ -645,7 +783,9 @@ class ImportWorkerService:
                             result = None
                     if result is not None:
                         self._save_result(row, operation, result, now)
-                    row.updated_at = operation.updated_at = now
+                    row.updated_at = now
+                    if not succeeded:
+                        operation.updated_at = now
                     batch.started_at = batch.started_at or now
                     batch.updated_at = now
                     batch.row_version += 1
@@ -733,8 +873,14 @@ class ImportWorkerService:
             if operation is None:
                 raise ValueError("import.operation_identity_mismatch")
             now = utc_now()
-            if row.execution_status in {"created", "skipped", "failed", "excluded", "cancelled"}:
-                # The original transaction committed; never overwrite its durable result.
+            if operation.status in {"succeeded", "skipped"} or row.execution_status in {
+                "created",
+                "skipped",
+                "failed",
+                "excluded",
+                "cancelled",
+            }:
+                # Resume this row; a known shared success may predate its transaction.
                 reschedule_task(db, lease, now=utc_now(), next_run_at=now)
             else:
                 self._block_unknown(db, batch, row, operation, lease, now)

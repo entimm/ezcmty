@@ -47,3 +47,10 @@ class ImportProblem:
     cell_reference: str | None = None
     suggestion: str | None = None
     detail: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class ImportPreparation:
+    prepared: dict[str, Any] | None
+    problems: tuple[ImportProblem, ...] = ()
+    identity: dict[str, Any] | None = None

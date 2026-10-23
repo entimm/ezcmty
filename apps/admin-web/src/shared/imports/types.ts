@@ -93,6 +93,21 @@ export interface ConfirmInput {
   apply_policy: 'all_rows' | 'valid_rows_only';
   include_warning_rows: boolean;
 }
+export interface BusinessField {
+  key: string;
+  label: string;
+  format: 'text' | 'money_cents';
+}
+export interface BusinessPreview {
+  fields: BusinessField[];
+  summary: {
+    key: string;
+    label: string;
+    format: 'integer' | 'money_cents';
+    without_warning_rows: string;
+    with_warning_rows: string;
+  }[];
+}
 export interface Batch {
   id: string;
   parent_batch_id: string | null;
@@ -114,6 +129,7 @@ export interface Batch {
   } | null;
   apply_policy: ConfirmInput['apply_policy'] | null;
   include_warning_rows: boolean | null;
+  business_preview?: BusinessPreview | null;
   statistics: {
     total_rows: number;
     preview: {
@@ -161,6 +177,7 @@ export interface ImportRow {
   planned_action: 'none' | 'create' | 'skip' | 'conflict';
   raw_values: Record<string, Scalar>;
   normalized_values: Record<string, Scalar> | null;
+  business_values?: Record<string, Scalar> | null;
   issue_count: number;
   execution_status:
     | 'pending'

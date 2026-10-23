@@ -1,6 +1,56 @@
 import { Alert, Descriptions, Progress, Space, Tag, Typography } from 'antd';
-import type { Batch, BatchStatus, Task } from './types';
-import { statusNames, phaseNames, time } from './values';
+import type { Batch, BatchStatus, BusinessPreview, Task } from './types';
+import { businessValue, statusNames, phaseNames, time } from './values';
+export function BusinessSummary({
+  preview,
+  comparison = false,
+  includeWarningRows,
+  blocked = false,
+}: {
+  preview: BusinessPreview | null | undefined;
+  comparison?: boolean;
+  includeWarningRows?: boolean;
+  blocked?: boolean;
+}) {
+  if (!preview?.summary.length) return null;
+  return (
+    <Space orientation="vertical" style={{ width: '100%' }}>
+      <Descriptions
+        title="预计新增影响"
+        column={1}
+        items={preview.summary.map((item) => ({
+          key: item.key,
+          label: item.label,
+          children: comparison ? (
+            <>
+              <div>
+                不含警告行：
+                {businessValue(item.without_warning_rows, item.format)}
+              </div>
+              <div>
+                含警告行：{businessValue(item.with_warning_rows, item.format)}
+              </div>
+            </>
+          ) : blocked ? (
+            '当前策略有错误行，请先调整执行策略'
+          ) : includeWarningRows === undefined ? (
+            '请先选择是否执行警告行'
+          ) : (
+            businessValue(
+              includeWarningRows
+                ? item.with_warning_rows
+                : item.without_warning_rows,
+              item.format,
+            )
+          ),
+        }))}
+      />
+      <Typography.Text type="secondary">
+        合计由服务端按完整预览计算，排除跳过、错误和非新增行。此处为预计新增影响，实际结果以已提交行记录为准。
+      </Typography.Text>
+    </Space>
+  );
+}
 export function BatchStatusTag({ status }: { status: BatchStatus }) {
   return (
     <Tag

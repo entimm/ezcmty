@@ -1,0 +1,141 @@
+{
+  "key": "property_fee_bills",
+  "name": "物业费账单",
+  "version_no": 1,
+  "adapter_key": "property_fee_bills_v1",
+  "allowed_scope_types": ["community"],
+  "supported_modes": ["create"],
+  "allowed_actor_scopes": ["property_admin"],
+  "required_permissions": ["property.bill.create"],
+  "read_permissions": ["property.bill.read"],
+  "released_at": "2026-10-23T00:00:00Z",
+  "release_notes": "按完整位置匹配房屋，创建物业费月账单，可同时登记初始已缴。",
+  "sheet_name": "导入数据",
+  "fields": [
+    {
+      "key": "phase_name",
+      "label": "分区",
+      "order": 1,
+      "max_length": 80,
+      "normalization_rules": ["trim"],
+      "example": "一期",
+      "description": "没有分区层级时留空；空白不代表通配。"
+    },
+    {
+      "key": "building_name",
+      "label": "楼栋",
+      "order": 2,
+      "required": true,
+      "max_length": 80,
+      "normalization_rules": ["trim"],
+      "example": "1号楼",
+      "description": "填写现有完整楼栋名称，按所属层级精确匹配。"
+    },
+    {
+      "key": "unit_name",
+      "label": "单元",
+      "order": 3,
+      "max_length": 80,
+      "normalization_rules": ["trim"],
+      "example": "1单元",
+      "description": "房屋直接属于楼栋时留空；有单元层级时必须填写。"
+    },
+    {
+      "key": "room_no",
+      "label": "房号",
+      "order": 4,
+      "required": true,
+      "max_length": 32,
+      "normalization_rules": ["trim"],
+      "example": "0101",
+      "description": "使用文本格式，完整保留大小写、前导零和内部字符。"
+    },
+    {
+      "key": "house_external_code",
+      "label": "房屋外部编号",
+      "order": 5,
+      "max_length": 64,
+      "normalization_rules": ["trim"],
+      "example": "0001A",
+      "description": "可选。仅核验完整位置已定位的房屋，不能替代位置或回填档案。"
+    },
+    {
+      "key": "billing_month",
+      "label": "账单月份",
+      "order": 6,
+      "required": true,
+      "max_length": 7,
+      "normalization_rules": ["trim"],
+      "example": "2026-10",
+      "description": "使用YYYY-MM文本，支持历史、当前和未来月份，每行一个自然月。"
+    },
+    {
+      "key": "receivable_amount",
+      "label": "应收金额（元）",
+      "order": 7,
+      "required": true,
+      "data_type": "decimal",
+      "max_length": 32,
+      "normalization_rules": ["trim"],
+      "example": "300.00",
+      "description": "原始应收金额，非负，最多两位小数，不填待缴余额，不带货币符号。"
+    },
+    {
+      "key": "manual_amount_reason",
+      "label": "金额说明",
+      "order": 8,
+      "required": true,
+      "max_length": 1000,
+      "normalization_rules": ["trim"],
+      "example": "月度物业费",
+      "description": "说明本次手填应收金额的依据。"
+    },
+    {
+      "key": "initial_paid_amount",
+      "label": "初始已缴金额（元）",
+      "order": 9,
+      "required": true,
+      "data_type": "decimal",
+      "max_length": 32,
+      "normalization_rules": ["trim"],
+      "example": "0.00",
+      "description": "必填，未缴明确填0；正金额生成一条线下收款登记，不能超过应收。"
+    },
+    {
+      "key": "initial_received_on",
+      "label": "初始收款日期",
+      "order": 10,
+      "data_type": "date",
+      "normalization_rules": ["trim"],
+      "example": "2026-10-01",
+      "description": "使用YYYY-MM-DD；日期不详留空，不以导入日代替，不得为未来日期。"
+    },
+    {
+      "key": "initial_receipt_reason",
+      "label": "初始收款说明",
+      "order": 11,
+      "max_length": 1000,
+      "normalization_rules": ["trim"],
+      "example": "历史累计已缴汇总",
+      "description": "可说明历史累计已缴的核对依据；汇总登记不表示迁移逐笔流水。"
+    },
+    {
+      "key": "external_bill_no",
+      "label": "外部账单编号",
+      "order": 12,
+      "max_length": 128,
+      "normalization_rules": ["trim"],
+      "example": "0000123A",
+      "description": "文本格式，保留前导零；不作为业务身份或判重依据。"
+    },
+    {
+      "key": "due_date",
+      "label": "到期日",
+      "order": 13,
+      "data_type": "date",
+      "normalization_rules": ["trim"],
+      "example": "2026-10-31",
+      "description": "可选，使用YYYY-MM-DD。"
+    }
+  ]
+}

@@ -1,10 +1,18 @@
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from pytest import MonkeyPatch
 from tests.support.admin import company
 from tests.support.housing import set_permissions
+from tests.support.imports.adapter import TestRecordAdapter
 from tests.support.imports.http import create_body, install_http_registry, publish_http_preview
+from tests.support.imports.pipeline import drain_worker
 from tests.support.workspace import PREFIX, WorkspaceHarness
+
+from backend_app.core.config import get_settings
+from backend_app.import_definitions.catalog import JsonImportRegistry
+from backend_app.services.worker.imports.pipeline import ImportWorkerService
 
 
 def test_backend_company_scope_and_pagination_are_applied_before_visibility(
@@ -119,3 +127,117 @@ def test_confirmation_rejects_missing_policy_stale_preview_and_implicit_error_sk
     assert detail.json()["apply_policy"] == "valid_rows_only"
     assert detail.json()["include_warning_rows"] is False
     assert detail.json()["statistics"]["execution"]["excluded_rows"] == 1
+
+
+def test_history_read_permissions_are_independent_from_creation_permissions(
+    workspace: WorkspaceHarness,
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    workspace.complete_login()
+    definition, storage = install_http_registry(
+        monkeypatch,
+        tmp_path,
+        required_permissions=("property.house.create",),
+        read_permissions=("property.community.read",),
+    )
+    created = workspace.client.post(
+        f"{PREFIX}/import-batches",
+        json=create_body(workspace.company_id),
+        headers={**workspace.headers(), "Idempotency-Key": "read-separation"},
+    )
+    assert created.status_code == 201, created.text
+    batch_id = created.json()["batch_id"]
+    publish_http_preview(workspace.platform.factory, batch_id, invalid=True)
+    allowed = {
+        "property.import.read",
+        "property.import.execute",
+        "property.import.cancel",
+        "property.community.read",
+        "property.import.generate_error_file",
+        "property.import.download",
+    }
+    set_permissions(workspace, allowed)
+    path = f"{PREFIX}/import-batches/{batch_id}"
+    detail = workspace.client.get(path)
+    assert detail.status_code == 200, detail.text
+    assert "confirm" not in detail.json()["next_actions"]
+    assert workspace.client.get(path + "/rows").status_code == 200
+    assert workspace.client.get(f"{PREFIX}/import-batches").status_code == 200
+    confirmation = workspace.client.post(
+        path + "/confirm",
+        json={
+            "preview_version": 1,
+            "preview_fingerprint": "b" * 64,
+            "apply_policy": "all_rows",
+            "include_warning_rows": False,
+        },
+        headers={**workspace.headers(), "Idempotency-Key": "read-cannot-confirm"},
+    )
+    assert confirmation.status_code == 403
+    generated = workspace.client.post(
+        path + "/error-file",
+        json={"format": "csv", "preview_version": 1},
+        headers={**workspace.headers(), "Idempotency-Key": "read-can-export"},
+    )
+    assert generated.status_code == 202, generated.text
+    registry = JsonImportRegistry((definition,), {"test_records": TestRecordAdapter()})
+    worker = ImportWorkerService(workspace.platform.factory, get_settings(), registry, storage)
+    drain_worker(workspace.platform.factory, worker)
+    downloaded = workspace.client.get(
+        path + "/artifacts/error-file/download", params={"generation": 1}
+    )
+    assert downloaded.status_code == 200, downloaded.text
+    cancelled = workspace.client.post(
+        path + "/cancel",
+        headers={
+            **workspace.headers(),
+            "Idempotency-Key": "read-can-cancel",
+        },
+    )
+    assert cancelled.status_code == 202, cancelled.text
+    set_permissions(workspace, allowed - {"property.community.read"})
+    assert workspace.client.get(path).status_code == 403
+
+
+def test_condition_permissions_cover_invalid_rows_and_successful_request_replay(
+    workspace: WorkspaceHarness,
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    class ConditionalAdapter(TestRecordAdapter):
+        def required_permissions(
+            self, normalized_input: Mapping[str, Any], prepared: Mapping[str, Any] | None = None
+        ) -> frozenset[str]:
+            return (
+                frozenset({"property.house.create"})
+                if normalized_input.get("code") == "C3"
+                else frozenset()
+            )
+
+    workspace.complete_login()
+    install_http_registry(monkeypatch, tmp_path, adapter=ConditionalAdapter())
+    created = workspace.client.post(
+        f"{PREFIX}/import-batches",
+        json=create_body(workspace.company_id),
+        headers={**workspace.headers(), "Idempotency-Key": "conditional-source"},
+    )
+    batch_id = created.json()["batch_id"]
+    publish_http_preview(workspace.platform.factory, batch_id, invalid=True)
+    path = f"{PREFIX}/import-batches/{batch_id}/confirm"
+    body = {
+        "preview_version": 1,
+        "preview_fingerprint": "b" * 64,
+        "apply_policy": "valid_rows_only",
+        "include_warning_rows": False,
+    }
+    permissions = {"property.import.read", "property.import.execute"}
+    set_permissions(workspace, permissions)
+    headers = {**workspace.headers(), "Idempotency-Key": "conditional-confirm"}
+    denied = workspace.client.post(path, json=body, headers=headers)
+    assert denied.status_code == 403, denied.text
+    set_permissions(workspace, permissions | {"property.house.create"})
+    confirmed = workspace.client.post(path, json=body, headers=headers)
+    assert confirmed.status_code == 202, confirmed.text
+    set_permissions(workspace, permissions)
+    assert workspace.client.post(path, json=body, headers=headers).status_code == 403

@@ -32,9 +32,22 @@ class JsonImportRegistry:
             adapter = bindings[definition.adapter_key]
             if any(
                 not callable(getattr(adapter, method, None))
-                for method in ("normalize", "precheck", "build_operation_key", "plan", "execute")
+                for method in (
+                    "normalize",
+                    "prepare",
+                    "required_permissions",
+                    "plan",
+                    "revalidate",
+                    "execute",
+                    "resolve_operation",
+                )
             ):
                 raise ValueError("Invalid import adapter binding")
+            presentation = ("presentation_fields", "presentation", "summary_fields")
+            if any(hasattr(adapter, method) for method in presentation) and not all(
+                callable(getattr(adapter, method, None)) for method in presentation
+            ):
+                raise ValueError("Incomplete import presentation binding")
             catalog[identity] = definition
         self._definitions = MappingProxyType(catalog)
         self._adapters = MappingProxyType(bindings)
@@ -78,5 +91,10 @@ class JsonImportRegistry:
 
 
 def get_import_registry() -> JsonImportRegistry:
-    # Test catalogs are passed explicitly to API/Worker composition, never discovered here.
-    return JsonImportRegistry()
+    from backend_app.services.worker.imports.adapters.bills import BillImportAdapter
+
+    return JsonImportRegistry.from_resources(
+        "backend_app.import_definitions",
+        ("property_fee_bills/v1.json",),
+        adapters={"property_fee_bills_v1": BillImportAdapter()},
+    )

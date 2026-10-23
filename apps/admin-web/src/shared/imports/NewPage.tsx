@@ -90,7 +90,13 @@ export function ImportsNewPage() {
           runtime.scope === 'platform_admin' ? targetCompanyId : undefined,
         name: communitySearch || undefined,
       }),
-    enabled: !!type && !!targetCompanyId && scopeType === 'community',
+    enabled:
+      !!type && !!targetCompanyId && scopeType === 'community' && !locked,
+  });
+  const lockedCommunity = useQuery({
+    queryKey: ['imports', 'scope-community', scopeId],
+    queryFn: () => runtime.community(scopeId),
+    enabled: locked && !!type && scopeType === 'community' && !!scopeId,
   });
   const scopeName =
     scopeType === 'company'
@@ -98,7 +104,13 @@ export function ImportsNewPage() {
           ...(companies.data?.items || []),
           ...(current.data ? [current.data] : []),
         ].find((item) => item.id === targetCompanyId)?.name
-      : communities.data?.items.find((item) => item.id === scopeId)?.name;
+      : locked
+        ? lockedCommunity.data?.name
+        : communities.data?.items.find((item) => item.id === scopeId)?.name;
+  const destination = runtime.businessDestination?.(typeKey, {
+    type: scopeType,
+    id: scopeId,
+  });
   const write = useImportWrite('new');
   async function create() {
     if (!type || !targetCompanyId || !selectedVersion || !scopeName) return;
@@ -228,7 +240,10 @@ export function ImportsNewPage() {
                         onSearch={setCommunitySearch}
                         value={scopeId || undefined}
                         onChange={setScopeId}
-                        options={communities.data?.items.map((item) => ({
+                        options={(lockedCommunity.data
+                          ? [lockedCommunity.data]
+                          : communities.data?.items || []
+                        ).map((item) => ({
                           value: item.id,
                           label: item.name,
                         }))}
@@ -254,7 +269,14 @@ export function ImportsNewPage() {
                 <Alert
                   type="info"
                   title={`范围已锁定：${scopeName}`}
-                  description="导入文件中的数据将仅处理到当前范围。批次创建后范围、模板和模式不可修改。"
+                  description={
+                    <>
+                      导入文件中的数据将仅处理到当前范围。批次创建后范围、模板和模式不可修改。
+                      {locked && destination && (
+                        <div>来源页面：{destination.label}</div>
+                      )}
+                    </>
+                  }
                 />
               )}
               {companies.isError && (
@@ -273,6 +295,12 @@ export function ImportsNewPage() {
                 <ReadError
                   error={communities.error}
                   retry={() => void communities.refetch()}
+                />
+              )}
+              {lockedCommunity.isError && (
+                <ReadError
+                  error={lockedCommunity.error}
+                  retry={() => void lockedCommunity.refetch()}
                 />
               )}
               {template.isError && (

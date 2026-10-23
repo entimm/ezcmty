@@ -28,6 +28,35 @@ class HousingRepository:
             query = query.with_for_update(of=SpaceNode).execution_options(populate_existing=True)
         return self.db.scalar(query)
 
+    def community(self, community_id: str) -> Community | None:
+        return self.db.scalar(
+            select(Community).where(
+                Community.id == community_id, Community.property_company_id == self.company_id
+            )
+        )
+
+    def location_nodes(
+        self, community_id: str, parent_id: str | None, node_type: str, name: str
+    ) -> list[SpaceNode]:
+        return list(
+            self.db.scalars(
+                self._nodes(community_id).where(
+                    SpaceNode.parent_id == parent_id,
+                    SpaceNode.node_type == node_type,
+                    SpaceNode.name == name,
+                )
+            )
+        )
+
+    def location_houses(self, community_id: str, node_id: str, room_no: str) -> list[House]:
+        return list(
+            self.db.scalars(
+                self._houses(community_id).where(
+                    House.space_node_id == node_id, House.room_no == room_no
+                )
+            )
+        )
+
     def has_children(self, community_id: str, node_id: str) -> bool:
         return bool(
             self.db.scalar(
@@ -137,6 +166,34 @@ class HousingRepository:
         if lock:
             query = query.with_for_update(of=House).execution_options(populate_existing=True)
         return self.db.scalar(query)
+
+    def house_path(
+        self, community_id: str, house_id: str, *, lock: bool = False, exclusive: bool = False
+    ) -> tuple[House | None, list[SpaceNode]]:
+        """Read a scoped house; callers protect company/account/community first."""
+        house = self.house(community_id, house_id)
+        if house is None:
+            return None, []
+        path = self.paths(community_id, [house.space_node_id]).get(house.space_node_id, [])
+        if lock:
+            refreshed = []
+            for node in path:
+                item = self.db.scalar(
+                    self._nodes(community_id)
+                    .where(SpaceNode.id == node.id)
+                    .with_for_update(read=True, of=SpaceNode)
+                    .execution_options(populate_existing=True)
+                )
+                if item is not None:
+                    refreshed.append(item)
+            path = refreshed
+            house = self.db.scalar(
+                self._houses(community_id)
+                .where(House.id == house_id)
+                .with_for_update(read=not exclusive, of=House)
+                .execution_options(populate_existing=True)
+            )
+        return house, path
 
     def houses(
         self,

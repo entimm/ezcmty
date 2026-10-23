@@ -98,4 +98,7 @@ def test_housing_downgrade_refuses_existing_data_and_keeps_revision(
         command.downgrade(Config(str(BACKEND_ROOT / "alembic.ini")), "20261014_admin_audit_company")
     with get_session_factory()() as db:
         assert db.scalar(select(SpaceNode.name)) == "A"
-        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "20261022_imports"
+        assert (
+            db.scalar(text("SELECT version_num FROM alembic_version"))
+            == "20261023_import_preparation"
+        )

@@ -22,7 +22,12 @@ import { OperationError, ReadError } from '../../components/AdminFeedback';
 import { useAdminApp } from '../admin-app-context';
 import { useListState } from '../hooks/use-list-state';
 import { saveDownload } from './api';
-import { BatchStatusTag, Statistics, TaskProgress } from './presentation';
+import {
+  BatchStatusTag,
+  BusinessSummary,
+  Statistics,
+  TaskProgress,
+} from './presentation';
 import { fileStatusNames, phaseNames, time } from './values';
 import { RowsPanel } from './RowsPanel';
 import { SourceUpload } from './UploadPanel';
@@ -40,7 +45,7 @@ const actionPermission: Record<NextAction, string> = {
 };
 export function ImportsDetailPage() {
   const { batch_id: batchId = '' } = useParams(),
-    { api, can, pageRoot } = useImports(),
+    { api, can, pageRoot, businessDestination } = useImports(),
     nav = useAdminApp(),
     navigate = useNavigate(),
     eventsState = useListState('events_'),
@@ -149,7 +154,8 @@ export function ImportsDetailPage() {
   const retained = Date.parse(batch.retention_until) > now,
     previewFresh =
       !!batch.preview && Date.parse(batch.preview.expires_at) > now,
-    p = batch.statistics.preview;
+    p = batch.statistics.preview,
+    destination = businessDestination?.(batch.import_type, batch.scope);
   return (
     <PageContainer
       title={batch.import_type_name}
@@ -166,6 +172,17 @@ export function ImportsDetailPage() {
             刷新
           </Button>
           <Link to={nav.path(pageRoot)}>返回导入中心</Link>
+          {destination?.canNavigate && (
+            <Button
+              onClick={() => {
+                void destination
+                  .prepareNavigation()
+                  .then(() => navigate(nav.path(destination.path)));
+              }}
+            >
+              返回{destination.label}
+            </Button>
+          )}
         </Space>
       }
     >
@@ -317,6 +334,7 @@ export function ImportsDetailPage() {
           />
         )}
         <Statistics batch={batch} />
+        <BusinessSummary preview={batch.business_preview} comparison />
         {!batch.confirmed_at && (
           <Alert
             showIcon
@@ -556,6 +574,14 @@ export function ImportsDetailPage() {
           }}
         >
           <ConfirmSummary batch={batch} />
+          <BusinessSummary
+            preview={batch.business_preview}
+            includeWarningRows={warningChoice}
+            blocked={applyPolicy === 'all_rows' && p.error_rows > 0}
+          />
+          {destination?.confirmationNotice && (
+            <Alert type="warning" title={destination.confirmationNotice} />
+          )}
           <Form layout="vertical">
             <Form.Item label="执行策略">
               <Radio.Group

@@ -4,9 +4,9 @@
 
 本设计定义通用导入的资源、输入输出、权限、幂等、错误和文件传输行为。产品边界见 [通用批量导入设计](overview.md)，页面状态见 [页面与交互设计](interaction.md)，持久化约束见 [数据库设计](database.md)，服务与任务边界见 [技术架构设计](architecture.md)。前端不直接访问内部表。
 
-[OpenAPI 入口及其引用](../../../openapi/openapi.yaml) 是唯一 API 契约权威来源。[导入模块](../../../openapi/modules/imports.yaml) 定义操作、权限和状态码，请求响应模型、参数及共享错误响应分别归入 [Schema](../../../openapi/components/import-schemas.yaml)、[参数](../../../openapi/components/import-parameters.yaml) 和 [响应](../../../openapi/components/import-responses.yaml)。根契约已表达本设计，运行端尚未实现；遵循 OpenAPI First，先确定契约，再实现运行端。实施时登记已实现的领域错误并生成错误目录，提交前通过各运行端契约一致性检查，不得放宽检查以忽略未实现接口。
+[OpenAPI 入口及其引用](../../../openapi/openapi.yaml) 是唯一 API 契约权威来源。[导入模块](../../../openapi/modules/imports.yaml) 定义操作、权限和状态码，请求响应模型、参数及共享错误响应分别归入 [Schema](../../../openapi/components/import-schemas.yaml)、[参数](../../../openapi/components/import-parameters.yaml) 和 [响应](../../../openapi/components/import-responses.yaml)。遵循 OpenAPI First，先确定契约，再实现运行端。实施时登记已实现的领域错误并生成错误目录，提交前通过各运行端契约一致性检查，不得放宽检查以忽略未实现接口。
 
-本轮能力不包含业务接入。未注册生产适配器时类型目录返回空数组，创建未知或不可用类型被拒绝；不发布测试导入类型，不用生产数据表构造演示能力。测试适配器只位于测试目录。
+通用契约不隐式开放业务类型，实际接入由对应业务设计限定，账单见 [账单批量导入](../property/bill-imports.md)。未注册生产适配器时类型目录返回空数组，创建未知或不可用类型被拒绝；不发布测试导入类型，不用生产数据表构造演示能力。测试适配器只位于测试目录。
 
 后端路径为 `/v1/...`，端入口分别为 `/api/platform/v1/...`、`/api/property/v1/...`。运行端通过 `x-runtimes` 声明 `platform_admin_api`、`property_admin_api`，后台归属不能由请求切换。字段采用 `snake_case`，标识使用项目 UUID 格式，模板版本和预览版本使用正整数，SHA-256 均为小写 64 位十六进制，不带 `sha256:` 前缀；页面模板版本显示为 `v1` 等名称。
 
@@ -31,6 +31,8 @@
 
 导入权限与适配器声明的实际业务创建权限叠加；字段读取与下载还需满足业务字段权限。类型目录只返回当前端具备上述业务能力的类型。平台端不能因为拥有导入权限而取得物业端业务写入能力，适配器不支持的后台不暴露该类型。
 
+类型目录、模板及创建使用基础业务权限；共享业务能力根据可独立解释的普通输入声明条件权限，不以整行有效或完成准备为前提，不能通过先排除错误行跳过检查。确认、执行、重跑、恢复及相关请求幂等结果和成功业务操作复用前复核全部条件权限，缺失时整批阻断，不能靠通过行策略或警告排除绕过。历史读取使用当前读取权限、字段权限及范围，不要求重新获得全部写权限。
+
 首期范围仅为 `company`、`community`。平台创建请求必须显式提供 `property_company_id`；物业请求不得提供该字段，公司从身份取得。`scope = {type, id}` 中公司范围的 `id` 必须等于目标公司，小区范围的 `id` 必须属于该公司。服务端生成 `scope` 名称与不可变快照，不接受任意客户端快照。房屋、账期和资源集合范围另行接入。
 
 文件中的范围不能覆盖批次范围；不匹配产生阻断问题 `import.scope_mismatch`。解析、重新预检、确认、恢复和每个执行分块前复核权限、公司与小区状态。查询、分页总数和下载应用同一范围过滤；跨后台、跨公司或不可见资源返回 `404 resource.not_found`，已可见资源缺少操作权限返回 `403 auth.forbidden`。`next_actions` 只是提示，不能代替服务端检查。
@@ -49,7 +51,7 @@
 
 创建指纹只含固定类型、模板版本、服务端范围与模式；上传指纹含批次和服务端核实的源文件摘要；确认指纹包含预览版本、摘要、`apply_policy` 和 `include_warning_rows`。重预检、取消、重跑、恢复和文件生成使用各自规范化输入。请求指纹不混入服务端时间、随机任务 ID 或上传前尚不存在的文件摘要。
 
-请求幂等与业务幂等独立。逻辑业务操作使用稳定 `operation_key`，任务接管与失败重跑复用原键；成功操作读取既有结果，未知结果先核实原操作。超时后查询批次或以原键和原输入重放；`409`、`503` 和超时本身不表示允许盲目重试。自动重试仅适用于安全读取或具备幂等保证的写入，使用有界退避；只有能够承诺等待时间才返回 `Retry-After`。
+请求幂等与业务幂等独立。逻辑业务操作使用稳定 `operation_key`，任务接管与失败重跑复用原键及准备输入；成功操作在当前授权与共享业务目标复核通过后读取既有结果，核验失败不改变原成功账本。未知结果先核实原操作。超时后查询批次或以原键和原输入重放；`409`、`503` 和超时本身不表示允许盲目重试。自动重试仅适用于安全读取或具备幂等保证的写入，使用有界退避；只有能够承诺等待时间才返回 `Retry-After`。
 
 ## 资源与操作
 
@@ -141,6 +143,8 @@
 
 `ImportStatistics` 包含 `total_rows`、`preview={create_rows,update_rows,skip_rows,warning_rows,error_rows}`、`execution={created_rows,updated_rows,skipped_rows,failed_rows,uncertain_rows,cancelled_rows,excluded_rows,processed_rows,retryable_failed_rows}`。一期两个 `update` 计数为 0；警告/错误计数可与计划动作重叠。执行统计读取本批次行结果快照；共享操作账本后来重跑成功不能改写旧批次实际执行历史。`retryable_failed_rows` 是当前可用重跑能力计数，可随账本成功、权限变化或保留期到期减少，不属于固定执行事实。
 
+批次可选 `business_preview` 与行可选 `business_values` 提供通用的安全业务展示，精确结构见 [导入 Schema](../../../openapi/components/import-schemas.yaml)。前者声明展示字段及汇总元数据，后者仅包含声明白名单内的标量。汇总按完整有效新增集合分别提供包含及不包含警告行的值；总额使用非负整数字符串，避免跨行合计超出安全整数范围。预览未发布或准备数据不可用时不提供该投影，不能返回内部 `_prepared`、关联 ID 或业务命令。
+
 `ImportTaskProgress` 包含 `id/phase/status/progress_done/progress_total/updated_at/last_error_code`，任务阶段为 `parse/precheck/apply/artifact`，状态为 `ready/running/completed/paused/cancelled`；总量尚未确定时 `progress_total=null`，不伪造百分比。`last_error_code` 可空。
 
 ### 历史、行、问题与时间线
@@ -157,7 +161,7 @@
 
 `POST .../precheck` 使用 JSON `{preview_version: integer >= 0}` 和幂等键；只允许源快照仍保留、无执行确认、无活动任务且未取消/过期的批次。传入版本必须等于当前发布版本，否则 `409 import.preview_stale`。解析已完成时复用固定源行并安排原预检任务；未完整解析时只允许通过恢复原解析任务继续，不能把半成品作为完整输入。重预检立即撤销旧确认资格，完成后原子发布新版本、摘要、统计和问题集合；旧版本在任务运行时不可确认。
 
-预览生成后有效 24 小时，且不超过批次 `retention_until`。预览过期只禁止确认，可在保留窗口内重预检，不直接销毁批次历史。重预检不能修改模板、范围、文件或延长保留期。
+预览生成后有效 24 小时，且不超过批次 `retention_until`。预览过期只禁止确认，可在保留窗口内重预检，不直接销毁批次历史。重预检不能修改模板、范围、文件或延长保留期。普通未确认批次可重新准备并生成新计划；固定原输入的失败重跑只复核原业务准备快照，不能重新定位或替换命令。
 
 `POST .../confirm` 的 JSON 必须包含 `preview_version`（正整数）、`preview_fingerprint`（64hex）、`apply_policy=all_rows|valid_rows_only`、`include_warning_rows`（布尔值）。不再维护另一份 `execute_policy` 表达。
 
@@ -169,7 +173,7 @@
 
 `POST .../cancel` 无请求体，统一返回 `202 ImportBatchAction`，表示取消请求已持久化；草稿及无活动处理单元也由安全停止流程完成取消，不使用依状态变化的双重成功状态。已结束、过期或未知结果待核实批次返回 `409 import.batch_state_conflict`。在安全边界停止后才能为 `cancelled`；已提交结果保留，仅本批次未执行行标记 `cancelled`，不能把共享操作账本改为取消而影响别的批次。
 
-`POST .../retry-failed` 输入固定 `{selection: retryable_only}`。只选择本批次明确可安全重试的失败行，拒绝未知结果、业务不可重试错误及已清理输入。创建新批次和新行、保留 `parent_batch_id`、原范围与模板身份，并复用原 `operation_key`。返回 `201 ImportRetryResult = {source_batch_id, selected_rows, batch: ImportBatchAction}`，新批次为 `prechecking` 并安排预检；预检后展示新预览，用户必须再次显式确认，不继承原确认策略自动执行。原批次实际执行结果和统计保持稳定；无可重跑行返回 `409 import.no_retryable_rows`。
+`POST .../retry-failed` 输入固定 `{selection: retryable_only}`。只选择本批次明确可安全重试的失败行，拒绝未知结果、业务不可重试错误及已清理输入。创建新批次和新行、保留 `parent_batch_id`、原范围与模板身份，复制原业务准备快照并复用原 `operation_key` 及输入摘要；不得从原位置重新解析目标。返回 `201 ImportRetryResult = {source_batch_id, selected_rows, batch: ImportBatchAction}`，新批次为 `prechecking` 并安排原输入的条件复核；展示新预览后用户必须再次显式确认，不继承原确认策略自动执行。原批次实际执行结果和统计保持稳定；无可重跑行返回 `409 import.no_retryable_rows`。
 
 `POST .../recover` 输入 `{reason: string(1..500)}`，仅用于 `blocked` 或原阶段任务 `paused` 的批次。服务端复核配置、当前权限与范围，以及原任务租约；仍有有效活动租约、阻断原因未解决或结果尚不能安全核实返回 `409 import.recovery_not_allowed`。受理后安排原任务核实/恢复，复用原任务、固定模板及 `operation_key`，不创建替代业务操作或新批次。核实成功提交原批次结果；仍未知则保留 `blocked` 和 `uncertain_rows`。未确认批次恢复只完成解析/预检，不能隐式确认执行；已确认执行恢复使用原已保存策略。输入到期后只允许依据必要内部证据核实原操作并安全结束，不能安排新的业务创建或恢复外部敏感读取。
 

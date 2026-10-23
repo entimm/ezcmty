@@ -33,6 +33,7 @@ class ImportDefinition:
     supported_modes: tuple[str, ...] = ("create",)
     allowed_actor_scopes: tuple[str, ...] = ("platform_admin", "property_admin")
     required_permissions: tuple[str, ...] = ()
+    read_permissions: tuple[str, ...] = ()
     available_for_new_batches: bool = True
     template_downloadable: bool = True
     released_at: str = ""
@@ -55,6 +56,7 @@ class ImportDefinition:
             or not self.allowed_actor_scopes
             or not isinstance(self.allowed_actor_scopes, tuple)
             or not isinstance(self.required_permissions, tuple)
+            or not isinstance(self.read_permissions, tuple)
             or type(self.available_for_new_batches) is not bool
             or type(self.template_downloadable) is not bool
             or set(self.allowed_actor_scopes) - {"platform_admin", "property_admin"}
@@ -103,8 +105,15 @@ class ImportDefinition:
 
     @property
     def config_hash(self) -> str:
+        configuration = asdict(self)
+        if not self.read_permissions:
+            configuration.pop("read_permissions")
         payload = json.dumps(
-            asdict(self), sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
+            configuration,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
         ).encode("utf-8")
         return hashlib.sha256(payload).hexdigest()
 
@@ -144,6 +153,7 @@ def definition_from_mapping(value: Mapping[str, Any]) -> ImportDefinition:
         "supported_modes",
         "allowed_actor_scopes",
         "required_permissions",
+        "read_permissions",
     ):
         if key in copied:
             if not isinstance(copied[key], list):

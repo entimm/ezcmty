@@ -132,29 +132,7 @@ class BillingRepository:
     def house(
         self, community_id: str, house_id: str, *, lock: bool = False, exclusive: bool = False
     ) -> tuple[House | None, list[SpaceNode]]:
-        house = self.housing.house(community_id, house_id)
-        if house is None:
-            return None, []
-        path = self.housing.paths(community_id, [house.space_node_id]).get(house.space_node_id, [])
-        if lock:
-            refreshed = []
-            for node in path:
-                item = self.db.scalar(
-                    select(SpaceNode)
-                    .where(SpaceNode.id == node.id, SpaceNode.community_id == community_id)
-                    .with_for_update(read=True, of=SpaceNode)
-                    .execution_options(populate_existing=True)
-                )
-                if item:
-                    refreshed.append(item)
-            path = refreshed
-            house = self.db.scalar(
-                select(House)
-                .where(House.id == house_id, House.community_id == community_id)
-                .with_for_update(read=not exclusive, of=House)
-                .execution_options(populate_existing=True)
-            )
-        return house, path
+        return self.housing.house_path(community_id, house_id, lock=lock, exclusive=exclusive)
 
     def basis(self, house_id: str, basis_id: str) -> FeeBasisVersion | None:
         return self.db.scalar(
@@ -213,6 +191,26 @@ class BillingRepository:
             select(BillOperation).where(
                 BillOperation.property_company_id == self.company_id,
                 BillOperation.idempotency_key == key,
+            )
+        )
+
+    def active_month_bill(self, community_id: str, house_id: str, month: date) -> Bill | None:
+        return self.db.scalar(
+            self.bills_query(community_id).where(
+                Bill.house_id == house_id,
+                Bill.bill_type == "property_fee",
+                Bill.period_start == month,
+                Bill.lifecycle_status == "active",
+            )
+        )
+
+    def creation_operation(self, bill_id: str) -> BillOperation | None:
+        return self.db.scalar(
+            select(BillOperation).where(
+                BillOperation.property_company_id == self.company_id,
+                BillOperation.bill_id == bill_id,
+                BillOperation.action == "create",
+                BillOperation.bill_version == 1,
             )
         )
 

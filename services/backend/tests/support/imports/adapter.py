@@ -10,7 +10,12 @@ from backend_app.core.identifiers import new_id
 from backend_app.domain.imports.errors import ImportExecutionFailure, ImportOutcomeUnknown
 from backend_app.domain.imports.fingerprints import fingerprint
 from backend_app.domain.imports.registry import ImportDefinition, ImportField
-from backend_app.domain.imports.types import ImportContext, ImportPlan, ImportProblem
+from backend_app.domain.imports.types import (
+    ImportContext,
+    ImportPlan,
+    ImportPreparation,
+    ImportProblem,
+)
 from backend_app.import_definitions.catalog import JsonImportRegistry
 
 
@@ -25,8 +30,35 @@ class TestRecordAdapter:
             "name": str(row.get("name") or "").strip(),
         }
 
-    def precheck(
-        self, row: Mapping[str, Any], context: ImportContext, db: Session
+    def prepare(
+        self,
+        row: Mapping[str, Any],
+        context: ImportContext,
+        db: Session,
+        *,
+        fixed_prepared: Mapping[str, Any] | None = None,
+    ) -> ImportPreparation:
+        prepared = dict(fixed_prepared if fixed_prepared is not None else row)
+        return ImportPreparation(
+            prepared,
+            tuple(self.revalidate(prepared, context, db)),
+            identity={"operation_type": "test_record.create", "natural_key": {"code": row["code"]}}
+            if row.get("code")
+            else None,
+        )
+
+    def required_permissions(
+        self, normalized_input: Mapping[str, Any], prepared: Mapping[str, Any] | None = None
+    ) -> frozenset[str]:
+        return frozenset()
+
+    def revalidate(
+        self,
+        row: Mapping[str, Any],
+        context: ImportContext,
+        db: Session,
+        *,
+        target: Mapping[str, str] | None = None,
     ) -> Sequence[ImportProblem]:
         if row["name"] == "INVALID":
             return [ImportProblem("import.validation_failed", "名称不符合规则", field_key="name")]
@@ -46,9 +78,6 @@ class TestRecordAdapter:
                 )
             ]
         return []
-
-    def build_operation_key(self, row: Mapping[str, Any]) -> str:
-        return fingerprint({"code": row["code"]})
 
     def plan(self, row: Mapping[str, Any]) -> ImportPlan:
         return ImportPlan(
@@ -98,7 +127,7 @@ class TestRecordAdapter:
         return {"status": "created", "target_type": "test_record", "target_id": record_id}
 
     def resolve_operation(
-        self, operation_key: str, plan: ImportPlan, context: ImportContext, db: Session
+        self, operation_key: str, prepared: Mapping[str, Any], context: ImportContext, db: Session
     ) -> Mapping[str, Any] | None:
         row = db.execute(
             text(

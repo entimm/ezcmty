@@ -4,6 +4,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import AfterValidator, BeforeValidator, Field, StringConstraints, model_validator
 
+from backend_app.core.errors import AppError
 from backend_app.domain.billing import (
     MAX_CENTS,
     Action,
@@ -11,12 +12,13 @@ from backend_app.domain.billing import (
     HouseUsage,
     Lifecycle,
     Settlement,
-    business_today,
     calculate_amount,
     clean_optional,
     month_date,
     next_month,
 )
+from backend_app.domain.billing.calculation import validate_receipt_date as validate_received
+from backend_app.domain.billing.creation import BillCreationCommand, InitialBillReceipt
 from backend_app.schemas.admin import AdminSchema, Identifier
 
 
@@ -43,11 +45,6 @@ Snapshot = Annotated[str, Field(min_length=1, max_length=512)]
 def validate_month(value: str) -> None:
     # Reserve an expressible exclusive end date for December bills.
     next_month(month_date(value))
-
-
-def validate_received(value: date | None) -> None:
-    if value is not None and value > business_today():
-        raise ValueError("Receipt date cannot be in the future")
 
 
 class FeeBasisCreate(AdminSchema):
@@ -111,7 +108,10 @@ class InitialReceipt(AdminSchema):
 
     @model_validator(mode="after")
     def valid_date(self) -> Self:
-        validate_received(self.received_on)
+        try:
+            InitialBillReceipt(self.amount_cents, self.received_on, self.reason)
+        except AppError as error:
+            raise ValueError("Invalid initial receipt") from error
         return self
 
 
@@ -131,27 +131,10 @@ class BillCreate(AdminSchema):
 
     @model_validator(mode="after")
     def valid_amount_source(self) -> Self:
-        validate_month(self.billing_month)
-        if self.amount_source == "basis":
-            if any(
-                v is None
-                for v in (
-                    self.basis_version_id,
-                    self.expected_calculation_rule_version,
-                    self.expected_receivable_cents,
-                )
-            ):
-                raise ValueError("Basis and expected calculation are required")
-            if self.receivable_cents is not None or self.manual_amount_reason is not None:
-                raise ValueError("Manual fields are not accepted for calculated amounts")
-        else:
-            if self.receivable_cents is None or self.manual_amount_reason is None:
-                raise ValueError("Manual amount and reason are required")
-            if (
-                self.expected_calculation_rule_version is not None
-                or self.expected_receivable_cents is not None
-            ):
-                raise ValueError("Calculation expectations are not accepted for manual amounts")
+        try:
+            BillCreationCommand.from_input(self.model_dump(mode="json"))
+        except AppError as error:
+            raise ValueError("Invalid bill creation input") from error
         return self
 
 
