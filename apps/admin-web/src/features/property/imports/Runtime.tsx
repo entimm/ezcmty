@@ -48,7 +48,16 @@ export function ImportsRuntime({ children }: { children: ReactNode }) {
                     '本次在目标小区内仅新增房屋。请提前建立分区、楼栋和单元，文件不携带业主信息；已有房屋与当前资料一致则跳过，不同则报冲突。',
                   queries: ['houses', 'audit'],
                 }
-              : null;
+              : importType === 'house_owners'
+                ? {
+                    label: '房屋管理',
+                    path: `/property/communities/${encodeURIComponent(target.id)}/houses`,
+                    permission: 'property.house.read',
+                    notice:
+                      '本次在目标小区内仅新增业主登记；同一房屋下已有同姓名、同规范化手机号的登记（含停用记录）将跳过，停用记录不会自动启用。不创建房屋、居民账号或房屋授权。',
+                    queries: ['house-owners', 'houses', 'audit'],
+                  }
+                : null;
         if (!destination) return null;
         return {
           label: destination.label,

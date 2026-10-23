@@ -159,6 +159,20 @@ function CommunityHouses({
   const creatingAllowed =
     communityEnabled !== false &&
     (!selectedId || node?.effective_enabled === true);
+  const canImport =
+    hasPermission('property.import.create') &&
+    hasPermission('property.import.read');
+  function openImport(importType: 'houses' | 'house_owners') {
+    navigate(
+      path(
+        `/property/imports/new?${new URLSearchParams({
+          import_type: importType,
+          scope_type: 'community',
+          scope_id: communityId,
+        })}`,
+      ),
+    );
+  }
   const columns: ProColumns<House>[] = [
     { title: '完整位置', dataIndex: 'display_address' },
     { title: '房号', dataIndex: 'room_no' },
@@ -405,31 +419,26 @@ function CommunityHouses({
             pagination={{ ...state.pagination, total: query.data?.total ?? 0 }}
             scroll={{ x: 1300 }}
             options={{ reload: () => void query.refetch() }}
-            toolBarRender={() =>
-              hasPermission('property.house.create') &&
-              hasPermission('property.import.create') &&
-              hasPermission('property.import.read')
-                ? [
-                    <Button
-                      key="import"
-                      disabled={communityEnabled === false}
-                      onClick={() =>
-                        navigate(
-                          path(
-                            `/property/imports/new?${new URLSearchParams({
-                              import_type: 'houses',
-                              scope_type: 'community',
-                              scope_id: communityId,
-                            })}`,
-                          ),
-                        )
-                      }
-                    >
-                      批量导入
-                    </Button>,
-                  ]
-                : []
-            }
+            toolBarRender={() => [
+              canImport && hasPermission('property.house.create') && (
+                <Button
+                  key="import"
+                  disabled={communityEnabled === false}
+                  onClick={() => openImport('houses')}
+                >
+                  批量导入
+                </Button>
+              ),
+              canImport && hasPermission('property.house_owner.create') && (
+                <Button
+                  key="import-owners"
+                  disabled={communityEnabled === false}
+                  onClick={() => openImport('house_owners')}
+                >
+                  导入业主登记
+                </Button>
+              ),
+            ]}
             locale={{
               emptyText: (
                 <ListEmpty

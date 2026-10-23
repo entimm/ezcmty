@@ -9,6 +9,7 @@ from backend_app.db.errors import is_unique_violation
 from backend_app.domain.admin.identity import AdminIdentity
 from backend_app.domain.housing import (
     HouseCreationCommand,
+    HouseOwnerCreationCommand,
     effective_enabled,
     house_creation_permissions,
     is_valid_space_parent,
@@ -23,6 +24,7 @@ from backend_app.schemas import housing as schema
 from backend_app.schemas.mappers.housing import house_view, owner_view, space_view
 from backend_app.services.contracts.admin import AdminContext
 from backend_app.services.house_creation import create_house
+from backend_app.services.house_owner_creation import create_house_owner
 
 
 class PropertyHousingService:
@@ -351,32 +353,25 @@ class PropertyHousingService:
         data: schema.HouseOwnerCreate,
         request_id: str,
     ) -> schema.HouseOwner:
-        repo, identity, actor, community = self._write(
-            context, "property.house_owner.create", community_id
-        )
-        house, path = self._house(repo, community_id, house_id, lock=True)
-        self._require_enabled(community, path, house)
-        now = utc_now()
-        owner = HouseOwner(
-            id=new_id(),
-            house_id=house_id,
-            **data.model_dump(),
-            enabled=True,
-            created_at=now,
-            updated_at=now,
-        )
-        self.db.add(owner)
-        self._audit(
-            identity,
-            actor,
-            "property.house_owner.create",
-            "house_owner",
-            owner.id,
-            request_id,
-            ["name", "phone"],
-        )
+        repo, _, actor, _ = self._write(context, "property.house_owner.create", community_id)
+        try:
+            result = create_house_owner(
+                self.db,
+                company_id=repo.company_id,
+                community_id=community_id,
+                actor_id=actor.id,
+                command=HouseOwnerCreationCommand.from_input(
+                    {"house_id": house_id, **data.model_dump()}
+                ),
+                request_id=request_id,
+            )
+        except IntegrityError as exc:
+            self.db.rollback()
+            if is_unique_violation(exc, "uq_house_owner_contact"):
+                raise AppError("property.duplicate_house_owner") from exc
+            raise
         self._commit()
-        return owner_view(owner, house_enabled=True)
+        return owner_view(result.owner, house_enabled=True)
 
     def update_owner(
         self,

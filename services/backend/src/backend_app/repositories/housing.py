@@ -268,3 +268,19 @@ class HousingRepository:
             page_size=page_size,
             order=(("created_at", sort.startswith("-")), ("id", sort.startswith("-"))),
         )
+
+    def owner_by_contact(
+        self,
+        community_id: str,
+        house_id: str,
+        name: str,
+        phone: str,
+        *,
+        lock: bool = False,
+    ) -> HouseOwner | None:
+        query = self._owners(community_id, house_id).where(
+            HouseOwner.name == name, HouseOwner.phone == phone
+        )
+        if lock:
+            query = query.with_for_update(of=HouseOwner).execution_options(populate_existing=True)
+        return self.db.scalar(query)

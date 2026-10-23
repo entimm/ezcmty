@@ -92,10 +92,15 @@ class JsonImportRegistry:
 
 def get_import_registry() -> JsonImportRegistry:
     from backend_app.services.worker.imports.adapters.bills import BillImportAdapter
+    from backend_app.services.worker.imports.adapters.house_owners import HouseOwnerImportAdapter
     from backend_app.services.worker.imports.adapters.houses import HouseImportAdapter
 
     return JsonImportRegistry.from_resources(
         "backend_app.import_definitions",
-        ("property_fee_bills/v1.json", "houses/v1.json"),
-        adapters={"property_fee_bills_v1": BillImportAdapter(), "houses_v1": HouseImportAdapter()},
+        ("property_fee_bills/v1.json", "houses/v1.json", "house_owners/v1.json"),
+        adapters={
+            "property_fee_bills_v1": BillImportAdapter(),
+            "houses_v1": HouseImportAdapter(),
+            "house_owners_v1": HouseOwnerImportAdapter(),
+        },
     )

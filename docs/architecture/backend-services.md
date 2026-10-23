@@ -63,6 +63,8 @@
 
 计费依据、账单收款及纠错的事务和共享保护锁见 [账单设计](../design/property/billing.md#锁模式)，允许公司内独立账单并行写入。手工与导入共同调用 [共享建账能力](../design/property/billing.md#共享建账能力)，房屋定位统一使用 [房屋领域能力](../design/property/housing.md#房屋完整位置定位与复核)；入口只转换输入和编排流程，业务规则及写入不依赖导入框架。
 
+手工业主新增与业主导入共同调用 [共享业主登记能力](../design/property/housing.md#共享业主登记能力)，建房初始业主复用相同底层规则、登记写入及审计。共享编排放入 `services/house_owner_creation.py`，不依赖导入或 HTTP Schema，只参与调用方事务；模板和流程见 [业主登记批量导入](../design/property/house-owner-imports.md)。
+
 公共审计和 Repository 使用明确的后台、公司归属；未知账号登录失败的归属及审计字段遵循 [管理后台基础框架设计](../design/admin/foundation.md#审计与代码组织)。Cookie、Redis 会话和权限目录按所属后台隔离。
 
 各端 Service 通过公共领域能力协作，不调用其他应用 Service 的私有方法。跨端开通操作属于平台接入用例，保留平台操作者，显式解析目标公司和物业账号。

@@ -3,6 +3,7 @@ import json
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
+from datetime import datetime
 from typing import Any, Literal, cast
 
 from backend_app.core.errors import AppError
@@ -290,6 +291,84 @@ class InitialHouseOwner:
         object.__setattr__(self, "phone", phone)
 
 
+@dataclass(frozen=True)
+class HouseOwnerCreationCommand:
+    house_id: str
+    name: str
+    phone: str
+
+    def __post_init__(self) -> None:
+        try:
+            if not isinstance(self.house_id, str):
+                raise ValueError
+            house_id = normalize_uuid(self.house_id)
+        except ValueError:
+            raise AppError("VALIDATION_ERROR") from None
+        owner = InitialHouseOwner(self.name, self.phone)
+        object.__setattr__(self, "house_id", house_id)
+        object.__setattr__(self, "name", owner.name)
+        object.__setattr__(self, "phone", owner.phone)
+
+    @classmethod
+    def from_input(cls, value: Mapping[str, Any]) -> HouseOwnerCreationCommand:
+        try:
+            return cls(**value)
+        except TypeError:
+            raise AppError("VALIDATION_ERROR") from None
+
+    def to_dict(self) -> dict[str, str]:
+        return asdict(self)
+
+    def fingerprint(self) -> str:
+        return hashlib.sha256(
+            json.dumps(
+                self.to_dict(), sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            ).encode()
+        ).hexdigest()
+
+
+def house_owner_creation_permissions() -> frozenset[str]:
+    return frozenset({"property.house_owner.create"})
+
+
+def inspect_house_owner_creation(
+    repo: HousingRepository,
+    community_id: str,
+    command: HouseOwnerCreationCommand,
+    *,
+    target_id: str | None = None,
+    lock: bool = False,
+) -> HouseOwner | None:
+    if target_id is not None:
+        target = repo.owner(community_id, command.house_id, target_id, lock=lock)
+        if target is None or any(
+            getattr(target, key) != value for key, value in command.to_dict().items()
+        ):
+            raise AppError("resource.conflict", public_detail="业主登记资料已变化，请重新核对")
+        return target
+    return repo.owner_by_contact(
+        community_id, command.house_id, command.name, command.phone, lock=lock
+    )
+
+
+def create_house_owner_record(
+    repo: HousingRepository,
+    command: HouseOwnerCreationCommand,
+    *,
+    created_at: datetime | None = None,
+) -> HouseOwner:
+    now = created_at if created_at is not None else utc_now()
+    owner = HouseOwner(
+        id=new_id(),
+        **command.to_dict(),
+        enabled=True,
+        created_at=now,
+        updated_at=now,
+    )
+    repo.db.add(owner)
+    return owner
+
+
 def house_creation_identity(space_node_id: str, room_no: str) -> dict[str, str]:
     try:
         if not isinstance(space_node_id, str):
@@ -413,16 +492,11 @@ def create_house_records(
     repo.db.add(house)
     repo.db.flush()
     owners = [
-        HouseOwner(
-            id=new_id(),
-            house_id=house.id,
-            name=item.name,
-            phone=item.phone,
-            enabled=True,
+        create_house_owner_record(
+            repo,
+            HouseOwnerCreationCommand(house.id, item.name, item.phone),
             created_at=now,
-            updated_at=now,
         )
         for item in command.owners
     ]
-    repo.db.add_all(owners)
     return house, owners

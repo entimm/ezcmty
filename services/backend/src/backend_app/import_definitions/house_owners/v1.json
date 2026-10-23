@@ -1,0 +1,85 @@
+{
+  "key": "house_owners",
+  "name": "业主登记",
+  "version_no": 1,
+  "adapter_key": "house_owners_v1",
+  "allowed_scope_types": ["community"],
+  "supported_modes": ["create"],
+  "allowed_actor_scopes": ["property_admin"],
+  "required_permissions": ["property.house_owner.create"],
+  "read_permissions": ["property.house_owner.read"],
+  "released_at": "2026-10-23T00:00:00Z",
+  "release_notes": "仅向既有房屋新增业主登记，同房屋、姓名和规范化手机号的已有组合跳过，停用登记不自动启用。",
+  "sheet_name": "导入数据",
+  "fields": [
+    {
+      "key": "phase_name",
+      "label": "分区",
+      "order": 1,
+      "max_length": 80,
+      "normalization_rules": ["trim"],
+      "example": "一期",
+      "description": "没有分区层级时留空，空白不是通配。"
+    },
+    {
+      "key": "building_name",
+      "label": "楼栋",
+      "order": 2,
+      "required": true,
+      "max_length": 80,
+      "normalization_rules": ["trim"],
+      "example": "01栋",
+      "description": "既有楼栋名称，按完整路径精确匹配。"
+    },
+    {
+      "key": "unit_name",
+      "label": "单元",
+      "order": 3,
+      "max_length": 80,
+      "normalization_rules": ["trim"],
+      "example": "1单元",
+      "description": "房屋直接属于楼栋时留空。"
+    },
+    {
+      "key": "room_no",
+      "label": "房号",
+      "order": 4,
+      "required": true,
+      "max_length": 32,
+      "normalization_rules": ["trim"],
+      "example": "0001",
+      "description": "既有房号，使用文本格式并保留前导零。"
+    },
+    {
+      "key": "house_external_code",
+      "label": "房屋外部编号",
+      "order": 5,
+      "max_length": 64,
+      "normalization_rules": ["trim"],
+      "example": "0001A",
+      "description": "可选，仅交叉核验已定位房屋，不用于回退定位。"
+    },
+    {
+      "key": "name",
+      "label": "业主姓名",
+      "order": 6,
+      "required": true,
+      "max_length": 80,
+      "normalization_rules": ["trim"],
+      "example": "张三",
+      "description": "与手机号共同构成同房屋下的登记组合。",
+      "sensitive": true
+    },
+    {
+      "key": "phone",
+      "label": "手机号",
+      "order": 7,
+      "required": true,
+      "max_length": 15,
+      "normalization_rules": ["trim"],
+      "example": "13800000000",
+      "description": "文本格式；接受大陆 11 位手机号及 +86、0086 前缀，统一保存为 11 位。",
+      "sensitive": true
+    }
+  ]
+}

@@ -25,6 +25,7 @@ class ImportContext:
     scope: ImportScope
     request_id: str
     permissions: frozenset[str] = frozenset()
+    phase: str | None = None
 
 
 @dataclass(frozen=True)

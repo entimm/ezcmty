@@ -193,7 +193,7 @@ ImportTypeList:
       type: array
       items:
         $ref: ./import-schemas.yaml#/ImportType
-  description: 不分页；无授权类型时 items=[]，不返回测试类型。生产类型 property_fee_bills 仅向具有物业账单创建权限的 property_admin 开放，范围仅 community，模式仅 create；platform_admin 不提供该类型。
+  description: 不分页；无授权类型时 items=[]，不返回测试类型。生产类型 property_fee_bills、houses、house_owners 分别要求物业账单、房屋、业主登记创建权限，仅向 property_admin 开放，范围仅 community，模式仅 create；platform_admin 不提供这些类型。业主登记导入的行值、预览及文件另要求 property.house_owner.read，房屋读取权限不授予业主资料读取权限。
 ImportTemplateField:
   type: object
   additionalProperties: false

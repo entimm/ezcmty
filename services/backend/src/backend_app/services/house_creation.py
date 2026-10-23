@@ -21,6 +21,7 @@ from backend_app.models.housing import House
 from backend_app.repositories.admin import AdminRepository
 from backend_app.repositories.housing import HousingRepository
 from backend_app.repositories.property import PropertyRepository
+from backend_app.services.house_owner_creation import audit_house_owner_creation
 
 
 @dataclass(frozen=True)
@@ -126,13 +127,6 @@ def create_house(
         metadata={"changed_fields": sorted(input_fields - {"owners"})},
     )
     for owner in owners:
-        identity.audit.record(
-            actor=actor,
-            action="property.house_owner.create",
-            target_type="house_owner",
-            target_id=owner.id,
-            request_id=request_id,
-            metadata={"changed_fields": ["name", "phone"]},
-        )
+        audit_house_owner_creation(identity, actor, owner, request_id)
     db.flush()
     return HouseCreationResult("created", house)

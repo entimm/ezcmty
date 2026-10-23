@@ -182,6 +182,7 @@ class ImportWorkerService:
             ),
             batch.request_id,
             permissions,
+            phase=lease.phase,
         )
         return batch, task, definition, context
 
