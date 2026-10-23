@@ -120,6 +120,7 @@ function CommunityHouses({
   communityEnabled?: boolean;
 }) {
   const { path } = useAdminApp();
+  const navigate = useNavigate();
   const state = useListState();
   const api = useHousingApi();
   const { status, hasPermission } = usePropertySession();
@@ -404,6 +405,31 @@ function CommunityHouses({
             pagination={{ ...state.pagination, total: query.data?.total ?? 0 }}
             scroll={{ x: 1300 }}
             options={{ reload: () => void query.refetch() }}
+            toolBarRender={() =>
+              hasPermission('property.house.create') &&
+              hasPermission('property.import.create') &&
+              hasPermission('property.import.read')
+                ? [
+                    <Button
+                      key="import"
+                      disabled={communityEnabled === false}
+                      onClick={() =>
+                        navigate(
+                          path(
+                            `/property/imports/new?${new URLSearchParams({
+                              import_type: 'houses',
+                              scope_type: 'community',
+                              scope_id: communityId,
+                            })}`,
+                          ),
+                        )
+                      }
+                    >
+                      批量导入
+                    </Button>,
+                  ]
+                : []
+            }
             locale={{
               emptyText: (
                 <ListEmpty

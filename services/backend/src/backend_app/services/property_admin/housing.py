@@ -7,7 +7,12 @@ from backend_app.core.errors import AppError
 from backend_app.core.identifiers import new_id
 from backend_app.db.errors import is_unique_violation
 from backend_app.domain.admin.identity import AdminIdentity
-from backend_app.domain.housing import effective_enabled, is_valid_space_parent
+from backend_app.domain.housing import (
+    HouseCreationCommand,
+    effective_enabled,
+    house_creation_permissions,
+    is_valid_space_parent,
+)
 from backend_app.models.admin import AdminAccount, utc_now
 from backend_app.models.housing import House, HouseOwner, SpaceNode
 from backend_app.models.property import Community
@@ -17,6 +22,7 @@ from backend_app.repositories.property import PropertyRepository
 from backend_app.schemas import housing as schema
 from backend_app.schemas.mappers.housing import house_view, owner_view, space_view
 from backend_app.services.contracts.admin import AdminContext
+from backend_app.services.house_creation import create_house
 
 
 class PropertyHousingService:
@@ -269,62 +275,32 @@ class PropertyHousingService:
         repo, identity, actor, community = self._write(
             context, "property.house.create", community_id
         )
-        if data.owners and "property.house_owner.create" not in identity.effective_permissions(
-            actor.id
+        if not house_creation_permissions(has_owners=bool(data.owners)) <= set(
+            identity.effective_permissions(actor.id)
         ):
             raise AppError("auth.forbidden")
-        path = self._path(repo, community_id, data.space_node_id, lock=True)
-        if path[-1].node_type not in {"building", "unit"}:
-            raise AppError("property.invalid_house_parent")
-        self._require_enabled(community, path)
-        now = utc_now()
-        house = House(
-            id=new_id(),
-            community_id=community_id,
-            **data.model_dump(exclude={"owners"}),
-            enabled=True,
-            created_at=now,
-            updated_at=now,
-        )
-        self.db.add(house)
-        self._audit(
-            identity,
-            actor,
-            "property.house.create",
-            "house",
-            house.id,
-            request_id,
-            list(data.model_fields_set - {"owners"}),
-        )
-        # Flush the parent first; there is deliberately no ORM relationship or implicit cascade.
         try:
-            self.db.flush()
-            for item in data.owners:
-                owner = HouseOwner(
-                    id=new_id(),
-                    house_id=house.id,
-                    **item.model_dump(),
-                    enabled=True,
-                    created_at=now,
-                    updated_at=now,
-                )
-                self.db.add(owner)
-                self._audit(
-                    identity,
-                    actor,
-                    "property.house_owner.create",
-                    "house_owner",
-                    owner.id,
-                    request_id,
-                    ["name", "phone"],
-                )
+            result = create_house(
+                self.db,
+                company_id=repo.company_id,
+                community_id=community_id,
+                actor_id=actor.id,
+                command=HouseCreationCommand.from_input(data.model_dump()),
+                request_id=request_id,
+                input_fields=frozenset(data.model_fields_set),
+            )
         except IntegrityError as exc:
             self.db.rollback()
-            if is_unique_violation(exc, "uq_house_room_no"):
-                raise AppError("property.duplicate_room_no") from exc
+            for constraint, code in (
+                ("uq_house_room_no", "property.duplicate_room_no"),
+                ("uq_house_owner_contact", "property.duplicate_house_owner"),
+            ):
+                if is_unique_violation(exc, constraint):
+                    raise AppError(code) from exc
             raise
         self._commit()
-        return house_view(house, community, path)
+        path = self._path(repo, community_id, result.house.space_node_id)
+        return house_view(result.house, community, path)
 
     def update_house(
         self,

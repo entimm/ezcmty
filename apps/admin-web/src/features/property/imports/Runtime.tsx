@@ -28,23 +28,42 @@ export function ImportsRuntime({ children }: { children: ReactNode }) {
       businessDestination: (
         importType: string,
         target: { type: ScopeType; id: string },
-      ) =>
-        importType === 'property_fee_bills' && target.type === 'community'
-          ? {
-              label: '账单管理',
-              path: `/property/communities/${encodeURIComponent(target.id)}/bills?view=all`,
-              canNavigate: hasPermission('property.bill.read'),
-              confirmationNotice:
-                '账单创建后立即生效，请核对房屋、月份和金额。',
-              prepareNavigation: async () => {
-                await Promise.all(
-                  ['bills', 'bill-entries', 'bill-operations', 'audit'].map(
-                    (key) => client.invalidateQueries({ queryKey: [key] }),
-                  ),
-                );
-              },
-            }
-          : null,
+      ) => {
+        if (target.type !== 'community') return null;
+        const destination =
+          importType === 'property_fee_bills'
+            ? {
+                label: '账单管理',
+                path: `/property/communities/${encodeURIComponent(target.id)}/bills?view=all`,
+                permission: 'property.bill.read',
+                notice: '账单创建后立即生效，请核对房屋、月份和金额。',
+                queries: ['bills', 'bill-entries', 'bill-operations', 'audit'],
+              }
+            : importType === 'houses'
+              ? {
+                  label: '房屋管理',
+                  path: `/property/communities/${encodeURIComponent(target.id)}/houses`,
+                  permission: 'property.house.read',
+                  notice:
+                    '本次在目标小区内仅新增房屋。请提前建立分区、楼栋和单元，文件不携带业主信息；已有房屋与当前资料一致则跳过，不同则报冲突。',
+                  queries: ['houses', 'audit'],
+                }
+              : null;
+        if (!destination) return null;
+        return {
+          label: destination.label,
+          path: destination.path,
+          canNavigate: hasPermission(destination.permission),
+          confirmationNotice: destination.notice,
+          prepareNavigation: async () => {
+            await Promise.all(
+              destination.queries.map((key) =>
+                client.invalidateQueries({ queryKey: [key] }),
+              ),
+            );
+          },
+        };
+      },
     };
   }, [request, scope, session?.subjectId, hasPermission, client]);
   return (

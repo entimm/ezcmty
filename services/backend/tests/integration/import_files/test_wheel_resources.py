@@ -11,6 +11,7 @@ from zipfile import ZipFile
 from tests.support.paths import BACKEND_ROOT
 
 from backend_app.domain.imports.registry import definition_from_mapping
+from backend_app.import_definitions.catalog import get_import_registry
 
 
 def _build(project: Path, output: Path) -> Path:
@@ -115,7 +116,13 @@ registry = JsonImportRegistry.from_resources(
     adapters={"fixture_v1": adapter, "fixture_v2": adapter},
 )
 production = get_import_registry()
-assert [item.key for item in production.list()] == ["property_fee_bills"]
+assert [item.key for item in production.list()] == ["houses", "property_fee_bills"]
+assert {item.key: item.config_hash for item in production.list()} == json.loads(sys.argv[2])
+housing = production.get("houses", 1)
+assert housing.allowed_actor_scopes == ("property_admin",)
+assert housing.allowed_scope_types == ("community",)
+assert production.get_adapter(housing.adapter_key).__class__.__name__ == "HouseImportAdapter"
+assert files("backend_app.import_definitions").joinpath("houses/v1.json").is_file()
 current = production.get("property_fee_bills", 1)
 assert current.allowed_actor_scopes == ("property_admin",)
 assert current.allowed_scope_types == ("community",)
@@ -128,7 +135,14 @@ assert registry.get("fixture", 1, registry.get("fixture", 1).config_hash).versio
 print(json.dumps([definition.config_hash for definition in registry.list()]))
 """
     completed = subprocess.run(
-        [str(interpreter), "-I", "-c", script, json.dumps(dependency_paths)],
+        [
+            str(interpreter),
+            "-I",
+            "-c",
+            script,
+            json.dumps(dependency_paths),
+            json.dumps({item.key: item.config_hash for item in get_import_registry().list()}),
+        ],
         cwd=detached,
         env=environment,
         check=True,

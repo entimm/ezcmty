@@ -167,6 +167,25 @@ class HousingRepository:
             query = query.with_for_update(of=House).execution_options(populate_existing=True)
         return self.db.scalar(query)
 
+    def space_path(
+        self, community_id: str, node_id: str, *, lock: bool = False, exclusive: bool = False
+    ) -> list[SpaceNode]:
+        path = self.paths(community_id, [node_id]).get(node_id, [])
+        if lock:
+            refreshed = []
+            for node in path:
+                current = self.db.scalar(
+                    self._nodes(community_id)
+                    .where(SpaceNode.id == node.id)
+                    .with_for_update(read=not exclusive, of=SpaceNode)
+                    .execution_options(populate_existing=True)
+                )
+                if current is None:
+                    return []
+                refreshed.append(current)
+            return refreshed
+        return path
+
     def house_path(
         self, community_id: str, house_id: str, *, lock: bool = False, exclusive: bool = False
     ) -> tuple[House | None, list[SpaceNode]]:
@@ -174,19 +193,8 @@ class HousingRepository:
         house = self.house(community_id, house_id)
         if house is None:
             return None, []
-        path = self.paths(community_id, [house.space_node_id]).get(house.space_node_id, [])
+        path = self.space_path(community_id, house.space_node_id, lock=lock)
         if lock:
-            refreshed = []
-            for node in path:
-                item = self.db.scalar(
-                    self._nodes(community_id)
-                    .where(SpaceNode.id == node.id)
-                    .with_for_update(read=True, of=SpaceNode)
-                    .execution_options(populate_existing=True)
-                )
-                if item is not None:
-                    refreshed.append(item)
-            path = refreshed
             house = self.db.scalar(
                 self._houses(community_id)
                 .where(House.id == house_id)

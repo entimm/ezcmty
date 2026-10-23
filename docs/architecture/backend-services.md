@@ -38,7 +38,7 @@
 | `domain/admin/identity.py`    | 账号状态、会话版本、密码变更和 RBAC 规则。                                                            |
 | `domain/admin/permissions.py` | 按后台定义的权限目录。                                                                                |
 | `domain/admin/audit.py`       | 审计写入归属、读取权限与数据范围，返回业务记录。                                                      |
-| `domain/housing.py`           | 空间父子类型、所属路径有效状态、完整位置定位与复核及业主手机号规范化规则。                            |
+| `domain/housing.py`           | 空间层级及路径、房屋位置定位与复核、共享建房规则和写入、基础资料比较及业主手机号规范化。              |
 | `domain/billing/`             | 维护金额、期间、建账校验、原始创建事实比对和参与调用方事务的共享账务写入。                            |
 | `domain/payments/`            | 配置适用性、规则计算、支付事实与状态、占用、应分履行、解冻及差异判定规则。                            |
 | `schemas/mappers/admin.py`    | 会话、管理员、角色、权限和审计的纯响应转换。                                                          |
@@ -58,6 +58,8 @@
 物业登录、本人资料修改和改密由物业 Service 按公司、账号顺序锁定，并重新校验公司启停、账号状态和会话版本。平台接入管理继续按对应业务流程锁定公司及目标账号，遵循 [物业工作台设计](../design/property/workbench.md#登录密码与事务) 和 [物业接入设计](../design/property/onboarding.md)。公共身份能力处理密码、版本和审计记录，各端应用 Service 提交完整用例事务。
 
 空间、房屋及业主维护沿用公司、账号锁定和身份复核，再按小区、空间祖先、房屋、业主的顺序协调资源；状态、范围和原子提交规则见 [房屋资料管理设计](../design/property/housing.md)。
+
+手工建房与房屋导入共同调用 [共享建房能力](../design/property/housing.md#共享建房能力)，共享编排协调房屋领域、Repository、权限和审计，使用普通业务命令及结果，参与调用方事务。空间定位、当前资料比较及写入不依赖导入或 HTTP Schema；模板和导入流程见 [房屋批量导入](../design/property/house-imports.md)。
 
 计费依据、账单收款及纠错的事务和共享保护锁见 [账单设计](../design/property/billing.md#锁模式)，允许公司内独立账单并行写入。手工与导入共同调用 [共享建账能力](../design/property/billing.md#共享建账能力)，房屋定位统一使用 [房屋领域能力](../design/property/housing.md#房屋完整位置定位与复核)；入口只转换输入和编排流程，业务规则及写入不依赖导入框架。
 

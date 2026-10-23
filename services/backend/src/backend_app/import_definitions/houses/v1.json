@@ -1,0 +1,72 @@
+{
+  "key": "houses",
+  "name": "房屋档案",
+  "version_no": 1,
+  "adapter_key": "houses_v1",
+  "allowed_scope_types": ["community"],
+  "supported_modes": ["create"],
+  "allowed_actor_scopes": ["property_admin"],
+  "required_permissions": ["property.house.create"],
+  "read_permissions": ["property.house.read"],
+  "released_at": "2026-10-23T00:00:00Z",
+  "release_notes": "按已建空间层级新增房屋，不携带业主；与当前房屋资料一致则跳过，不同则冲突。",
+  "sheet_name": "导入数据",
+  "fields": [
+    {
+      "key": "phase_name",
+      "label": "分区",
+      "order": 1,
+      "max_length": 80,
+      "normalization_rules": ["trim"],
+      "example": "一期",
+      "description": "须提前建立；没有分区层级时留空，空白不是通配。"
+    },
+    {
+      "key": "building_name",
+      "label": "楼栋",
+      "order": 2,
+      "required": true,
+      "max_length": 80,
+      "normalization_rules": ["trim"],
+      "example": "01栋",
+      "description": "须提前建立，按完整路径精确匹配。"
+    },
+    {
+      "key": "unit_name",
+      "label": "单元",
+      "order": 3,
+      "max_length": 80,
+      "normalization_rules": ["trim"],
+      "example": "1单元",
+      "description": "须提前建立；房屋直接属于楼栋时留空。"
+    },
+    {
+      "key": "room_no",
+      "label": "房号",
+      "order": 4,
+      "required": true,
+      "max_length": 32,
+      "normalization_rules": ["trim"],
+      "example": "0001",
+      "description": "使用文本格式，保留大小写、前导零和内部字符。"
+    },
+    {
+      "key": "floor_no",
+      "label": "楼层",
+      "order": 5,
+      "data_type": "integer",
+      "normalization_rules": ["trim"],
+      "example": "-1",
+      "description": "可负整数；留空为空值，不从房号推算。"
+    },
+    {
+      "key": "external_code",
+      "label": "房屋外部编号",
+      "order": 6,
+      "max_length": 64,
+      "normalization_rules": ["trim"],
+      "example": "0001A",
+      "description": "建档资料，不作为身份；留空与当前空值准确比较，不表示忽略该字段。"
+    }
+  ]
+}

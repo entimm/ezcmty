@@ -1,1 +1,1 @@
-"""Import adapter extension boundary. Production has no business adapters."""
+"""Business input and result conversion at the import extension boundary."""

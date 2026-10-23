@@ -47,7 +47,7 @@ URL 中的账号、密码须按 URL 规则编码。若 Redis 需要认证，配�
 
 后端依赖检查及所有后端进程的工作目录固定为 `services/backend/`，沿用现有 Settings 读取该处 `.env`；**已有环境变量优先于 `.env`**。仓库根目录的 `.env` 不作为后端配置来源。包含 Worker 的启动批次需要 `APP_LOG_LEVEL=INFO` 或 `DEBUG`，以观察现有启动标记。配置及运行日志均不提交 Git。
 
-通用导入的私有文件目录由 `APP_IMPORT_STORAGE_ROOT` 指定，本地默认 `services/backend/.dev/imports`（相对后端工作目录为 `.dev/imports`）。平台、物业 API 与现有 Worker 必须使用同一目录；目录和对象分别使用 `0700`、`0600` 权限。测试显式注入独立临时目录。staging/production 必须配置私有持久目录的绝对路径，例如 `/var/lib/xcmty/imports`；此约定不执行目录部署或真实数据操作。首期生产导入类型列表为空，完整导入测试使用测试目录内的独立定义与适配器。
+通用导入的私有文件目录由 `APP_IMPORT_STORAGE_ROOT` 指定，本地默认 `services/backend/.dev/imports`（相对后端工作目录为 `.dev/imports`）。平台、物业 API 与现有 Worker 必须使用同一目录；目录和对象分别使用 `0700`、`0600` 权限。测试显式注入独立临时目录。staging/production 必须配置私有持久目录的绝对路径，例如 `/var/lib/xcmty/imports`；此约定不执行目录部署或真实数据操作。生产导入类型按注册表开放，业务范围见 [账单批量导入](../design/property/bill-imports.md) 和 [房屋批量导入](../design/property/house-imports.md)；通用框架测试使用测试目录内的独立定义与适配器。
 
 管理后台使用 Umi 环境配置，可按需参考 [apps/admin-web/.env.example](../../apps/admin-web/.env.example) 配置该目录的本地环境文件。`UMI_APP_NAME` 配置公开应用名称，`UMI_APP_PLATFORM_API_BASE` 和 `UMI_APP_PROPERTY_API_BASE` 分别配置同源 API 前缀，默认是 `/api/platform`、`/api/property`；这些 `UMI_APP_*` 值会进入浏览器构建产物，不得包含密钥。开发代理将对应前缀转发到本机 8001、8002 并移除端入口前缀。单独启动管理后台无需 PostgreSQL、Redis 或后端配置。
 
