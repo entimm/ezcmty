@@ -193,8 +193,8 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-describe('房屋抽屉临时选择与确认', () => {
-  it('省略分区，社区→楼栋→单元→房号只在最终确认提交完整选择', async () => {
+describe('房屋抽屉选择与确认', () => {
+  it('省略分区，社区→楼栋→单元→房号点击后直接提交完整选择', async () => {
     const view = await picker({ selectedId: 'previous-house' });
     await settled(view);
     view.invoke('chooseCommunity', tap(community.id));
@@ -211,39 +211,95 @@ describe('房屋抽屉临时选择与确认', () => {
     view.invoke('chooseNode', tap(unit.id));
     await settled(view);
     view.invoke('chooseHouse', tap(unitHouse.id));
-    expect(view.committed()).toBeNull();
-    expect(view.events).toEqual([]);
     expect(view.data.selectedId).toBe('previous-house');
-    view.invoke('confirm');
     expect(view.committed()).toEqual({
       house: unitHouse,
       community,
       path: [building, unit],
     });
+    view.invoke('chooseHouse', tap(unitHouse.id));
+    expect(view.events.map((event) => event.name)).toEqual(['confirm']);
     expect(mocks.houses).toHaveBeenCalledWith(community.id, unit.id, '', 1);
     view.detach();
   });
-  it('直接房屋可选择，返回核对和取消均不写正式房屋', async () => {
+  it('返回和关闭只取消未选路径，重新打开后点击直连房号立即选择', async () => {
     const view = await picker({ selectedId: 'previous-house' });
     await settled(view);
     view.invoke('chooseCommunity', tap(community.id));
     await settled(view);
     view.invoke('chooseNode', tap(building.id));
     await settled(view);
-    view.invoke('chooseHouse', tap(directHouse.id));
     view.invoke('back');
-    expect(view.data.house).toBeNull();
+    await settled(view);
+    expect(view.data.path).toEqual([]);
     expect(view.committed()).toBeNull();
     expect(view.data.selectedId).toBe('previous-house');
-    view.invoke('chooseHouse', tap(directHouse.id));
     view.invoke('close');
     expect(view.committed()).toBeNull();
     expect(view.events.map((event) => event.name)).toEqual(['close']);
     expect(view.data.selectedId).toBe('previous-house');
     view.reopen();
     await settled(view);
-    expect(view.data.house).toBeNull();
     expect(view.data.path).toEqual([]);
+    expect(view.committed()).toBeNull();
+    view.invoke('chooseCommunity', tap(community.id));
+    await settled(view);
+    view.invoke('chooseNode', tap(building.id));
+    await settled(view);
+    view.invoke('chooseHouse', tap(directHouse.id));
+    expect(view.committed()).toEqual({
+      house: directHouse,
+      community,
+      path: [building],
+    });
+    view.detach();
+  });
+  it.each(['未知房号', '其他小区房屋', '其他空间房屋'])(
+    '拒绝非法选择：%s',
+    async (kind) => {
+      const view = await picker();
+      await settled(view);
+      view.invoke('chooseCommunity', tap(community.id));
+      await settled(view);
+      view.invoke('chooseNode', tap(building.id));
+      await settled(view);
+      if (kind === '其他小区房屋')
+        view.changeProperties({
+          houses: [{ ...directHouse, community_id: 'other-community' }],
+        });
+      if (kind === '其他空间房屋')
+        view.changeProperties({
+          houses: [{ ...directHouse, space_node_id: 'other-space' }],
+        });
+      view.invoke(
+        'chooseHouse',
+        tap(kind === '未知房号' ? 'unknown-house' : directHouse.id),
+      );
+      expect(view.events).toEqual([]);
+      expect(view.committed()).toBeNull();
+      view.detach();
+    },
+  );
+  it.each([
+    '抽屉已关闭',
+    '列表正在刷新',
+    '列表读取失败',
+    '会话版本已变',
+    '居民已退出',
+  ])('拒绝失效选择：%s', async (kind) => {
+    const view = await picker();
+    await settled(view);
+    view.invoke('chooseCommunity', tap(community.id));
+    await settled(view);
+    view.invoke('chooseNode', tap(building.id));
+    await settled(view);
+    if (kind === '抽屉已关闭') view.changeProperties({ open: false });
+    if (kind === '列表正在刷新') view.changeProperties({ loading: true });
+    if (kind === '列表读取失败') view.changeProperties({ error: '加载失败' });
+    if (kind === '会话版本已变') mocks.revision++;
+    if (kind === '居民已退出') mocks.owner = null;
+    view.invoke('chooseHouse', tap(directHouse.id));
+    expect(view.events).toEqual([]);
     expect(view.committed()).toBeNull();
     view.detach();
   });
@@ -333,7 +389,7 @@ describe('房屋抽屉异步隔离', () => {
     expect(view.data.communities).toEqual([]);
     expect(view.data.community).toBeNull();
     expect(view.data.path).toEqual([]);
-    expect(view.data.house).toBeNull();
+    expect(view.data.houses).toEqual([]);
     expect(view.committed()).toBeNull();
     view.detach();
     expect(mocks.resets.size).toBe(0);

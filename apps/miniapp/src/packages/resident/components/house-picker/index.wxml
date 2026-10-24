@@ -6,7 +6,7 @@
       <text class="picker-title">{{title}}</text>
       <button class="picker-icon" bindtap="close" aria-label="关闭选房"><ui-icon name="x" /></button>
     </view>
-    <view wx:if="{{mode === 'claim' && community && !house}}" class="picker-path">
+    <view wx:if="{{mode === 'claim' && community}}" class="picker-path">
       <button class="picker-crumb" bindtap="crumb" data-index="-1">小区</button><text class="picker-separator">›</text><button class="picker-crumb" bindtap="crumb" data-index="0">{{community.name}}</button>
       <block wx:for="{{path}}" wx:key="id"><text class="picker-separator">›</text><button class="picker-crumb" bindtap="crumb" data-index="{{index + 1}}">{{item.name}}</button></block>
     </view>
@@ -17,9 +17,6 @@
         </button>
         <view wx:if="{{!bindingRows.length}}" class="picker-empty">暂无可切换的有效房屋</view>
       </block>
-      <block wx:elif="{{house}}">
-        <view class="picker-confirm"><view class="picker-confirm-icon"><ui-icon name="house" size="48" /></view><text class="xp-caption">{{selectionCommunity}}</text><text class="picker-confirm-room">{{selectionRoom}}</text></view>
-      </block>
       <block wx:else>
         <view class="picker-search"><ui-icon name="search" size="34" /><input class="picker-search-input" value="{{query}}" bindinput="onSearch" bindconfirm="search" confirm-type="search" placeholder="{{!community ? '搜索小区名称' : '搜索当前层级或房号'}}" /><button class="picker-search-submit" bindtap="search">搜索</button></view>
         <state-view loading="{{loading}}" error="{{error}}" bindretry="load" />
@@ -29,6 +26,6 @@
         </block>
       </block>
     </scroll-view>
-    <view class="picker-foot"><button wx:if="{{mode === 'switch' || house}}" class="xp-button picker-submit" disabled="{{mode === 'switch' && !temporaryId}}" bindtap="confirm">{{mode === 'switch' ? '确认切换' : '确认选择此房屋'}}</button><button wx:else class="xp-link picker-contact" bindtap="contact">找不到房屋？联系物业</button></view>
+    <view class="picker-foot"><button wx:if="{{mode === 'switch'}}" class="xp-button picker-submit" disabled="{{!temporaryId}}" bindtap="confirm">确认切换</button><button wx:else class="xp-link picker-contact" bindtap="contact">找不到房屋？联系物业</button></view>
   </view>
 </view>

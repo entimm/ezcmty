@@ -1,8 +1,36 @@
 <app-shell title="认领房屋" intercept-back bindback="leave">
-  <text class="claim-step-label">第 {{step}} 步，共 3 步</text><text class="xp-h1">{{title}}</text><view class="claim-steps"><view class="done"></view><view class="{{step > 1 ? 'done' : ''}}"></view><view class="{{step > 2 ? 'done' : ''}}"></view></view><text wx:if="{{error}}" class="xp-field-error">{{error}}</text>
-  <block wx:if="{{step === 1}}"><text class="xp-sub">从小区到房号，在同一处完成选择。</text><button class="claim-location" bindtap="openPicker"><view class="claim-location-icon"><ui-icon name="map-pin" size="42" /></view><view class="claim-location-copy"><text class="xp-strong">{{house ? community : '选择你要认领的房屋'}}</text><text class="xp-caption">{{house ? room : '小区 · 分区 · 楼栋 · 房号'}}</text></view><ui-icon name="{{house ? 'chevron-down' : 'chevron-right'}}" size="34" /></button><view class="xp-actions"><button class="xp-button" bindtap="{{house ? 'next' : 'openPicker'}}">{{house ? '继续填写资料' : '选择房屋'}}</button></view><text class="xp-legal">房屋由物业维护，未找到时请联系物业。</text></block>
-  <block wx:elif="{{step === 2}}"><view class="xp-card claim-first-card"><view class="xp-row"><text class="xp-tag">已选房屋</text><button class="xp-link" bindtap="openPicker" disabled="{{busy || unknown}}">更换房屋</button></view><text class="xp-address">{{community}}</text><text class="xp-address-sub">{{room}}</text></view><view class="xp-card"><view class="xp-field claim-first-field"><view>你的姓名 <text class="xp-caption">必填</text></view><input value="{{name}}" bindinput="nameInput" maxlength="80" placeholder="请输入你的真实姓名" disabled="{{busy || unknown}}" /></view><view class="xp-field"><view class="xp-row"><text>联系手机号 <text class="xp-caption">必选</text></text><button class="xp-link" bindtap="addPhone" disabled="{{busy || unknown}}">添加号码</button></view><state-view loading="{{loading}}" error="{{phoneError}}" bindretry="load" /><button wx:for="{{phones}}" wx:key="id" class="claim-phone {{phoneId === item.id ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="selectPhone" disabled="{{busy || unknown}}"><text>{{item.masked}}</text><ui-icon name="{{phoneId === item.id ? 'circle-check' : 'circle'}}" size="38" /></button><block wx:if="{{!loading && !phoneError && !phones.length}}"><view class="xp-notice">还没有可用号码，请先验证并添加。</view><button class="xp-button xp-secondary" bindtap="addPhone">验证手机号</button></block><text wx:if="{{phones.length > 1}}" class="claim-phone-hint xp-caption">请选择本次用于认领的号码。</text></view><view class="xp-field"><view>补充说明 <text class="xp-caption">选填</text></view><textarea value="{{remark}}" bindinput="remarkInput" maxlength="1000" placeholder="可填写有助于物业核实的信息" disabled="{{busy || unknown}}" /></view></view><view class="xp-notice">本次申请将保存填写的姓名和已验证号码，由物业人工核实。</view><view class="xp-actions"><button class="xp-button" bindtap="next" disabled="{{busy || loading || !!phoneError}}">下一步，核对信息</button><button class="xp-button xp-neutral" bindtap="previous" disabled="{{busy}}">上一步</button></view></block>
-  <block wx:else><view class="xp-card claim-first-card"><text class="xp-address">{{community}}</text><text class="xp-address-sub">{{room}}</text><view class="xp-divider"></view><view class="xp-info"><view class="xp-row"><text>申请人</text><text>{{name}}</text></view><view class="xp-row"><text>已验证号码</text><text>{{confirmedPhone}}</text></view></view><block wx:if="{{remark}}"><view class="xp-divider"></view><text class="xp-muted">{{remark}}</text></block></view><view class="xp-notice {{unknown ? 'warn' : ''}}">{{unknown ? '提交结果尚未确认。重试将恢复同一申请，不会重复提交；也可到认领申请查看。' : '提交后由物业人工审核。审核通过前可撤回申请；手机号码验证不代表房屋归属。'}}</view><view class="xp-actions"><button class="xp-button" bindtap="submit" disabled="{{busy}}" loading="{{busy}}">{{busy ? '正在提交…' : unknown ? '重试，确认原申请结果' : '提交认领申请'}}</button><button wx:if="{{unknown}}" class="xp-button xp-neutral" bindtap="claims">查看我的申请</button><button wx:else class="xp-button xp-neutral" bindtap="previous" disabled="{{busy}}">返回修改</button></view></block>
+  <text class="claim-step-label">第 {{step}} 步，共 2 步</text>
+  <text class="xp-h1">{{title}}</text>
+  <view class="claim-steps"><view class="done"></view><view class="{{step > 1 ? 'done' : ''}}"></view></view>
+  <text wx:if="{{error}}" class="xp-field-error">{{error}}</text>
+  <block wx:if="{{step === 1}}">
+    <view wx:if="{{house}}" class="xp-card claim-first-card">
+      <view class="xp-row"><text class="xp-tag">已选房屋</text><button class="xp-link" bindtap="openPicker" disabled="{{busy || unknown}}">更换房屋</button></view>
+      <text class="xp-address">{{community}}</text><text class="xp-address-sub">{{room}}</text>
+    </view>
+    <block wx:else>
+      <button class="claim-location" bindtap="openPicker" disabled="{{busy || unknown}}"><view class="claim-location-icon"><ui-icon name="map-pin" size="42" /></view><view class="claim-location-copy"><text class="xp-strong">选择你要认领的房屋</text><text class="xp-caption">小区 · 分区 · 楼栋 · 房号</text></view><ui-icon name="chevron-right" size="34" /></button>
+      <text class="claim-location-hint xp-caption">房屋由物业维护，未找到时请联系物业。</text>
+    </block>
+    <view class="xp-card">
+      <view class="xp-field claim-first-field"><view>你的姓名 <text class="xp-caption">必填</text></view><input value="{{name}}" bindinput="nameInput" maxlength="80" placeholder="请输入你的真实姓名" disabled="{{busy || unknown}}" /></view>
+      <view class="xp-field">
+        <view class="xp-row"><text>联系手机号 <text class="xp-caption">必选</text></text><button class="xp-link" bindtap="addPhone" disabled="{{busy || unknown}}">添加号码</button></view>
+        <state-view loading="{{loading}}" error="{{phoneError}}" bindretry="load" />
+        <button wx:for="{{phones}}" wx:key="id" class="claim-phone {{phoneId === item.id ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="selectPhone" disabled="{{busy || unknown}}"><text>{{item.masked}}</text><ui-icon name="{{phoneId === item.id ? 'circle-check' : 'circle'}}" size="38" /></button>
+        <block wx:if="{{!loading && !phoneError && !phones.length}}"><view class="xp-notice">还没有可用号码，请先验证并添加。</view><button class="xp-button xp-secondary" bindtap="addPhone">验证手机号</button></block>
+        <text wx:if="{{phones.length > 1}}" class="claim-phone-hint xp-caption">请选择本次用于认领的号码。</text>
+      </view>
+      <view class="xp-field"><view>补充说明 <text class="xp-caption">选填</text></view><textarea value="{{remark}}" bindinput="remarkInput" maxlength="1000" placeholder="可填写有助于物业核实的信息" disabled="{{busy || unknown}}" /></view>
+    </view>
+    <view class="xp-notice">本次申请将保存填写的姓名和已验证号码，由物业人工核实。</view>
+    <view class="xp-actions"><button class="xp-button" bindtap="next" disabled="{{!house || busy || loading || !!phoneError}}">下一步，核对信息</button></view>
+  </block>
+  <block wx:else>
+    <view class="xp-card claim-first-card"><text class="xp-address">{{community}}</text><text class="xp-address-sub">{{room}}</text><view class="xp-divider"></view><view class="xp-info"><view class="xp-row"><text>申请人</text><text>{{name}}</text></view><view class="xp-row"><text>已验证号码</text><text>{{confirmedPhone}}</text></view></view><block wx:if="{{remark}}"><view class="xp-divider"></view><text class="xp-muted">{{remark}}</text></block></view>
+    <view class="xp-notice {{unknown ? 'warn' : ''}}">{{unknown ? '提交结果尚未确认。重试将恢复同一申请，不会重复提交；也可到认领申请查看。' : '提交后由物业人工审核。审核通过前可撤回申请；手机号码验证不代表房屋归属。'}}</view>
+    <view class="xp-actions"><button class="xp-button" bindtap="submit" disabled="{{busy}}" loading="{{busy}}">{{busy ? '正在提交…' : unknown ? '重试，确认原申请结果' : '提交认领申请'}}</button><button wx:if="{{unknown}}" class="xp-button xp-neutral" bindtap="claims">查看我的申请</button><button wx:else class="xp-button xp-neutral" bindtap="previous" disabled="{{busy}}">返回修改</button></view>
+  </block>
 </app-shell>
 <house-picker open="{{picker}}" mode="claim" selected-id="{{house ? house.id : ''}}" bindconfirm="selectHouse" bindclose="closePicker" />
 <bottom-sheet show="{{leaving}}" title="离开本次认领？" confirm-text="确认离开" cancel-text="继续填写" bindconfirm="confirmLeave" bindclose="stay"><text class="xp-muted">{{unknown ? '申请提交结果仍需确认。离开后可到认领申请查看，请勿重复提交。' : '离开后将清除尚未提交的资料。'}}</text></bottom-sheet>

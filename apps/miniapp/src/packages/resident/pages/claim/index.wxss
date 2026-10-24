@@ -24,7 +24,7 @@
   align-items: center;
   gap: 20rpx;
   min-height: 148rpx;
-  margin-top: 24rpx;
+  margin-top: 0;
   padding: 26rpx 28rpx;
   border-radius: 28rpx;
   background: #fff;
@@ -81,4 +81,9 @@
 }
 .xp-field textarea {
   height: 164rpx;
+}
+
+.claim-location-hint {
+  display: block;
+  margin: 10rpx 4rpx 0;
 }

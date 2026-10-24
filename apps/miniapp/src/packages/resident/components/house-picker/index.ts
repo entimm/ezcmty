@@ -11,10 +11,14 @@ import type {
   House,
   SpaceNode,
 } from '../../../../core/types';
-import { addressParts, bindingView, loadAll } from '../../presentation';
+import { bindingView, loadAll } from '../../presentation';
 
 const versions = new WeakMap<object, number>();
 const unsubscribe = new WeakMap<object, () => void>();
+const choices = new WeakMap<
+  object,
+  { version: number; owner: string; revision: number }
+>();
 Component({
   options: { styleIsolation: 'apply-shared' },
   properties: {
@@ -26,7 +30,6 @@ Component({
   data: {
     community: null as Community | null,
     path: [] as SpaceNode[],
-    house: null as House | null,
     communities: [] as Community[],
     nodes: [] as SpaceNode[],
     houses: [] as House[],
@@ -37,8 +40,6 @@ Component({
     error: '',
     bodyHeight: 180,
     title: '选择小区',
-    selectionCommunity: '',
-    selectionRoom: '',
   },
   observers: {
     open(open: boolean) {
@@ -55,7 +56,6 @@ Component({
           this.setData({
             community: null,
             path: [],
-            house: null,
             communities: [],
             nodes: [],
             houses: [],
@@ -80,7 +80,6 @@ Component({
       let height = 156;
       if (this.data.mode === 'switch')
         height = Math.max(70, this.data.bindingRows.length * 66);
-      else if (this.data.house) height = 180;
       else if (!this.data.loading && !this.data.error)
         height = !this.data.community
           ? 58 + Math.max(1, this.data.communities.length) * 66
@@ -98,13 +97,13 @@ Component({
     },
     invalidate() {
       versions.set(this, (versions.get(this) || 0) + 1);
+      choices.delete(this);
     },
     initialize() {
       this.invalidate();
       this.setData({
         community: null,
         path: [],
-        house: null,
         query: '',
         error: '',
         communities: [],
@@ -128,6 +127,7 @@ Component({
     async load() {
       const version = (versions.get(this) || 0) + 1;
       versions.set(this, version);
+      choices.delete(this);
       const owner = currentCredential()?.userId;
       const revision = sessionRevision();
       const valid = () =>
@@ -149,6 +149,7 @@ Component({
             api.communities(query.trim(), page),
           );
           if (valid()) {
+            choices.set(this, { version, owner: owner!, revision });
             this.setData({ communities, loading: false });
             this.fitHeight();
           }
@@ -163,6 +164,7 @@ Component({
               : Promise.resolve([] as House[]),
           ]);
           if (valid()) {
+            choices.set(this, { version, owner: owner!, revision });
             this.setData({
               nodes: query.trim()
                 ? nodes.filter((node) => node.name.includes(query.trim()))
@@ -194,7 +196,6 @@ Component({
       this.setData({
         community,
         path: [],
-        house: null,
         query: '',
         nodes: [],
         houses: [],
@@ -208,7 +209,6 @@ Component({
       if (!node) return;
       this.setData({
         path: [...this.data.path, node],
-        house: null,
         query: '',
         nodes: [],
         houses: [],
@@ -216,18 +216,37 @@ Component({
       void this.load();
     },
     chooseHouse(event: WechatMiniprogram.TouchEvent) {
+      const context = choices.get(this);
+      const community = this.data.community;
+      const parent = this.data.path[this.data.path.length - 1];
+      if (
+        this.data.mode !== 'claim' ||
+        !this.data.open ||
+        this.data.loading ||
+        this.data.error ||
+        !community ||
+        !parent ||
+        !context ||
+        context.version !== versions.get(this) ||
+        context.revision !== sessionRevision() ||
+        context.owner !== currentCredential()?.userId
+      )
+        return;
       const house = this.data.houses.find(
         (item) => item.id === event.currentTarget.dataset.id,
       );
-      if (!house) return;
-      const address = addressParts(house.display_address);
-      this.setData({
+      if (
+        !house ||
+        house.community_id !== community.id ||
+        house.space_node_id !== parent.id
+      )
+        return;
+      this.invalidate();
+      this.triggerEvent('confirm', {
         house,
-        title: '核对房屋',
-        selectionCommunity: address.community,
-        selectionRoom: address.room,
+        community,
+        path: [...this.data.path],
       });
-      this.fitHeight();
     },
     chooseBinding(event: WechatMiniprogram.TouchEvent) {
       this.setData({ temporaryId: event.currentTarget.dataset.id });
@@ -237,7 +256,6 @@ Component({
       this.setData({
         community: index < 0 ? null : this.data.community,
         path: index < 1 ? [] : this.data.path.slice(0, index),
-        house: null,
         query: '',
         nodes: [],
         houses: [],
@@ -246,11 +264,6 @@ Component({
     },
     back() {
       if (this.data.loading) this.invalidate();
-      if (this.data.house) {
-        this.setData({ house: null, title: '选择房屋位置' });
-        this.fitHeight();
-        return;
-      }
       if (this.data.path.length)
         this.setData({
           path: this.data.path.slice(0, -1),
@@ -274,12 +287,6 @@ Component({
             b.effective_enabled,
         );
         if (binding) this.triggerEvent('confirm', { binding });
-      } else if (this.data.house && this.data.community) {
-        this.triggerEvent('confirm', {
-          house: this.data.house,
-          community: this.data.community,
-          path: this.data.path,
-        });
       }
     },
     contact() {

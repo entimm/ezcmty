@@ -5,7 +5,7 @@
 - 工作区：`/Users/xsavorai/.codex-pro/worktrees/miniapp-rebuild/xlife2`。
 - 分支：`codex/miniapp-rebuild-20261024`。原工作区保持不变。
 - 已验证回滚标签与归档，完全删除原 `apps/miniapp` 后从空目录重建；回滚信息见[实施计划](rebuild.md#回滚)。
-- 验收基准为[确认后的紧凑预览](../../design/resident/assets/miniapp-review.html)，仅将品牌改为“美好社区”。冻结文件 SHA-256：`14cafddec5bcc8086829c848fbb3141fbfc4194f7aa450b8aaaf54bace6975a7`。
+- 首次验收采用确认后的紧凑预览，并将品牌改为“美好社区”。提交 `6e08a20` 中 `docs/design/resident/assets/miniapp-review.html` 的 SHA-256：`14cafddec5bcc8086829c848fbb3141fbfc4194f7aa450b8aaaf54bace6975a7`。
 
 ## 验证范围
 
@@ -30,3 +30,13 @@
 - 未上传、发布小程序，未改变公共 API、数据库结构或后台实现。
 
 截图及布局原始测量保存在本机 `/Users/xsavorai/.codex-pro/miniapp-backups/20261024-2cee727/implementation-proof/`。原生截图与浏览器适配截图按 `native-`、`source-` 前缀区分。
+
+## 认领流程精简验收
+
+按用户授权，将认领改为填写资料、确认提交两步。点击房号直接关闭抽屉并回填表单，核对页返回编辑，取消重选保留原房屋和已填资料。删除房屋独立核对及“继续填写资料”过渡，已有房屋切换仍保留确认。当前[交互预览](../../design/resident/assets/miniapp-review.html)已同步。
+
+- 前端 12 个测试文件、116 项全部通过，包括选房组件 16 项与两步认领 11 项；覆盖选择失效、取消、深链、表单校验、重复认领、会话变化和未知原申请恢复。
+- 类型、Lint、改动文件格式与差异空白检查通过；微信原生编译通过 20 份 WXML、21 份 WXSS。
+- 当前源码的认领状态及首页/账单选房抽屉，在四种宽度下共 52 组合无横向溢出或不足 44px 的可操作区域。
+- 交互预览中实际操作验证：选房号直接出现资料表单，取消换房仍保留旧房和资料，一次“下一步”进入最终核对。
+- 未更改后端契约和授权规则；本次没有执行真实微信授权或提交真实认领。

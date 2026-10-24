@@ -1,5 +1,9 @@
 import * as api from '../../../../core/api';
-import { requireSession } from '../../../../core/session';
+import {
+  currentCredential,
+  requireSession,
+  sessionRevision,
+} from '../../../../core/session';
 import { errorText } from '../../../../core/request';
 import { maskPhone } from '../../../../core/format';
 import { ClaimSubmission } from '../../../../core/claims';
@@ -16,7 +20,7 @@ import { addressParts, houseClaimConflict, loadAll } from '../../presentation';
 Page({
   data: {
     step: 1,
-    title: '选择房屋',
+    title: '填写资料',
     loading: false,
     error: '',
     phoneError: '',
@@ -38,6 +42,7 @@ Page({
   initialHouseId: '',
   initialCommunityId: '',
   initialized: false,
+  completedClaimId: '',
   bindings: [] as Binding[],
   pendingClaims: [] as Claim[],
   onLoad(options: Record<string, string>) {
@@ -77,6 +82,16 @@ Page({
       busy: this.submission.busy,
       unknown: this.submission.unknown,
     });
+    if (!this.initialized && !this.initialHouseId) {
+      this.initialized = true;
+      this.setData({ picker: true });
+    }
+    if (this.completedClaimId) {
+      const id = this.completedClaimId;
+      this.clearDraft();
+      wx.redirectTo({ url: pageUrl('claim-detail', { id }) });
+      return;
+    }
     void this.load();
   },
   onHide() {
@@ -89,11 +104,12 @@ Page({
     this.clearDraft();
   },
   clearDraft() {
+    this.completedClaimId = '';
     this.bindings = [];
     this.pendingClaims = [];
     this.setData({
       step: 1,
-      title: '选择房屋',
+      title: '填写资料',
       house: null,
       community: '',
       room: '',
@@ -126,6 +142,8 @@ Page({
       this.pendingClaims = claims;
       const active = phones.filter((phone) => phone.status === 'active');
       const existing = active.find((phone) => phone.id === this.data.phoneId);
+      const confirmedPhoneChanged =
+        this.data.step === 2 && !this.submission.unknown && !existing;
       this.setData({
         phones: active.map((phone) => ({
           ...phone,
@@ -136,6 +154,12 @@ Page({
           : existing?.id || (active.length === 1 ? active[0].id : ''),
         loading: false,
       });
+      if (confirmedPhoneChanged)
+        this.setData({
+          step: 1,
+          title: '填写资料',
+          error: '号码状态已变化，请重新核对认领资料。',
+        });
       if (house) this.applyHouse(house);
       if (!this.initialized) {
         this.initialized = true;
@@ -173,12 +197,16 @@ Page({
   selectHouse(event: WechatMiniprogram.CustomEvent<{ house: House }>) {
     if (this.data.unknown || this.data.busy) return;
     this.applyHouse(event.detail.house);
-    this.setData({ picker: false });
+    this.setData({ picker: false, step: 1, title: '填写资料' });
   },
   next() {
-    if (this.data.busy || this.data.unknown) return;
+    if (this.data.busy || this.data.unknown || this.data.step !== 1) return;
     if (!this.data.house) {
       this.setData({ error: '请选择要认领的房屋。' });
+      return;
+    }
+    if (this.data.loading || this.data.phoneError) {
+      this.setData({ error: '请先完成资料加载后再核对。' });
       return;
     }
     const conflict = houseClaimConflict(
@@ -190,43 +218,30 @@ Page({
       this.setData({ error: conflict });
       return;
     }
-    if (this.data.step === 2) {
-      if (!this.data.name.trim()) {
-        this.setData({ error: '请填写你的姓名。' });
-        return;
-      }
-      if (
-        !this.data.phones.some(
-          (phone) =>
-            phone.id === this.data.phoneId && phone.status === 'active',
-        )
-      ) {
-        this.setData({ error: '请选择本次用于认领的已验证号码。' });
-        return;
-      }
-      this.setData({
-        name: this.data.name.trim(),
-        remark: this.data.remark.trim(),
-        confirmedPhone:
-          this.data.phones.find((phone) => phone.id === this.data.phoneId)
-            ?.masked || '',
-      });
+    const name = this.data.name.trim();
+    if (!name || name.length > 80) {
+      this.setData({ error: '请填写 1 至 80 字的姓名。' });
+      return;
     }
-    const step = Math.min(3, this.data.step + 1);
+    const phone = this.data.phones.find(
+      (item) => item.id === this.data.phoneId && item.status === 'active',
+    );
+    if (!phone) {
+      this.setData({ error: '请选择本次用于认领的已验证号码。' });
+      return;
+    }
     this.setData({
-      step,
-      title: ['选择房屋', '填写资料', '确认提交'][step - 1],
+      step: 2,
+      title: '确认提交',
+      name,
+      remark: this.data.remark.trim(),
+      confirmedPhone: phone.masked,
       error: '',
     });
   },
   previous() {
     if (this.data.busy || this.data.unknown) return;
-    const step = Math.max(1, this.data.step - 1);
-    this.setData({
-      step,
-      title: ['选择房屋', '填写资料', '确认提交'][step - 1],
-      error: '',
-    });
+    this.setData({ step: 1, title: '填写资料', error: '' });
   },
   nameInput(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
     if (!this.data.busy && !this.data.unknown)
@@ -245,7 +260,7 @@ Page({
       go('phones', { returnTo: pageUrl('claim') });
   },
   async submit() {
-    if (this.data.busy || !this.data.house || this.data.step !== 3) return;
+    if (this.data.busy || !this.data.house || this.data.step !== 2) return;
     if (!this.submission.unknown) {
       const conflict = houseClaimConflict(
         this.data.house.id,
@@ -257,7 +272,12 @@ Page({
         return;
       }
     }
-    const valid = this.scope.next();
+    const owner = currentCredential()?.userId;
+    const revision = sessionRevision();
+    const sameSession = () =>
+      !!owner &&
+      currentCredential()?.userId === owner &&
+      sessionRevision() === revision;
     this.setData({ busy: true, error: '' });
     try {
       const claim = this.submission.unknown
@@ -268,12 +288,16 @@ Page({
             phone_binding_id: this.data.phoneId,
             applicant_remark: this.data.remark.trim() || null,
           });
-      if (!valid()) return;
+      if (!sameSession()) return;
+      if (!this.scope.isCurrent()) {
+        this.completedClaimId = claim.id;
+        return;
+      }
       this.setData({ busy: false, unknown: false });
       this.clearDraft();
       wx.redirectTo({ url: pageUrl('claim-detail', { id: claim.id }) });
     } catch (error) {
-      if (valid())
+      if (sameSession() && this.scope.isCurrent())
         this.setData({
           busy: false,
           unknown: this.submission.unknown,
@@ -283,6 +307,10 @@ Page({
   },
   leave() {
     if (this.data.busy) return;
+    if (this.data.step === 2 && !this.data.unknown) {
+      this.previous();
+      return;
+    }
     if (
       this.data.house ||
       this.data.name ||
