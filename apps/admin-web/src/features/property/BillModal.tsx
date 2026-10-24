@@ -387,6 +387,7 @@ export function BillModal({
       submit={submit}
       close={close}
       width={editor ? 600 : 760}
+      className={!editor ? 'bill-create-dialog' : undefined}
       confirmLabel={action ? confirmLabels[action] : '创建账单'}
       danger={action === 'reverse' || action === 'void'}
       locked={!!pending}

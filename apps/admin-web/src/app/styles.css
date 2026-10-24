@@ -1728,3 +1728,10 @@ a:focus-visible {
     overflow-y: auto;
   }
 }
+.bill-create-dialog {
+  top: 24px;
+  padding-bottom: 24px;
+}
+.bill-create-dialog .ant-modal-body {
+  max-height: calc(100dvh - 160px) !important;
+}

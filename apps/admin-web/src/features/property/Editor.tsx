@@ -16,6 +16,7 @@ export function PropertyEditor({
   readOnly = false,
   locked = false,
   extra,
+  className,
 }: {
   title: string;
   form: FormInstance;
@@ -29,6 +30,7 @@ export function PropertyEditor({
   readOnly?: boolean;
   locked?: boolean;
   extra?: ReactNode;
+  className?: string;
 }) {
   const { setDirty } = useAdmin();
   const baseline = useRef(initial);
@@ -87,6 +89,7 @@ export function PropertyEditor({
       open
       title={title}
       width={width}
+      className={className}
       onCancel={cancel}
       mask={{ closable: !busy && !locked }}
       keyboard={!busy && !locked}
