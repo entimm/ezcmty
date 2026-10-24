@@ -52,6 +52,7 @@ import {
 } from './routes';
 import { navigate, setNavigationGuard, useAddress } from './navigation';
 import { menus, matchesMenuSearch } from './menus';
+import { isPageAvailable } from './page-availability';
 import { Dashboard } from './Dashboard';
 import './styles.css';
 
@@ -472,6 +473,7 @@ function Workspace({
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
+        if (!isPageAvailable(auth.scope, item.page)) return false;
         const route = routes[auth.scope].find(
           (route) => route.page === item.page,
         );

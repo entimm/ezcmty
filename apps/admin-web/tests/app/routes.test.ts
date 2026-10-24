@@ -12,6 +12,22 @@ const community = '019a1234-5678-7abc-9def-0123456789ab';
 const house = '00000000-0000-4000-8000-000000000001';
 
 describe('双后台域名与路由边界', () => {
+  it.each(['/communities', '/payment-configuration'])(
+    '关闭的物业页面%s不接受域名、本地或旧前缀直达，也不作为登录回跳目标',
+    (path) => {
+      expect(matchRoute('property', path, configuredHosts.property)).toBeNull();
+      expect(
+        matchRoute('property', '/property' + path, 'localhost'),
+      ).toBeNull();
+      expect(
+        matchRoute('property', '/property' + path, configuredHosts.property),
+      ).toBeNull();
+      expect(safeReturn('property', path, configuredHosts.property)).toBe('/');
+      expect(safeReturn('property', '/property' + path, 'localhost')).toBe(
+        '/property',
+      );
+    },
+  );
   it('专属域名只解析本端，未知域名不进入后台', () => {
     expect(resolveScope(configuredHosts.platform, '/companies')).toBe(
       'platform',

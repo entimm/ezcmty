@@ -12,6 +12,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../src/app/App';
 import { navigate, setNavigationGuard } from '../../src/app/navigation';
+import { propertyPageAvailability } from '../../src/app/page-availability';
 import { useAdmin } from '../../src/shared/context';
 import { useResource } from '../../src/shared/hooks';
 import type { SessionResponse } from '../../src/shared/types';
@@ -133,6 +134,8 @@ beforeEach(() =>
 afterEach(async () => {
   cleanup();
   setNavigationGuard();
+  propertyPageAvailability.communities = false;
+  propertyPageAvailability['payment-configuration'] = false;
   await act(async () => {
     await Promise.resolve();
   });
@@ -273,11 +276,9 @@ describe('工作空间完整组装', () => {
       localStorage.getItem('xlife-admin:property:' + subject + ':community'),
     ).toBe(lastCommunity);
     const nav = screen.getByRole('navigation', { name: '主导航' });
-    fireEvent.click(within(nav).getByRole('button', { name: /小区资料/ }));
+    fireEvent.click(within(nav).getByRole('button', { name: /工作概览/ }));
     await waitFor(() =>
-      expect(screen.getByTestId('business-page')).toHaveTextContent(
-        'communities',
-      ),
+      expect(screen.getByTestId('business-page')).toHaveTextContent('home'),
     );
     expect(screen.getByTestId('business-community')).toHaveTextContent(
       lastCommunity,
@@ -303,6 +304,88 @@ describe('工作空间完整组装', () => {
     expect(screen.getByRole('textbox', { name: '临时查看备注' })).toHaveValue(
       '查看公司整体资料',
     );
+  });
+  it('拥有读取权限时，关闭页面仍从菜单与命令搜索移除，小区上下文继续可用', async () => {
+    show('/property/houses', [
+      'property.company.read',
+      'property.community.read',
+      'property.house.read',
+      'property.payment_config.read',
+    ]);
+    await ready('houses');
+    const nav = screen.getByRole('navigation', { name: '主导航' });
+    expect(
+      within(nav).queryByRole('button', { name: /小区资料|收款信息/ }),
+    ).not.toBeInTheDocument();
+    await switchToLastCommunity();
+    fireEvent.click(screen.getByRole('button', { name: /搜索功能或操作/ }));
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      within(dialog).queryByRole('button', { name: /小区资料|收款信息/ }),
+    ).not.toBeInTheDocument();
+    const search = within(dialog).getByRole('textbox', {
+      name: '搜索菜单、常用操作',
+    });
+    for (const term of ['小区资料', '收款信息']) {
+      fireEvent.change(search, { target: { value: term } });
+      expect(
+        within(dialog).getByText('没有匹配的功能，请尝试业务名称'),
+      ).toBeInTheDocument();
+    }
+  });
+  it.each(['communities', 'payment-configuration'])(
+    '物业直达关闭页面%s显示404，不挂载页面或执行其业务查询',
+    async (page) => {
+      const fetch = show('/property/' + page, [
+        'property.company.read',
+        'property.community.read',
+        'property.payment_config.read',
+      ]);
+      expect(await screen.findByText('页面或记录不存在')).toBeInTheDocument();
+      expect(screen.queryByTestId('business-page')).not.toBeInTheDocument();
+      expect(
+        fetch.mock.calls.map(([input]) => new URL(String(input)).pathname),
+      ).toEqual(['/api/property/v1/admin-sessions/current']);
+    },
+  );
+  it.each([
+    ['communities', '小区资料'],
+    ['payment-configuration', '收款信息'],
+  ])('恢复%s开关后重新开放页面与菜单，另一页继续关闭', async (page, label) => {
+    propertyPageAvailability[page] = true;
+    show('/property/' + page, [
+      'property.company.read',
+      'property.community.read',
+      'property.payment_config.read',
+    ]);
+    await ready(page);
+    const nav = screen.getByRole('navigation', { name: '主导航' });
+    expect(
+      within(nav).getByRole('button', { name: new RegExp(label) }),
+    ).toBeInTheDocument();
+    expect(
+      within(nav).queryByRole('button', {
+        name: new RegExp(page === 'communities' ? '收款信息' : '小区资料'),
+      }),
+    ).not.toBeInTheDocument();
+  });
+  it.each([
+    [
+      '/platform/communities',
+      'platform-communities',
+      'property.community.read',
+    ],
+    [
+      '/platform/companies/' + company.id + '/payment-configuration',
+      'payment-configuration',
+      'platform.payment_config.read',
+    ],
+  ])('物业页面开关不影响平台地址%s', async (path, page, permission) => {
+    show(path, [permission]);
+    await waitFor(() =>
+      expect(screen.getByTestId('business-page')).toHaveTextContent(page),
+    );
+    expect(screen.queryByText('页面或记录不存在')).not.toBeInTheDocument();
   });
   it('只读物业命令面板仅列出本端授权菜单，不暴露跨端或写操作', async () => {
     show('/property/houses', [

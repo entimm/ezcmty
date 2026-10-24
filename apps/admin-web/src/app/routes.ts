@@ -1,4 +1,5 @@
 import type { Scope } from '../shared/types';
+import { isPageAvailable } from './page-availability';
 export interface Route {
   page: string;
   path: string;
@@ -260,6 +261,7 @@ export function matchRoute(
   for (const route of [...routes[scope]].sort(
     (a, b) => b.path.split('/').length - a.path.split('/').length,
   )) {
+    if (!isPageAvailable(scope, route.page)) continue;
     const actual = path.split('/'),
       expected = route.path.split('/');
     if (actual.length !== expected.length) continue;
