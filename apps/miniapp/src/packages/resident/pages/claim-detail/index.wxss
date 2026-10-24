@@ -1,0 +1,31 @@
+.claim-timeline {
+  margin-top: 24rpx;
+}
+.claim-event {
+  margin-left: 12rpx;
+  border-left: 2rpx solid #e5e8e9;
+  padding: 0 0 28rpx 36rpx;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  font-size: 28rpx;
+  line-height: 1.55;
+}
+.claim-event::before {
+  content: '';
+  position: absolute;
+  left: -10rpx;
+  top: 9rpx;
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: #e5e8e9;
+}
+.claim-event.active::before {
+  background: #35342c;
+}
+.claim-event:last-child {
+  padding-bottom: 0;
+  border-color: transparent;
+}

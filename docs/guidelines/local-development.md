@@ -242,25 +242,24 @@ cp apps/miniapp/.env.example apps/miniapp/.env.local
 make miniapp-build
 ```
 
-`MINIAPP_API_BASE_URL` 指定后端地址，模板使用测试环境 IP 入口 `https://150.158.19.40:8010/api/resident`；HTTPS 网关地址包含 `/api/resident`，不包含 `/v1`。未配置时默认直连本地居民 API `http://127.0.0.1:8003`。`MINIAPP_APP_ID` 和 `MINIAPP_APP_NAME` 可覆盖项目中的 AppID 和应用名称。
+`MINIAPP_API_BASE_URL` 指定后端地址；模板和未配置时默认直连本地居民 API `http://127.0.0.1:8003`。HTTPS 网关地址包含 `/api/resident`，不包含 `/v1`。API 地址不能包含凭证、查询串或片段；`NODE_ENV=production` 时必须使用 HTTPS。平台 AppID 在 `project.config.json` 配置，产品名称为“美好社区”。
 
 在微信开发者工具打开 `apps/miniapp/`，项目输出位于 `dist/`。IP 入口用于开发者工具联调，需关闭合法域名校验；真机需要可访问的 HTTPS 域名及微信后台合法域名配置，服务端配置见 `services/backend/.env.example`。
 
 项目配置启用自定义预处理，在开发者工具手动编译、预览和上传前通过 `scripts/devtools-build.sh` 执行 `pnpm run build`，确保产物包含当前源码和环境配置；命令依赖本机可用的 Node.js、pnpm 和已安装的项目依赖。macOS 的预处理脚本补充 Homebrew 常用命令目录，找不到 Node.js 或 pnpm 时尝试初始化已有 fnm，以兼容开发者工具未继承终端 PATH 的情况。修改项目配置后重新打开项目；文件热更新不触发编译前预处理。直接打开 `dist/` 时只读取既有产物，不执行源项目的预处理命令。终端仍可通过 `make miniapp-build` 主动构建。
 
-每次构建按北京时间生成精确到秒的纯数字版本 `YYYYMMDDHHmmss`，仅居民首页固定在底部显示该版本，并为底部安全区及页面内容预留空间。预览和上传会重新构建，版本时间可能晚于上次模拟器编译；手机端应核对对应上传产物的版本。
+每次构建默认按北京时间生成版本 `YYYYMMDDHHmmss`，可用 `MINIAPP_BUILD_VERSION` 覆盖。版本收纳于个人中心“关于美好社区”，不占用首页。预览和上传前重新构建，确保版本对应当前产物。
 
-网络失败的错误信息由共享 `errorText` 统一格式化，各页面错误区展示微信返回的 `errMsg`、可用的 `errno` 及请求方法、地址，并支持换行、长地址折行和文本选择；原先使用 `toastError` 的操作遇到网络诊断时改用详情弹窗，点击“复制详情”复制完整信息。同一份诊断同时写入控制台和微信实时日志。诊断移除 URL 查询参数和片段，不记录请求数据或认证请求头；重试清理旧错误，过期会话错误保持静默。微信接口、日志服务的真实行为仍需在关闭手机调试的体验版中验证。
+请求错误先展示中文原因和下一步；不向用户展示或记录原始网络异常、接口查询串、微信 code、手机号输入、令牌和支付凭证。网络失败与认证失效分别处理，未知写入结果使用原幂等键恢复。
 
 连接本地后端的构建示例（替换为对应平台小程序 AppID）：
 
 ```bash
-MINIAPP_APP_ID=你的小程序AppID \
 MINIAPP_API_BASE_URL=http://127.0.0.1:8003 \
 make miniapp-build
 ```
 
-实际微信登录和手机号授权还需在后端配置匹配的 `APP_WECHAT_MINIAPP_APP_ID`、`APP_WECHAT_MINIAPP_APP_SECRET`；仅设置构建 AppID 不提供登录凭据。构建变量变更后重新构建。
+实际微信登录和手机号授权需在项目配置中填写平台 AppID，并在后端配置匹配的 `APP_WECHAT_MINIAPP_APP_ID`、`APP_WECHAT_MINIAPP_APP_SECRET`；仅配置 AppID 不提供登录凭据。构建变量变更后重新构建。
 
 `pnpm --filter resident-miniapp test` 验证会话隔离、请求恢复和选房交互。构建后可运行 `pnpm --filter resident-miniapp check:native` 调用微信开发者工具的 WXML/WXSS 编译器；默认查找 macOS 安装目录，其他环境通过 `MINIAPP_WCC`、`MINIAPP_WCSC` 指定编译器绝对路径。此检查要求本机已安装微信编译器，不能替代体验版登录及手机号授权的真机验收。
 

@@ -1,0 +1,34 @@
+<view wx:if="{{open}}" class="picker-mask" catchtap="close" catchtouchmove="prevent">
+  <view class="picker-sheet" catchtap="prevent">
+    <view class="picker-handle"></view>
+    <view class="picker-head">
+      <button class="picker-icon" wx:if="{{mode === 'claim' && community}}" bindtap="back" aria-label="返回上一级"><ui-icon name="chevron-left" /></button><view wx:else class="picker-icon"></view>
+      <text class="picker-title">{{title}}</text>
+      <button class="picker-icon" bindtap="close" aria-label="关闭选房"><ui-icon name="x" /></button>
+    </view>
+    <view wx:if="{{mode === 'claim' && community && !house}}" class="picker-path">
+      <button class="picker-crumb" bindtap="crumb" data-index="-1">小区</button><text class="picker-separator">›</text><button class="picker-crumb" bindtap="crumb" data-index="0">{{community.name}}</button>
+      <block wx:for="{{path}}" wx:key="id"><text class="picker-separator">›</text><button class="picker-crumb" bindtap="crumb" data-index="{{index + 1}}">{{item.name}}</button></block>
+    </view>
+    <scroll-view class="picker-body" style="height: {{bodyHeight}}px" scroll-y enhanced show-scrollbar="{{false}}">
+      <block wx:if="{{mode === 'switch'}}">
+        <button wx:for="{{bindingRows}}" wx:key="id" class="picker-option {{temporaryId === item.id ? 'selected' : ''}}" bindtap="chooseBinding" data-id="{{item.id}}">
+          <view class="picker-copy"><text class="picker-name">{{item.community}}</text><text class="xp-caption">{{item.room}}</text></view><ui-icon class="picker-option-check" name="{{temporaryId === item.id ? 'circle-check' : 'circle'}}" size="38" />
+        </button>
+        <view wx:if="{{!bindingRows.length}}" class="picker-empty">暂无可切换的有效房屋</view>
+      </block>
+      <block wx:elif="{{house}}">
+        <view class="picker-confirm"><view class="picker-confirm-icon"><ui-icon name="house" size="48" /></view><text class="xp-caption">{{selectionCommunity}}</text><text class="picker-confirm-room">{{selectionRoom}}</text></view>
+      </block>
+      <block wx:else>
+        <view class="picker-search"><ui-icon name="search" size="34" /><input class="picker-search-input" value="{{query}}" bindinput="onSearch" bindconfirm="search" confirm-type="search" placeholder="{{!community ? '搜索小区名称' : '搜索当前层级或房号'}}" /><button class="picker-search-submit" bindtap="search">搜索</button></view>
+        <state-view loading="{{loading}}" error="{{error}}" bindretry="load" />
+        <block wx:if="{{!loading && !error}}">
+          <block wx:if="{{!community}}"><button wx:for="{{communities}}" wx:key="id" class="picker-option" data-id="{{item.id}}" bindtap="chooseCommunity"><view class="picker-copy"><text class="picker-name">{{item.name}}</text><text class="xp-caption">{{item.address}}</text></view><ui-icon name="chevron-right" size="36" /></button><view wx:if="{{!communities.length}}" class="picker-empty"><text>没有找到这个小区</text><text class="xp-caption">请核对名称，或联系物业补充资料。</text></view></block>
+          <block wx:else><text wx:if="{{nodes.length}}" class="picker-group">继续选择位置</text><button wx:for="{{nodes}}" wx:key="id" class="picker-option" data-id="{{item.id}}" bindtap="chooseNode"><text class="picker-name">{{item.name}}</text><ui-icon name="chevron-right" size="36" /></button><text wx:if="{{houses.length}}" class="picker-group">{{nodes.length ? '当前位置的房屋' : '选择房号'}}</text><button wx:for="{{houses}}" wx:key="id" class="picker-option" data-id="{{item.id}}" bindtap="chooseHouse"><text class="picker-name">{{item.room_no}} 室</text><ui-icon name="chevron-right" size="36" /></button><view wx:if="{{!nodes.length && !houses.length}}" class="picker-empty"><text>暂无可选房屋</text><text class="xp-caption">请核对所选位置，或联系物业维护。</text></view></block>
+        </block>
+      </block>
+    </scroll-view>
+    <view class="picker-foot"><button wx:if="{{mode === 'switch' || house}}" class="xp-button picker-submit" disabled="{{mode === 'switch' && !temporaryId}}" bindtap="confirm">{{mode === 'switch' ? '确认切换' : '确认选择此房屋'}}</button><button wx:else class="xp-link picker-contact" bindtap="contact">找不到房屋？联系物业</button></view>
+  </view>
+</view>

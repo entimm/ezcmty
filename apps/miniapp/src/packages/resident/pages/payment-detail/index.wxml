@@ -1,1 +1,103 @@
-<view class="screen"><screen-state loading="{{loading}}" error="{{error}}" bind:retry="load"/><view wx:if="{{item}}" class="card"><view class="title">{{label}}</view><view class="notice" wx:if="{{message}}">{{message}}</view><view class="title">¥{{amount}}</view><view>收款物业：{{item.merchant_name}}</view><view class="muted">订单号：{{item.order_no}}</view><view wx:for="{{item.items}}" wx:key="id" class="tap-row">{{item.house_label_snapshot}} · {{item.billing_month}} 物业费</view><view wx:if="{{paid}}">支付时间：{{paid}}</view><button wx:if="{{canPay}}" class="primary" data-action="pay" bindtap="act" loading="{{busy}}" disabled="{{busy || loading}}">继续原支付</button><button wx:if="{{canRefresh}}" class="quiet" data-action="refresh" bindtap="act" disabled="{{busy || loading}}">核实缴费结果</button><button wx:if="{{canClose}}" class="quiet" data-action="close" bindtap="act" disabled="{{busy || loading}}">核实并关闭原订单</button><view wx:if="{{!canPay && item.status !== 'succeeded' && item.status !== 'closed'}}" class="notice">{{item.confirmation_status === 'awaiting_posting' ? '收款已确认，正在完成入账' : '当前不可再次支付，请核实原订单结果'}}</view><button wx:if="{{item.status === 'closed'}}" class="quiet" bindtap="backToBill">返回账单重新读取余额</button></view></view>
+<app-shell
+  title="支付详情"
+  refreshable="{{!busy}}"
+  refreshing="{{loading}}"
+  bindrefresh="onPullDownRefresh"
+>
+  <state-view
+    loading="{{loading}}"
+    error="{{!item ? error : ''}}"
+    bindretry="retry"
+  />
+  <block wx:if="{{!loading && item}}">
+    <view class="xp-result"
+      ><view class="xp-result-mark {{tone}}"
+        ><ui-icon name="{{icon}}" size="48" /></view
+      ><view class="result-title">{{title}}</view
+      ><view class="result-description">{{description}}</view></view
+    >
+    <view class="xp-money xp-money-center"
+      ><text class="currency">¥</text>{{amount}}</view
+    >
+    <view class="xp-card"
+      ><view class="xp-info"
+        ><view class="xp-row"
+          ><text>收款物业</text><text>{{item.merchant_name}}</text></view
+        ><view class="xp-row"
+          ><text>支付单号</text><text>{{item.order_no}}</text></view
+        ><view class="xp-row"
+          ><text>缴费房屋</text><text>{{summary}}</text></view
+        ><view class="xp-row"><text>账单月份</text><text>{{months}}</text></view
+        ><view class="xp-row"
+          ><text>订单创建</text><text>{{created}}</text></view
+        ><view wx:if="{{posted}}" class="xp-row"
+          ><text>支付时间</text><text>{{paid}}</text></view
+        ></view
+      ></view
+    >
+    <view wx:if="{{error}}" class="xp-notice warn"
+      >{{error}}<button class="xp-link" disabled="{{busy}}" bindtap="retry">
+        重新读取原订单
+      </button></view
+    >
+    <view
+      wx:if="{{message && !posted && !closed}}"
+      class="xp-caption payment-message"
+      >{{message}}</view
+    >
+    <view class="xp-actions">
+      <button
+        wx:if="{{canPay}}"
+        class="xp-button"
+        disabled="{{busy}}"
+        loading="{{busy}}"
+        bindtap="pay"
+      >
+        继续原订单支付
+      </button>
+      <button
+        wx:if="{{canRefresh}}"
+        class="xp-button xp-secondary"
+        disabled="{{busy}}"
+        bindtap="verify"
+      >
+        {{busy ? '正在核实…' : '核实缴费结果'}}
+      </button>
+      <button
+        wx:if="{{canClose}}"
+        class="xp-button xp-neutral"
+        disabled="{{busy}}"
+        bindtap="openClose"
+      >
+        核实并关闭原订单
+      </button>
+      <button
+        wx:if="{{closed}}"
+        class="xp-button"
+        disabled="{{busy}}"
+        bindtap="backToBill"
+      >
+        返回账单，重新核对
+      </button>
+      <button
+        class="xp-button xp-neutral"
+        disabled="{{busy}}"
+        bindtap="records"
+      >
+        查看本人缴费记录
+      </button>
+    </view>
+  </block>
+</app-shell>
+<bottom-sheet
+  show="{{closeSheet}}"
+  title="核实并关闭原订单"
+  busy="{{busy}}"
+  confirm-text="核实并关闭"
+  cancel-text="保留原订单"
+  bindconfirm="confirmClose"
+  bindclose="closeSheet"
+  ><view class="close-description"
+    >关闭前仍须核实原支付结果；如已收款，将继续确认缴费。确认关闭后，才可重新发起缴费。</view
+  ></bottom-sheet
+>

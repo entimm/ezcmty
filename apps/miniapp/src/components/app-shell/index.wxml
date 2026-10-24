@@ -1,0 +1,20 @@
+<view class="shell">
+  <view class="shell-top" style="padding-top:{{statusHeight}}px">
+    <view class="shell-nav" style="height:{{navHeight}}px;padding-right:{{capsuleWidth}}px">
+      <button wx:if="{{!tab}}" class="shell-back" bindtap="back" aria-label="返回"><ui-icon name="chevron-left" size="42" /></button>
+      <view wx:else class="shell-back"></view>
+      <text class="shell-title">{{title}}</text>
+    </view>
+  </view>
+  <scroll-view class="shell-content" scroll-y enhanced show-scrollbar="{{false}}" enable-flex scroll-with-animation="{{false}}" refresher-enabled="{{refreshable}}" refresher-triggered="{{refreshing}}" bindrefresherrefresh="refresh">
+    <view class="xp-page"><slot /></view>
+  </scroll-view>
+  <view wx:if="{{tab}}" class="shell-bottom">
+    <view class="shell-tabs">
+      <button wx:for="{{tabs}}" wx:key="key" class="shell-tab {{tab === item.key ? 'selected' : ''}}" data-page="{{item.key}}" bindtap="switchTab" aria-label="{{item.label}}">
+        <view class="shell-tab-icon"><ui-icon name="{{item.icon}}" size="42" /></view><text>{{item.label}}</text>
+      </button>
+    </view>
+    <view class="shell-safe"></view>
+  </view>
+</view>

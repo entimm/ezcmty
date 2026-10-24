@@ -1,190 +1,242 @@
-import { onSessionReset, requireSession } from '../../../../auth/resident';
-import { errorText } from '../../../../shared/http/client';
-import { confirm, formatTime } from '../../../../shared/wechat/ui';
-import { money } from '../../billing/presentation';
-import * as api from '../../payments/api';
-import { PaymentController } from '../../payments/controller';
-import { clearPending } from '../../payments/pending';
-import { paymentLabel } from '../../payments/presentation';
-import { PaymentOrder } from '../../payments/types';
-
-const pollIntervalMs = 2000;
-const pollLimit = 30;
+import { order } from '../../../../core/api';
+import { formatTime, money } from '../../../../core/format';
+import {
+  canContinuePayment,
+  PaymentController,
+  reconcilePaymentOrder,
+} from '../../../../core/payments';
+import { ApiError, errorText } from '../../../../core/request';
+import { onSessionReset, requireSession } from '../../../../core/session';
+import { PaymentOrder } from '../../../../core/types';
+import { go, pageUrl } from '../../../../ui/navigation';
+import {
+  panelMessage,
+  paymentPresentation,
+  rememberPanelMessage,
+} from './view';
 
 Page({
   data: {
-    loading: false,
+    loading: true,
     busy: false,
     error: '',
     message: '',
     item: null as PaymentOrder | null,
+    title: '',
+    description: '',
+    icon: 'clock-3',
+    tone: '',
     amount: '',
-    label: '',
+    created: '',
     paid: '',
+    summary: '',
+    months: '',
+    posted: false,
+    closed: false,
     canPay: false,
     canRefresh: false,
     canClose: false,
+    closeSheet: false,
   },
   id: '',
   epoch: 0,
   visible: false,
   pollCount: 0,
-  pollTimer: null as ReturnType<typeof setTimeout> | null,
+  timer: null as ReturnType<typeof setTimeout> | null,
   off: () => {},
   controller: null as PaymentController | null,
   onLoad(options) {
     this.id = options.id || '';
     this.controller = new PaymentController();
     this.off = onSessionReset(() => {
-      this.visible = false;
-      this.stopPolling();
       this.epoch++;
-      this.setData({ item: null, busy: false, loading: false, message: '' });
+      this.stopPolling();
+      this.setData({
+        item: null,
+        busy: false,
+        loading: false,
+        error: '登录状态已更新，请重新登录后继续。',
+        message: '',
+        closeSheet: false,
+      });
     });
-  },
-  onUnload() {
-    this.visible = false;
-    this.stopPolling();
-    this.off();
-    this.controller?.dispose();
-    this.epoch++;
-  },
-  onHide() {
-    this.visible = false;
-    this.stopPolling();
-    this.epoch++;
-    this.controller?.pause();
-    this.setData({ busy: false, loading: false });
   },
   onShow() {
     this.visible = true;
-    if (!this.data.busy) void this.load();
+    this.pollCount = 0;
+    void this.load();
+  },
+  async onPullDownRefresh() {
+    if (this.data.busy) {
+      wx.stopPullDownRefresh();
+      return;
+    }
+    this.pollCount = 0;
+    try {
+      await this.load();
+    } finally {
+      wx.stopPullDownRefresh();
+    }
+  },
+  onHide() {
+    this.visible = false;
+    this.epoch++;
+    this.stopPolling();
+    this.controller?.pause();
+    this.setData({ busy: false, loading: false, closeSheet: false });
+  },
+  onUnload() {
+    this.visible = false;
+    this.epoch++;
+    this.stopPolling();
+    this.controller?.dispose();
+    this.off();
   },
   stopPolling() {
-    if (this.pollTimer !== null) clearTimeout(this.pollTimer);
-    this.pollTimer = null;
+    if (this.timer !== null) clearTimeout(this.timer);
+    this.timer = null;
   },
   schedulePolling() {
     this.stopPolling();
-    const item = this.data.item;
     if (
       !this.visible ||
       this.data.busy ||
-      this.pollCount >= pollLimit ||
-      !item ||
-      item.status === 'succeeded' ||
-      item.status === 'closed'
+      this.pollCount >= 24 ||
+      !this.data.item ||
+      this.data.posted ||
+      this.data.closed
     )
       return;
-    this.pollTimer = setTimeout(() => {
-      this.pollTimer = null;
+    this.timer = setTimeout(() => {
+      this.timer = null;
       this.pollCount++;
-      void this.readOrder(true);
-    }, pollIntervalMs);
+      void this.load(true);
+    }, 2500);
   },
-  show(item: PaymentOrder) {
+  show(item: PaymentOrder, message = panelMessage(item.id)) {
+    reconcilePaymentOrder(item);
+    const presentation = paymentPresentation(item, message);
     this.setData({
       item,
+      ...presentation,
+      message: presentation.posted || presentation.closed ? '' : message,
       amount: money(item.amount_cents),
-      label: paymentLabel(item),
+      created: formatTime(item.created_at),
       paid: formatTime(item.paid_at),
-      canPay: item.available_actions.includes('continue_payment'),
-      canRefresh: item.available_actions.includes('refresh'),
-      canClose: item.available_actions.includes('close'),
+      summary: item.items.map((part) => part.house_label_snapshot).join('；'),
+      months: item.items
+        .map((part) => part.billing_month.slice(0, 7).replace('-', '年') + '月')
+        .join('、'),
     });
-    if (item.status === 'closed' || item.status === 'succeeded') {
-      this.setData({ message: '' });
-      item.items.forEach((bill) => clearPending(bill.bill_id, item.id));
-    }
   },
-  async load() {
-    this.pollCount = 0;
-    await this.readOrder();
-  },
-  async readOrder(background = false) {
-    if (!this.visible || this.data.busy) return;
+  async load(background = false) {
     if (
-      !requireSession(
-        '/packages/resident/pages/payment-detail/index?id=' + this.id,
-      )
+      !this.visible ||
+      this.data.busy ||
+      !requireSession(pageUrl('payment-detail', { id: this.id }))
     )
       return;
     this.stopPolling();
     const epoch = ++this.epoch;
     if (!background) this.setData({ loading: true, error: '' });
     try {
-      const item = await api.order(this.id);
-      if (epoch === this.epoch) {
-        this.show(item);
-        this.setData({ error: '' });
-      }
+      const item = await order(this.id);
+      if (epoch !== this.epoch || !this.visible) return;
+      this.show(item);
+      this.setData({ error: '' });
     } catch (error) {
-      if (epoch === this.epoch)
+      if (epoch === this.epoch && this.visible)
         this.setData({
           error: errorText(error),
-          ...(background ? {} : { item: null }),
+          ...(error instanceof ApiError &&
+          [401, 403, 404].includes(error.status)
+            ? { item: null, canPay: false, canClose: false, canRefresh: false }
+            : {}),
         });
     } finally {
-      if (epoch === this.epoch) {
+      if (epoch === this.epoch && this.visible) {
         this.setData({ loading: false });
         this.schedulePolling();
       }
     }
   },
-  async act(event: WechatMiniprogram.TouchEvent) {
-    const action: string = event.currentTarget.dataset.action;
+  retry() {
+    this.pollCount = 0;
+    void this.load();
+  },
+  async pay() {
+    if (!this.data.item || !canContinuePayment(this.data.item)) return;
+    await this.perform('pay');
+  },
+  async verify() {
+    await this.perform('refresh');
+  },
+  openClose() {
+    if (this.data.canClose && !this.data.busy)
+      this.setData({ closeSheet: true });
+  },
+  closeSheet() {
+    if (!this.data.busy) this.setData({ closeSheet: false });
+  },
+  async confirmClose() {
+    await this.perform('close');
+  },
+  async perform(action: 'pay' | 'refresh' | 'close') {
     const item = this.data.item;
-    if (!item || this.data.busy || this.data.loading || !this.controller)
+    const controller = this.controller;
+    if (
+      !item ||
+      !controller ||
+      this.data.busy ||
+      this.data.loading ||
+      !this.visible
+    )
       return;
     if (
-      (action === 'pay' && !this.data.canPay) ||
+      (action === 'pay' && !canContinuePayment(item)) ||
       (action === 'refresh' && !this.data.canRefresh) ||
       (action === 'close' && !this.data.canClose)
     )
       return;
     this.stopPolling();
     const epoch = ++this.epoch;
-    if (
-      action === 'close' &&
-      (!(await confirm(
-        '核实并关闭原订单',
-        '关闭前仍须核实原支付结果；已收款将继续确认缴费。',
-      )) ||
-        epoch !== this.epoch)
-    ) {
-      if (epoch === this.epoch) this.schedulePolling();
-      return;
-    }
     this.setData({
       busy: true,
       error: '',
-      message: '正在核实原订单，请勿重复付款',
+      message: '正在核实原订单，请勿重复付款。',
     });
     try {
       if (action === 'pay') {
-        const result = await this.controller.pay(item);
-        if (epoch === this.epoch) {
-          this.setData({ message: result.message });
-          this.show(result.order);
-        }
+        const result = await controller.pay(item);
+        if (epoch !== this.epoch || !this.visible) return;
+        rememberPanelMessage(result.order.id, result.message);
+        this.show(result.order, result.message);
       } else {
-        if (action === 'close') await api.close(item.id);
-        else await api.refresh(item.id);
-        if (epoch !== this.epoch) return;
-        const current = await api.order(item.id);
-        if (epoch === this.epoch) {
-          this.show(current);
-          this.setData({ message: '' });
-        }
+        const result = await (action === 'close'
+          ? controller.close(item)
+          : controller.refresh(item));
+        if (epoch !== this.epoch || !this.visible) return;
+        this.show(result);
       }
+      this.setData({ closeSheet: false });
     } catch (error) {
-      if (epoch === this.epoch)
+      if (epoch === this.epoch && this.visible) {
+        if (!(
+          error instanceof ApiError && [401, 403, 404].includes(error.status)
+        ))
+          this.show(item, '结果确认中，请勿重复付款。');
         this.setData({
+          ...(error instanceof ApiError &&
+          [401, 403, 404].includes(error.status)
+            ? { item: null, canPay: false, canRefresh: false, canClose: false }
+            : {}),
           error: errorText(error),
-          message: '结果确认中，请勿重复付款；请重新读取原订单。',
+          message: '结果确认中，请勿重复付款；请核实原订单。',
+          closeSheet: false,
         });
+      }
     } finally {
-      if (epoch === this.epoch) {
+      if (epoch === this.epoch && this.visible) {
         this.setData({ busy: false });
         this.pollCount = 0;
         this.schedulePolling();
@@ -192,12 +244,10 @@ Page({
     }
   },
   backToBill() {
-    const item = this.data.item;
-    if (item?.status === 'closed')
-      wx.navigateTo({
-        url:
-          '/packages/resident/pages/bill-detail/index?id=' +
-          item.items[0].bill_id,
-      });
+    if (!this.data.busy && this.data.closed && this.data.item?.items[0])
+      go('bill-detail', { id: this.data.item.items[0].bill_id });
+  },
+  records() {
+    if (!this.data.busy) go('payment-orders');
   },
 });

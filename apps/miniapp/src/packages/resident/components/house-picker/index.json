@@ -1,0 +1,8 @@
+{
+  "component": true,
+  "styleIsolation": "apply-shared",
+  "usingComponents": {
+    "state-view": "/components/state-view/index",
+    "ui-icon": "/components/ui-icon/index"
+  }
+}

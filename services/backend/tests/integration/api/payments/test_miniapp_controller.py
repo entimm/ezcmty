@@ -1,5 +1,4 @@
 import json
-import os
 import socket
 import subprocess
 from collections.abc import Iterator
@@ -63,15 +62,10 @@ def compile_miniapp(directory: Path, base: str) -> Path:
         capture_output=True,
         timeout=45,
     )
-    # Reuse the production build's API-base writer, targeting this test's temporary build.
-    subprocess.run(
-        ["node", str(miniapp / "scripts/write-config.mjs")],
-        cwd=directory,
-        env={**os.environ, "MINIAPP_API_BASE_URL": base},
-        check=True,
-        capture_output=True,
-        timeout=10,
-    )
+    # Only this fixture's compiled output targets its isolated HTTP listener.
+    # The source app and ordinary production build configuration stay untouched.
+    config = compiled / "config.js"
+    config.write_text(config.read_text() + f"\nexports.API_BASE_URL = {json.dumps(base)};\n")
     return compiled
 
 
@@ -116,6 +110,7 @@ def test_compiled_miniapp_recovers_original_payment_over_http_and_isolated_postg
 ) -> None:
     house = payment_house
     peer, settings = configure_payment_api(house, monkeypatch)
+    monkeypatch.setattr("backend_app.api.resident.billing.get_settings", lambda: settings)
     peer.now = utc_now().timestamp()
     factory = house.workspace.platform.factory
     calls: list[tuple[str, str]] = []
@@ -158,7 +153,8 @@ def test_compiled_miniapp_recovers_original_payment_over_http_and_isolated_postg
         state = tmp_path / "miniapp-storage.json"
         created = run_controller(house, compiled=compiled, base=base, state=state, phase="create")
         order_id = created["orderId"]
-        assert created["creates"] == 2
+        assert created["creates"] == 1
+        assert created["recoveredByKey"] is True
         with factory() as db:
             order = db.scalars(select(PaymentOrder)).one()
             assert order.id == order_id and order.idempotency_key == created["key"]

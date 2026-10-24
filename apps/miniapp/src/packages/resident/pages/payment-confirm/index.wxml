@@ -1,1 +1,69 @@
-<view class="screen"><view class="title">确认缴费</view><screen-state loading="{{loading}}" error="{{error}}" bind:retry="load"/><view wx:if="{{item}}" class="card"><view class="address">{{item.house_label_snapshot}}</view><view>{{item.billing_month}} 物业费</view><view class="muted">收款物业：{{item.property_company_name}}</view><view class="title">本次缴纳 ¥{{amount}}</view><view class="notice">一次付清本张账单全部待缴金额。请核对房屋、账期和收款物业。</view><view class="muted">{{hint}}</view><button class="primary" bindtap="submit" loading="{{busy}}" disabled="{{busy || loading || !canPay}}">确认并处理支付</button></view></view>
+<app-shell
+  title="确认缴费"
+  refreshable="{{!busy}}"
+  refreshing="{{loading}}"
+  bindrefresh="onPullDownRefresh"
+>
+  <state-view
+    loading="{{loading}}"
+    error="{{!item ? error : ''}}"
+    bindretry="load"
+  />
+  <block wx:if="{{!loading && item}}">
+    <view class="xp-pay-title">本次缴纳物业服务费</view
+    ><view class="xp-money xp-money-center"
+      ><text class="currency">¥</text>{{amount}}</view
+    >
+    <view class="xp-card"
+      ><view class="xp-address">{{item.house_label_snapshot}}</view
+      ><view class="xp-divider" />
+      <view class="xp-info"
+        ><view class="xp-row"><text>账单月份</text><text>{{month}}</text></view
+        ><view class="xp-row"
+          ><text>收款物业</text
+          ><text>{{item.property_company_name}}</text></view
+        ><view class="xp-row"
+          ><text>应收金额</text><text>¥ {{receivable}}</text></view
+        ><view class="xp-row"
+          ><text>已缴金额</text><text>¥ {{settled}}</text></view
+        ><view class="xp-row"
+          ><text>本次缴纳</text><text>¥ {{amount}}</text></view
+        ></view
+      >
+    </view>
+    <view wx:if="{{error}}" class="xp-notice warn">{{error}}</view>
+    <view class="xp-notice {{!canPay ? 'warn' : ''}}"
+      >{{canPay ? '一次付清本张账单全部余款。支付结果以服务端确认入账为准。' :
+      hint}}</view
+    >
+    <view class="xp-actions"
+      ><button
+        class="xp-button"
+        loading="{{busy}}"
+        disabled="{{busy || !canPay || needsRecovery}}"
+        bindtap="submit"
+      >
+        {{busy ? '正在准备支付…' : item.own_payment_order_id ? '继续原订单' :
+        '微信支付 ¥' + amount}}</button
+      ><button
+        class="xp-button xp-neutral"
+        disabled="{{busy}}"
+        bindtap="backToBill"
+      >
+        返回核对账单
+      </button></view
+    >
+  </block>
+  <view wx:if="{{!loading && needsRecovery}}" class="xp-actions"
+    ><button
+      class="xp-button xp-secondary"
+      loading="{{busy}}"
+      disabled="{{busy}}"
+      bindtap="recover"
+    >
+      恢复原支付结果</button
+    ><button class="xp-button xp-neutral" disabled="{{busy}}" bindtap="records">
+      查看本人缴费记录
+    </button></view
+  >
+</app-shell>

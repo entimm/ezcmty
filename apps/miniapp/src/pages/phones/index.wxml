@@ -1,12 +1,26 @@
-<view class="screen"><view class="eyebrow">ACCOUNT / SECURITY</view><view class="title">我的手机号</view><view class="subtitle">验证一次，后续认领可直接选用。</view>
-  <view class="section-title">已绑定号码</view>
-  <screen-state loading="{{loading}}" error="{{error && !phones.length && !pending ? error : ''}}" empty="{{!loading && !error && !phones.length}}" message="添加一个手机号，开始认领你的家" bind:retry="retry"/>
-  <view wx:for="{{phones}}" wx:key="id" class="card"><view class="row"><text class="address">{{item.display_phone}}</text><text class="badge {{item.status}}">{{item.status === 'active' ? '已验证' : '已解绑'}}</text></view><view class="hint">最近验证 {{item.display_time}}</view><button wx:if="{{item.status === 'active'}}" class="quiet" data-id="{{item.id}}" bindtap="unbind" disabled="{{busy || loading || pending}}">解绑此号码</button></view>
-  <button wx:if="{{phones.length < total}}" class="quiet" bindtap="more" loading="{{loading}}">加载更多</button>
-  <view class="card"><view class="section-title">添加手机号</view><view class="muted">可直接选微信号码，也可先填写号码，再通过微信授权核对。</view><view class="field"><input type="text" maxlength="15" value="{{input}}" placeholder="选填：输入希望绑定的手机号" bindinput="input" disabled="{{busy || pending}}"/></view>
-    <view wx:if="{{!inputValid}}" class="hint">请填写有效的大陆手机号，或清空后直接选择微信号码。</view><view wx:if="{{error}}" class="error" role="alert"><text selectable="{{true}}">{{error}}</text></view>
-    <button wx:if="{{pending}}" class="primary" bindtap="verify" loading="{{busy}}" disabled="{{busy}}">重试验证</button>
-    <button wx:else class="primary" open-type="getPhoneNumber" bindgetphonenumber="authorize" loading="{{busy}}" disabled="{{busy || !inputValid}}">微信快速验证手机号</button>
-    <view class="hint">支持多个号码。授权验证用于确认号码有效，房屋归属仍需物业审核。</view>
-  </view>
-</view>
+<app-shell refreshable title="手机号管理" refreshing="{{loading}}" bindrefresh="onPullDownRefresh">
+  <view wx:if="{{!signed}}" class="xp-empty"><view class="xp-h2">登录后管理手机号</view><view class="xp-sub">微信登录即可查看本人验证过的号码。</view><button class="xp-button" bindtap="signIn">微信登录</button></view>
+  <block wx:else>
+    <view class="xp-sub phone-intro">验证后的号码可用于房屋认领</view>
+    <state-view loading="{{loading && !phones.length}}" error="{{!phones.length ? error : ''}}" bindretry="retry" />
+    <view wx:if="{{error && phones.length}}" class="xp-notice error">{{error}}<button class="xp-link" bindtap="retry">重新加载</button></view>
+    <view wx:for="{{phones}}" wx:key="id" class="xp-card phone-card">
+      <view class="xp-row"><text class="phone-number">{{item.masked}}</text><button class="xp-link" data-id="{{item.id}}" bindtap="openRemove" disabled="{{busy || pending}}">解绑号码</button></view>
+      <view class="phone-meta"><text class="xp-tag ok">已验证</text><text>微信授权 · {{item.verified}}</text></view>
+    </view>
+    <view wx:if="{{!loading && !error && !phones.length}}" class="xp-empty"><view class="xp-h2">添加一个联系号码</view><view class="xp-sub">支持多个号码，号码验证不等于房屋归属认证。</view></view>
+    <view wx:if="{{removeError}}" class="xp-notice error">{{removeError}}</view>
+    <view class="xp-notice">解绑手机号不会影响已提交的申请或已有房屋授权。</view>
+    <view wx:if="{{pending}}" class="xp-notice warn">有一条验证结果待确认，请重新打开添加手机号恢复结果。</view>
+    <view class="xp-actions"><button class="xp-button xp-secondary" bindtap="openAdd" disabled="{{busy}}"><ui-icon name="plus" size="34" />添加手机号</button><button wx:if="{{returning}}" class="xp-button xp-neutral" bindtap="returnClaim">返回认领，继续填写</button></view>
+    <view wx:if="{{history.length}}" class="phone-history"><button class="xp-link" bindtap="toggleHistory">已解绑号码（{{history.length}}）<ui-icon name="{{historyOpen ? 'chevron-up' : 'chevron-down'}}" size="30" /></button><view wx:if="{{historyOpen}}" class="xp-card"><view wx:for="{{history}}" wx:key="id" class="phone-history-row"><text>{{item.masked}}</text><text class="xp-caption">已解绑</text></view></view></view>
+    <view wx:if="{{moreError}}" class="xp-error-inline">{{moreError}}</view><button wx:if="{{hasMore}}" class="xp-link phone-more" bindtap="more" disabled="{{loading}}">{{loading ? '正在加载…' : '加载更多号码'}}</button>
+  </block>
+</app-shell>
+<bottom-sheet show="{{addOpen}}" title="添加手机号" busy="{{busy}}" custom-footer bindclose="closeAdd">
+  <view>使用微信快速验证，也可以先填写号码后核对。</view>
+  <label class="xp-field">手机号（选填）<input type="text" maxlength="15" value="{{input}}" bindinput="input" disabled="{{busy || pending}}" placeholder="可填写 +86 或 11 位手机号" adjust-position cursor-spacing="24" /></label>
+  <view wx:if="{{inputError}}" class="xp-field-error" role="alert">{{inputError}}</view><view wx:if="{{verifyError}}" class="xp-field-error" role="alert">{{verifyError}}</view>
+  <view slot="footer" class="phone-footer"><button class="xp-button xp-neutral" bindtap="closeAdd" disabled="{{busy}}">取消</button><button wx:if="{{pending}}" class="xp-button" bindtap="retryVerification" disabled="{{busy}}" loading="{{busy}}">恢复验证结果</button><button wx:else class="xp-button" open-type="getPhoneNumber" bindgetphonenumber="authorize" disabled="{{busy || inputError}}" loading="{{busy}}">微信快速验证</button></view>
+</bottom-sheet>
+<bottom-sheet show="{{removeOpen}}" title="确定解绑此号码？" busy="{{busy}}" confirm-text="确认解绑" danger bindconfirm="confirmRemove" bindclose="closeRemove"><view>{{removePhone}}</view><view class="phone-confirm-copy">解绑后停止用于新申请。已提交申请和已有房屋授权不受影响。</view></bottom-sheet>

@@ -1,18 +1,17 @@
 {
   "pages": ["pages/index/index", "pages/login/index", "pages/phones/index"],
-  "subPackages": [
+  "subpackages": [
     {
       "root": "packages/resident",
-      "name": "resident",
       "pages": [
         "pages/home/index",
+        "pages/bills/index",
         "pages/houses/index",
-        "pages/claims/index",
-        "pages/claim-detail/index",
+        "pages/profile/index",
         "pages/house-detail/index",
         "pages/claim/index",
-        "pages/profile/index",
-        "pages/bills/index",
+        "pages/claims/index",
+        "pages/claim-detail/index",
         "pages/bill-detail/index",
         "pages/payment-confirm/index",
         "pages/payment-orders/index",
@@ -21,14 +20,10 @@
     }
   ],
   "window": {
-    "navigationBarTitleText": "邻里生活",
-    "navigationBarBackgroundColor": "#f5f7fb",
-    "navigationBarTextStyle": "black",
-    "backgroundColor": "#f5f7fb"
+    "navigationStyle": "custom",
+    "navigationBarTitleText": "美好社区",
+    "backgroundColor": "#f4f5f2",
+    "backgroundTextStyle": "dark"
   },
-  "usingComponents": {
-    "screen-state": "/shared/components/screen-state/index"
-  },
-  "style": "v2",
   "lazyCodeLoading": "requiredComponents"
 }

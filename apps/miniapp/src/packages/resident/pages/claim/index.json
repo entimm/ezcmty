@@ -1,1 +1,9 @@
-{ "navigationBarTitleText": "认领房屋", "enablePullDownRefresh": false }
+{
+  "usingComponents": {
+    "house-picker": "../../components/house-picker/index",
+    "app-shell": "/components/app-shell/index",
+    "bottom-sheet": "/components/bottom-sheet/index",
+    "state-view": "/components/state-view/index",
+    "ui-icon": "/components/ui-icon/index"
+  }
+}

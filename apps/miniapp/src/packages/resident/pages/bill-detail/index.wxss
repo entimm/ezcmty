@@ -1,0 +1,48 @@
+.xp-heading {
+  font-size: 44rpx;
+  line-height: 1.4;
+  font-weight: 500;
+}
+.currency {
+  font-size: 40rpx;
+  margin-right: 10rpx;
+}
+.section-title {
+  font-size: 32rpx;
+  font-weight: 500;
+}
+.settlement-card {
+  margin-top: 0;
+}
+.settlement-row + .settlement-row {
+  border-top: 2rpx solid #e5e7df;
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+}
+.settlement-amount {
+  font-weight: 500;
+}
+.settlement-date {
+  margin-top: 12rpx;
+}
+.settlement-row .xp-caption {
+  line-height: 1.6;
+}
+.settlement-row .xp-link {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: auto;
+  margin-left: auto;
+}
+.xp-info .xp-row {
+  align-items: flex-start;
+}
+.xp-info .xp-row > text:first-child {
+  color: #646d5e;
+  flex-shrink: 0;
+}
+.xp-info .xp-row > text:last-child {
+  text-align: right;
+  word-break: break-all;
+}

@@ -1,1 +1,5 @@
-<view class="screen"><screen-state loading="{{true}}"/></view>
+<app-shell title="美好社区">
+  <view class="boot"><view class="boot-icon"><ui-icon name="house" size="60" /></view><view class="xp-title">美好社区</view><view class="xp-sub">{{loading ? '正在恢复居民会话…' : '暂时无法恢复登录状态'}}</view></view>
+  <view wx:if="{{error}}" class="xp-notice error">{{error}}</view>
+  <view wx:if="{{!loading}}" class="xp-actions"><button class="xp-button" bindtap="restore">重新连接</button></view>
+</app-shell>

@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "邻里生活" }
+{
+  "usingComponents": {
+    "app-shell": "/components/app-shell/index",
+    "ui-icon": "/components/ui-icon/index"
+  }
+}

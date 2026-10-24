@@ -1,5 +1,9 @@
-<view class="screen"><view class="eyebrow">MY COMMUNITY</view><view class="row"><view class="title">我的房屋</view><button size="mini" class="secondary" bindtap="claim">＋ 认领</button></view><view class="subtitle">每一次家的连接，都有迹可循。</view>
-<view class="section-title">全部记录 <text class="count">{{total}}</text></view>
-<screen-state loading="{{loading && !items.length}}" error="{{error}}" empty="{{!loading && !error && !items.length}}" message="已绑定与历史房屋会显示在这里" bind:retry="retry"/>
-<view wx:for="{{items}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="open"><view class="row"><text class="badge {{item.status}}">{{item.label}}</text><text class="chevron">›</text></view><view class="address" style="margin-top:20rpx">{{item.house_label_snapshot}}</view><view class="hint">{{item.display_time}}</view></view>
-<button wx:if="{{items.length < total}}" class="quiet" bindtap="more" loading="{{loading}}">加载更多</button></view>
+<app-shell refreshable="{{signed}}" refreshing="{{loading}}" bindrefresh="onPullDownRefresh" title="我的房屋" tab="houses">
+  <state-view wx:if="{{!signed}}" empty title="登录后继续" description="微信登录即可使用本人服务，手机号按需授权。" action-text="微信登录" icon="user-round" bindaction="signIn" />
+  <block wx:else>
+  <view class="xp-tabs"><button class="{{filter === 'active' ? 'active' : ''}}" bindtap="selectFilter" data-filter="active">当前房屋</button><button class="{{filter === 'history' ? 'active' : ''}}" bindtap="selectFilter" data-filter="history">历史记录</button></view>
+  <state-view loading="{{loading && !loaded}}" error="{{error}}" bindretry="load" />
+  <block wx:if="{{loaded}}"><button wx:for="{{rows}}" wx:key="id" class="xp-listbutton house-tile" bindtap="open" data-id="{{item.id}}"><view class="xp-row"><text class="xp-address">{{item.community}}</text><view class="house-glyph"><ui-icon name="building-2" size="42" /></view></view><text class="xp-address-sub">{{item.room}}</text><view class="house-footer"><text class="xp-tag {{item.tone}}">{{item.statusText}}</text><view class="house-detail-link"><text>房屋详情</text><ui-icon name="chevron-right" size="28" /></view></view></button><state-view empty="{{!rows.length}}" title="{{filter === 'active' ? '还没有可用房屋' : '暂无历史授权'}}" description="{{filter === 'active' ? '认领后由物业人工核实，通过后即可开通房屋服务。' : '已结束的授权会保留在这里。'}}" action-text="{{filter === 'active' ? '认领房屋' : '查看当前房屋'}}" bindaction="{{filter === 'active' ? 'claim' : 'showCurrent'}}" /></block>
+  <view class="xp-actions"><button class="xp-button" bindtap="claim">＋ 认领房屋</button></view>
+  </block>
+</app-shell>

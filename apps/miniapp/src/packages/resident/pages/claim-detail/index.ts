@@ -1,122 +1,125 @@
-import { onSessionReset, requireSession } from '../../../../auth/resident';
-import { ApiError, errorText } from '../../../../shared/http/client';
-import {
-  claimPage,
-  confirm,
-  formatTime,
-  maskPhone,
-  toastError,
-} from '../../../../shared/wechat/ui';
-import { cancelClaim, claim } from '../../api';
-import { claimLabels } from '../../presentation';
-import { Claim } from '../../types';
+import * as api from '../../../../core/api';
+import { requireSession } from '../../../../core/session';
+import { ApiError, errorText } from '../../../../core/request';
+import { go, pageUrl } from '../../../../ui/navigation';
+import { PageScope } from '../../page-state';
+import { claimView, loadAll } from '../../presentation';
 Page({
   data: {
-    loading: true,
+    loading: false,
     error: '',
+    claim: null as ReturnType<typeof claimView> | null,
+    confirming: false,
     busy: false,
-    item: null as Claim | null,
-    label: '',
-    phone: '',
-    created: '',
-    reviewed: '',
-    cancelled: '',
+    actionError: '',
   },
   id: '',
-  off: () => {},
-  epoch: 0,
-  writeEpoch: 0,
-  onLoad(options) {
+  scope: null as unknown as PageScope,
+  onLoad(options: Record<string, string>) {
+    this.scope = new PageScope();
     this.id = options.id || '';
-    this.off = onSessionReset(() => {
-      this.epoch++;
-      this.writeEpoch++;
+    this.scope.watch((visible) => {
       this.setData({
-        item: null,
-        phone: '',
-        error: '',
-        loading: false,
+        claim: null,
         busy: false,
+        confirming: false,
+        loading: false,
       });
+      if (visible) requireSession(pageUrl('claim-detail', { id: this.id }));
     });
   },
-  onUnload() {
-    this.off();
-    this.epoch++;
-    this.writeEpoch++;
-  },
   onShow() {
+    if (!requireSession(pageUrl('claim-detail', { id: this.id }))) {
+      this.setData({ claim: null });
+      return;
+    }
+    if (!this.scope.enter()) this.setData({ claim: null });
+    this.setData({ busy: false, confirming: false });
     void this.load();
   },
+  onHide() {
+    this.scope.leave();
+    this.setData({ confirming: false });
+  },
+  onUnload() {
+    this.scope.dispose();
+  },
+  onPullDownRefresh() {
+    void this.load().finally(() => wx.stopPullDownRefresh());
+  },
   async load() {
-    const epoch = ++this.epoch;
-    if (
-      !requireSession(
-        '/packages/resident/pages/claim-detail/index?id=' + this.id,
-      )
-    )
-      return;
+    const valid = this.scope.next();
     this.setData({ loading: true, error: '' });
     try {
-      const item = await claim(this.id);
-      if (epoch !== this.epoch) return;
-      this.setData({
-        item,
-        label: claimLabels[item.status],
-        phone: maskPhone(item.applicant_phone),
-        created: formatTime(item.created_at),
-        reviewed: formatTime(item.reviewed_at),
-        cancelled: formatTime(item.cancelled_at),
-      });
+      const claim = await api.claim(this.id);
+      if (valid()) this.setData({ claim: claimView(claim), loading: false });
     } catch (error) {
-      if (epoch === this.epoch) this.setData({ error: errorText(error) });
-    } finally {
-      if (epoch === this.epoch) this.setData({ loading: false });
+      if (valid()) {
+        if (error instanceof ApiError && [403, 404].includes(error.status))
+          this.setData({ claim: null, confirming: false });
+        this.setData({ loading: false, error: errorText(error) });
+      }
     }
   },
-  async cancel() {
-    const item = this.data.item;
-    if (!item || this.data.busy || this.data.loading || this.data.error) return;
-    const epoch = ++this.writeEpoch;
-    if (
-      !(await confirm(
-        '撤回认领申请',
-        '撤回后，物业将不再处理此申请。你可以重新发起认领。',
-      )) ||
-      epoch !== this.writeEpoch ||
-      this.data.busy
-    )
-      return;
-    this.setData({ busy: true });
+  withdraw() {
+    if (this.data.claim?.status === 'pending')
+      this.setData({ confirming: true, actionError: '' });
+  },
+  close() {
+    if (!this.data.busy) this.setData({ confirming: false });
+  },
+  async confirmWithdraw() {
+    const claim = this.data.claim;
+    if (!claim || claim.status !== 'pending' || this.data.busy) return;
+    const valid = this.scope.next();
+    this.setData({ busy: true, actionError: '' });
     try {
-      await cancelClaim(item);
-      if (epoch !== this.writeEpoch) return;
-      await this.load();
+      const updated = await api.cancelClaim(claim);
+      if (valid()) {
+        this.setData({
+          claim: claimView(updated),
+          confirming: false,
+          busy: false,
+        });
+        wx.showToast({ title: '申请已撤回', icon: 'success' });
+      }
     } catch (error) {
-      if (epoch !== this.writeEpoch) return;
-      toastError(error);
-      if (
-        error instanceof ApiError &&
-        (error.status === 409 || error.status === 0 || error.status >= 500)
-      )
+      if (valid()) {
+        this.setData({ actionError: errorText(error), busy: false });
         await this.load();
-    } finally {
-      if (epoch === this.writeEpoch) this.setData({ busy: false });
+      }
     }
   },
-  again() {
-    const item = this.data.item;
-    if (item)
-      wx.navigateTo({
-        url:
-          claimPage +
-          '?house_id=' +
-          item.house_id +
-          '&community_id=' +
-          item.community_id,
+  async binding() {
+    const claim = this.data.claim;
+    if (!claim || claim.status !== 'approved' || this.data.busy) return;
+    const valid = this.scope.next();
+    this.setData({ busy: true, actionError: '' });
+    try {
+      const bindings = await loadAll((page) => api.bindings(page));
+      if (!valid()) return;
+      const binding = bindings.find(
+        (item) => item.claim_application_id === claim.id,
+      );
+      this.setData({ busy: false });
+      if (binding) go('house-detail', { id: binding.id });
+      else
+        this.setData({
+          actionError: '未找到当前房屋授权，请到我的房屋查看或联系物业。',
+        });
+    } catch (error) {
+      if (valid()) this.setData({ busy: false, actionError: errorText(error) });
+    }
+  },
+  reclaim() {
+    const claim = this.data.claim;
+    if (claim)
+      go('claim', {
+        house_id: claim.house_id,
+        community_id: claim.community_id,
       });
   },
-  houses() {
-    wx.navigateTo({ url: '/packages/resident/pages/houses/index' });
+  home() {
+    go('home');
   },
 });

@@ -1,0 +1,13 @@
+<view wx:if="{{show}}" class="sheet-overlay" catchtap="close" catchtouchmove="noop">
+  <view class="sheet" catchtap="noop" role="dialog" aria-modal="true" aria-label="{{title}}">
+    <view class="sheet-handle"></view>
+    <view class="sheet-head"><text>{{title}}</text><button class="sheet-close" bindtap="close" disabled="{{busy}}" aria-label="关闭弹窗"><ui-icon name="x" size="38" /></button></view>
+    <view class="sheet-body"><slot /></view>
+    <view wx:if="{{customFooter}}" class="sheet-custom-footer"><slot name="footer" /></view>
+    <view wx:else class="sheet-actions {{hideCancel ? 'single' : ''}}">
+      <button wx:if="{{!hideCancel}}" class="xp-button xp-neutral" bindtap="close" disabled="{{busy}}">{{cancelText}}</button>
+      <button class="xp-button {{danger ? 'xp-danger' : ''}}" bindtap="confirm" loading="{{busy}}" disabled="{{busy}}">{{confirmText}}</button>
+    </view>
+    <view class="sheet-safe"></view>
+  </view>
+</view>

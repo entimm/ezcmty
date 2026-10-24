@@ -1,11 +1,16 @@
-<view class="screen login-screen">
-  <view class="welcome-mark">⌂</view>
-  <view class="eyebrow">邻里生活 · RESIDENT</view>
-  <view class="welcome-title">让家的每一天<view>都更方便一点。</view></view>
-  <view class="subtitle">连接社区，开启你的专属生活服务。</view>
-  <view class="card login-card"><view class="section-title">欢迎回家</view><view class="muted">使用微信登录后，即可认领房屋、查看审核进度。手机号在需要时由你主动授权。</view>
-    <view wx:if="{{error}}" class="error" role="alert"><text selectable="{{true}}">{{error}}</text></view>
-    <button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="login">微信登录</button>
-    <view class="hint">微信身份用于创建平台账号，房屋权限由物业审核。</view>
+<app-shell title="微信登录">
+  <view class="login-page">
+    <view class="login-brand"><view class="login-brand-mark"><ui-icon name="house" size="32" /></view><text>美好社区</text></view>
+    <view class="login-illustration"><ui-icon name="house" size="78" /><view class="login-heart"><ui-icon name="heart" size="32" /></view></view>
+    <view class="login-title">欢迎回到<view>你的美好社区</view></view>
+    <view class="xp-sub">管理房屋与物业缴费<view>把时间留给生活</view></view>
+    <view wx:if="{{error}}" class="xp-notice error">{{error}}</view>
+    <view class="login-actions"><button class="xp-button" loading="{{busy}}" disabled="{{busy}}" bindtap="signIn">{{busy ? '正在登录…' : '微信一键登录'}}</button><button class="xp-button xp-neutral" disabled="{{busy}}" bindtap="browse">先看看</button></view>
+    <view class="xp-legal">手机号在需要认领时再授权<view><button class="xp-link" bindtap="openInfo">了解登录与数据使用</button></view></view>
+    <view class="login-signature">安心相邻 · 简单生活</view>
   </view>
-</view>
+</app-shell>
+<bottom-sheet show="{{infoOpen}}" title="登录与数据使用" confirm-text="知道了" hide-cancel bindconfirm="closeInfo" bindclose="closeInfo">
+  <view>微信登录用于识别你的居民账号。手机号在认领房屋时按需授权，验证号码不代表取得房屋所有权。</view>
+  <view class="sheet-paragraph">房屋资料由物业人工核实。退出登录后，已提交申请和本人缴费记录仍保留。</view>
+</bottom-sheet>

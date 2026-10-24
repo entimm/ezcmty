@@ -1,49 +1,101 @@
-import {
-  currentCredential,
-  logout,
-  onSessionReset,
-} from '../../../../auth/resident';
-import {
-  confirm,
-  residentHome,
-  toastError,
-} from '../../../../shared/wechat/ui';
+import { BUILD_VERSION } from '../../../../config';
+import * as api from '../../../../core/api';
+import { currentCredential, logout } from '../../../../core/session';
+import { errorText } from '../../../../core/request';
+import { go } from '../../../../ui/navigation';
+import { PageScope } from '../../page-state';
+import { loadAll } from '../../presentation';
 Page({
-  data: { signedIn: false, busy: false },
-  off: () => {},
-  onLoad() {
-    this.off = onSessionReset(() => this.setData({ signedIn: false }));
+  data: {
+    version: BUILD_VERSION,
+    signed: false,
+    phoneCount: 0,
+    phoneError: '',
+    sheet: '',
+    busy: false,
+    error: '',
   },
-  onUnload() {
-    this.off();
+  scope: null as unknown as PageScope,
+  onLoad() {
+    this.scope = new PageScope();
+    this.scope.watch(() =>
+      this.setData({
+        signed: false,
+        phoneCount: 0,
+        phoneError: '',
+        sheet: '',
+        busy: false,
+        error: '',
+      }),
+    );
   },
   onShow() {
-    this.setData({ signedIn: !!currentCredential() });
+    const signed = !!currentCredential();
+    if (!this.scope.enter()) this.setData({ phoneCount: 0, phoneError: '' });
+    this.setData({ signed, busy: false, sheet: '', error: '' });
+    if (signed) void this.loadPhones();
   },
-  open(event: WechatMiniprogram.TouchEvent) {
-    wx.navigateTo({ url: event.currentTarget.dataset.url });
+  onHide() {
+    this.scope.leave();
+    this.setData({ sheet: '' });
+  },
+  onUnload() {
+    this.scope.dispose();
+  },
+  async loadPhones() {
+    const valid = this.scope.next();
+    try {
+      const phones = await loadAll((page) => api.listPhones(page));
+      if (valid())
+        this.setData({
+          phoneCount: phones.filter((phone) => phone.status === 'active')
+            .length,
+          phoneError: '',
+        });
+    } catch (error) {
+      if (valid()) this.setData({ phoneError: errorText(error) });
+    }
+  },
+  houses() {
+    go('houses');
+  },
+  orders() {
+    go('payment-orders');
+  },
+  claims() {
+    go('claims');
+  },
+  phones() {
+    go('phones');
   },
   login() {
-    wx.navigateTo({
-      url:
-        '/pages/login/index?return_to=' +
-        encodeURIComponent('/packages/resident/pages/profile/index'),
-    });
+    go('login');
   },
-  async logout() {
-    if (
-      this.data.busy ||
-      !(await confirm('退出登录', '退出后可随时通过微信重新登录。'))
-    )
+  help() {
+    this.setData({ sheet: 'help' });
+  },
+  about() {
+    this.setData({ sheet: 'about' });
+  },
+  exit() {
+    this.setData({ sheet: 'logout', error: '' });
+  },
+  close() {
+    if (!this.data.busy) this.setData({ sheet: '' });
+  },
+  async confirm() {
+    if (this.data.sheet !== 'logout') {
+      this.close();
       return;
-    this.setData({ busy: true });
+    }
+    if (this.data.busy) return;
+    this.setData({ busy: true, error: '' });
     try {
       await logout();
-    } catch (error) {
-      toastError(error);
-    } finally {
-      this.setData({ busy: false });
-      wx.reLaunch({ url: residentHome });
+    } catch {
+      /* Local session is cleared even if remote revocation could not be confirmed. */
     }
+    this.setData({ sheet: '', signed: false, phoneCount: 0, busy: false });
+    go('home');
   },
 });

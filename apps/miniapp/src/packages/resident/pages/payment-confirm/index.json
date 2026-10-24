@@ -1,1 +1,7 @@
-{ "navigationBarTitleText": "确认缴费" }
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "app-shell": "/components/app-shell/index",
+    "state-view": "/components/state-view/index"
+  }
+}

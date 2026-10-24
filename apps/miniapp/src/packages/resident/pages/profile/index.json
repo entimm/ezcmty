@@ -1,1 +1,7 @@
-{ "navigationBarTitleText": "个人中心", "enablePullDownRefresh": false }
+{
+  "usingComponents": {
+    "app-shell": "/components/app-shell/index",
+    "bottom-sheet": "/components/bottom-sheet/index",
+    "ui-icon": "/components/ui-icon/index"
+  }
+}

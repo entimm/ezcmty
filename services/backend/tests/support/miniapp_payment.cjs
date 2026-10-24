@@ -43,6 +43,7 @@ global.wx = {
           key: options.header['Idempotency-Key'],
           data: options.data,
           status: response.status,
+          recoveryKey: new URL(options.url).searchParams.get('idempotency_key'),
         });
         if (
           dropCreationResponse &&
@@ -77,43 +78,47 @@ global.wx = {
 };
 
 const load = (name) => require(path.join(compiled, name));
-const { PaymentController } = load('packages/resident/payments/controller.js');
-const api = load('packages/resident/payments/api.js');
-const billing = load('packages/resident/billing/api.js');
-const { residentRequest } = load('auth/resident.js');
-const { ApiError } = load('shared/http/client.js');
+const { PaymentController, canContinuePayment } = load('core/payments.js');
+const api = load('core/api.js');
+const { residentRequest } = load('core/session.js');
+const { ApiError } = load('core/request.js');
 
 async function run() {
   let result;
   if (phase === 'create') {
-    const bill = await billing.bill(input.billId);
+    const bill = await api.bill(input.billId);
     assert.equal(bill.outstanding_cents, 7000);
     const first = new PaymentController();
     await assert.rejects(
       first.create(bill),
-      (error) => error instanceof ApiError && error.code === 'network',
+      (error) => error instanceof ApiError && error.status === 0,
     );
     first.dispose();
     const reopened = new PaymentController();
-    const order = await reopened.create(bill);
+    const order = await reopened.recover(input.billId);
     assert.equal(order.status, 'pending');
     const creates = requests.filter(
       (item) =>
         item.method === 'POST' && item.pathname.endsWith('/payment-orders'),
     );
-    assert.equal(creates.length, 2);
-    assert.equal(creates[0].key, creates[1].key);
-    assert.deepEqual(creates[0].data, creates[1].data);
+    assert.equal(creates.length, 1);
     assert.equal(creates[0].status, 201);
-    assert.equal(creates[1].status, 201);
+    const recoveredByKey = requests.some(
+      (item) =>
+        item.method === 'GET' &&
+        item.pathname.endsWith('/payment-orders') &&
+        item.recoveryKey === creates[0].key,
+    );
+    assert.ok(recoveredByKey);
     reopened.dispose();
     result = {
       orderId: order.id,
       key: creates[0].key,
       creates: creates.length,
+      recoveredByKey,
     };
   } else if (phase === 'cancel_close') {
-    const bill = await billing.bill(input.billId);
+    const bill = await api.bill(input.billId);
     let controller = new PaymentController();
     let order = await controller.create(bill);
     assert.equal(order.id, input.orderId);
@@ -126,13 +131,14 @@ async function run() {
       assert.equal(observed.order.confirmation_status, 'unconfirmed');
       assert.match(
         observed.message,
-        panel === 'cancelled' ? /已取消/ : /正在确认/,
+        panel === 'cancelled' ? /已取消/ : /确认中|正在确认/,
       );
       order = observed.order;
       controller.dispose();
       controller = new PaymentController();
-      order = await controller.create(await billing.bill(input.billId));
+      order = await controller.create(await api.bill(input.billId));
       assert.equal(order.id, input.orderId);
+      assert.equal(canContinuePayment(order), panel === 'cancelled');
     }
     const closing = await api.close(order.id);
     assert.equal(closing.status, 'closing');
@@ -157,7 +163,7 @@ async function run() {
       { method: 'POST', data: { expected_row_version: 1 } },
     );
     await assert.rejects(
-      billing.bill(input.billId),
+      api.bill(input.billId),
       (error) => error instanceof ApiError && error.status === 404,
     );
     const history = await api.order(input.orderId);

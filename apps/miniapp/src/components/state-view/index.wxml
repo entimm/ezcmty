@@ -1,0 +1,9 @@
+<view wx:if="{{loading}}" class="xp-loading" aria-label="正在加载">
+  <view class="xp-skeleton" style="width:44%"></view><view class="xp-skeleton big"></view><view class="xp-skeleton" style="width:78%"></view>
+</view>
+<view wx:elif="{{error || empty}}" class="xp-empty">
+  <view class="xp-result-mark"><ui-icon name="{{error ? 'wifi-off' : icon}}" size="48" /></view>
+  <view class="xp-empty-title">{{title || (error ? '暂时无法加载' : '这里还没有内容')}}</view>
+  <view class="xp-sub">{{error || description}}</view>
+  <button wx:if="{{actionText}}" class="xp-button xp-secondary" bindtap="retry">{{actionText}}</button>
+</view>

@@ -1,0 +1,50 @@
+.phone-intro {
+  margin-top: 0;
+}
+.phone-card {
+  padding-top: 14rpx;
+  padding-bottom: 24rpx;
+}
+.phone-number {
+  font-size: 36rpx;
+  font-weight: 500;
+}
+.phone-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #646d5e;
+}
+.phone-footer {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 16rpx;
+}
+.phone-footer .xp-button {
+  font-size: 28rpx;
+  min-height: 44px;
+  min-height: max(44px, 90rpx);
+  border-radius: 26rpx;
+}
+.phone-footer .xp-neutral {
+  background: #f4f5f2;
+}
+.phone-history {
+  margin-top: 20rpx;
+}
+.phone-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  min-height: 70rpx;
+}
+.phone-confirm-copy {
+  margin-top: 14rpx;
+}
+.phone-more {
+  width: 100%;
+}

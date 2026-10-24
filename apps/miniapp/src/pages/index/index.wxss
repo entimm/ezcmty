@@ -1,0 +1,14 @@
+.boot {
+  text-align: center;
+  padding: 48rpx 0 20rpx;
+}
+.boot-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100rpx;
+  height: 100rpx;
+  background: #f7e679;
+  border-radius: 32rpx;
+  margin: 0 auto 28rpx;
+}

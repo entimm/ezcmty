@@ -1,0 +1,31 @@
+.xp-tabs {
+  margin-top: 0;
+}
+.house-tile {
+  padding: 28rpx;
+  margin-top: 16rpx;
+}
+.house-glyph {
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eaf4ef;
+  color: #467969;
+}
+.house-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-top: 20rpx;
+}
+.house-detail-link {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  color: #7b8387;
+  font-size: 24rpx;
+}

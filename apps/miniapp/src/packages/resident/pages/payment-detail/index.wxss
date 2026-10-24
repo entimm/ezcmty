@@ -1,0 +1,63 @@
+.xp-result {
+  padding: 20rpx 4rpx 8rpx;
+  text-align: center;
+}
+.xp-result-mark {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 30rpx;
+  margin: 0 auto 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff7cd;
+  color: #596841;
+}
+.xp-result-mark.wait {
+  background: #f7f0df;
+  color: #7b682b;
+}
+.xp-result-mark.ok {
+  background: #e7f4ee;
+  color: #36786c;
+}
+.result-title {
+  font-size: 42rpx;
+  line-height: 1.4;
+  font-weight: 500;
+}
+.result-description {
+  font-size: 28rpx;
+  color: #646d5e;
+  margin-top: 12rpx;
+  line-height: 1.6;
+}
+.xp-money-center {
+  text-align: center;
+  font-size: 68rpx;
+  margin: 28rpx 0;
+}
+.currency {
+  font-size: 40rpx;
+  margin-right: 10rpx;
+}
+.xp-info .xp-row {
+  align-items: flex-start;
+}
+.xp-info .xp-row > text:first-child {
+  color: #646d5e;
+  flex-shrink: 0;
+}
+.xp-info .xp-row > text:last-child {
+  text-align: right;
+  word-break: break-all;
+}
+.payment-message {
+  margin-top: 16rpx;
+  line-height: 1.6;
+}
+.close-description {
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #646d5e;
+}

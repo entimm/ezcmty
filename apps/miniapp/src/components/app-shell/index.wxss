@@ -1,0 +1,94 @@
+.shell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f4f5f2;
+  color: #252b25;
+}
+.shell-top {
+  flex-shrink: 0;
+  background: #fff;
+}
+.shell-nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding-left: 8rpx;
+  box-sizing: border-box;
+}
+.shell-back {
+  margin: 0;
+  width: 88rpx;
+  min-width: 44px;
+  min-width: max(44px, 88rpx);
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  min-height: 44px;
+}
+.shell-back::after {
+  border: 0;
+}
+.shell-title {
+  position: absolute;
+  left: 100rpx;
+  right: 100rpx;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 500;
+  pointer-events: none;
+}
+.shell-content {
+  flex: 1;
+  height: 0;
+  min-height: 0;
+}
+.shell-bottom {
+  background: #fff;
+  flex-shrink: 0;
+  border-top: 1rpx solid #e9eae4;
+}
+.shell-tabs {
+  display: flex;
+  padding: 8rpx 20rpx 4rpx;
+}
+.shell-tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5rpx;
+  padding: 6rpx 0;
+  min-height: 108rpx;
+  line-height: 1.5;
+  margin: 0;
+  background: transparent;
+  font-size: 24rpx;
+  color: #646b61;
+  border-radius: 0;
+}
+.shell-tab::after {
+  border: 0;
+}
+.shell-tab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 84rpx;
+  height: 56rpx;
+  border-radius: 24rpx;
+}
+.shell-tab.selected {
+  color: #252b25;
+  font-weight: 500;
+}
+.shell-tab.selected .shell-tab-icon {
+  background: #f7e679;
+}
+.shell-safe {
+  height: env(safe-area-inset-bottom);
+}

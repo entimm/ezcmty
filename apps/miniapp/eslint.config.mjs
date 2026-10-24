@@ -1,9 +1,8 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import globals from 'globals';
-
 export default tseslint.config(
-  { ignores: ['dist', '.tmp'] },
+  { ignores: ['dist/**', '.tmp/**'] },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -14,6 +13,7 @@ export default tseslint.config(
         Page: 'readonly',
         wx: 'readonly',
         Component: 'readonly',
+        getCurrentPages: 'readonly',
       },
     },
   },

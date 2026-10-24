@@ -1,337 +1,307 @@
-import {
-  listPhones,
-  onSessionReset,
-  requireSession,
-} from '../../../../auth/resident';
-import { PhoneBinding } from '../../../../auth/types';
-import { ApiError, errorText } from '../../../../shared/http/client';
-import { claimPage, maskPhone, newKey } from '../../../../shared/wechat/ui';
-import * as api from '../../api';
-import { detailUrl } from '../../presentation';
-import { ClaimInput, Community, House, SpaceNode } from '../../types';
-interface PhoneChoice extends PhoneBinding {
-  display_phone: string;
-}
+import * as api from '../../../../core/api';
+import { requireSession } from '../../../../core/session';
+import { errorText } from '../../../../core/request';
+import { maskPhone } from '../../../../core/format';
+import { ClaimSubmission } from '../../../../core/claims';
+import type {
+  Binding,
+  Claim,
+  House,
+  PhoneBinding,
+} from '../../../../core/types';
+import { back, go, pageUrl } from '../../../../ui/navigation';
+import { PageScope } from '../../page-state';
+import { addressParts, houseClaimConflict, loadAll } from '../../presentation';
+
 Page({
   data: {
     step: 1,
+    title: '选择房屋',
     loading: false,
-    busy: false,
     error: '',
-    unknown: false,
-    community: null as Community | null,
-    trail: [] as SpaceNode[],
-    communityResults: [] as Community[],
-    nodes: [] as SpaceNode[],
-    houses: [] as House[],
-    communityQuery: '',
-    roomQuery: '',
-    choicePage: 1,
-    communityTotal: 0,
-    nodeTotal: 0,
-    houseTotal: 0,
+    phoneError: '',
+    picker: false,
     house: null as House | null,
+    community: '',
+    room: '',
     name: '',
     remark: '',
-    phones: [] as PhoneChoice[],
+    phones: [] as (PhoneBinding & { masked: string })[],
     phoneId: '',
-    phoneDisplay: '',
+    confirmedPhone: '',
+    busy: false,
+    unknown: false,
+    leaving: false,
   },
-  operation: undefined as { data: ClaimInput; key: string } | undefined,
-  initialHouse: '',
-  initialCommunity: '',
-  off: () => {},
-  epoch: 0,
-  writeEpoch: 0,
-  onLoad(options) {
-    this.initialHouse = options.house_id || '';
-    this.initialCommunity = options.community_id || '';
-    this.off = onSessionReset(() => {
-      this.epoch++;
-      this.writeEpoch++;
-      this.operation = undefined;
-      this.setData({
-        house: null,
-        name: '',
-        remark: '',
-        phones: [],
-        phoneId: '',
-        phoneDisplay: '',
-        unknown: false,
-        error: '',
-        step: 1,
-        loading: false,
-        busy: false,
-      });
+  scope: null as unknown as PageScope,
+  submission: null as unknown as ClaimSubmission,
+  initialHouseId: '',
+  initialCommunityId: '',
+  initialized: false,
+  bindings: [] as Binding[],
+  pendingClaims: [] as Claim[],
+  onLoad(options: Record<string, string>) {
+    this.scope = new PageScope();
+    this.submission = new ClaimSubmission();
+    this.initialHouseId = options.house_id || options.houseId || '';
+    this.initialCommunityId = options.community_id || options.communityId || '';
+    this.scope.watch((visible) => {
+      this.clearDraft();
+      this.initialized = false;
+      if (visible) requireSession(pageUrl('claim'));
     });
-  },
-  onUnload() {
-    this.off();
-    this.epoch++;
-    this.writeEpoch++;
-    this.operation = undefined;
   },
   onShow() {
-    const target =
-      claimPage +
-      (this.initialHouse && this.initialCommunity
-        ? '?house_id=' +
-          this.initialHouse +
-          '&community_id=' +
-          this.initialCommunity
-        : '');
-    if (!requireSession(target)) return;
-    if (this.data.house) {
-      if (!this.data.unknown) void this.loadPhones();
-    } else void this.initialize();
-  },
-  async initialize() {
-    const epoch = ++this.epoch;
-    if (this.initialHouse && this.initialCommunity) {
-      this.setData({ loading: true, error: '' });
-      try {
-        const house = await api.house(this.initialCommunity, this.initialHouse);
-        if (epoch !== this.epoch) return;
-        this.setData({ house, step: 2 });
-        await this.loadPhones();
-      } catch (error) {
-        if (epoch === this.epoch) this.setData({ error: errorText(error) });
-      } finally {
-        if (epoch === this.epoch) this.setData({ loading: false });
-      }
-    } else await this.loadChoices();
-  },
-  retry() {
-    if (this.data.step === 1) void this.initialize();
-    else void this.loadPhones();
-  },
-  async loadPhones() {
-    const epoch = ++this.epoch;
-    this.setData({ loading: true, error: '' });
-    try {
-      const phones: PhoneChoice[] = [];
-      let page = 1;
-      while (true) {
-        const result = await listPhones(page);
-        if (epoch !== this.epoch) return;
-        phones.push(
-          ...result.items
-            .filter((p) => p.status === 'active')
-            .map((p) => ({ ...p, display_phone: maskPhone(p.phone) })),
-        );
-        if (page * result.page_size >= result.total) break;
-        page++;
-      }
-      const selected =
-        phones.find((p) => p.id === this.data.phoneId) || phones[0];
-      this.setData({
-        phones,
-        phoneId: selected?.id || '',
-        phoneDisplay: selected?.display_phone || '',
-      });
-    } catch (error) {
-      if (epoch === this.epoch) this.setData({ error: errorText(error) });
-    } finally {
-      if (epoch === this.epoch) this.setData({ loading: false });
-    }
-  },
-  async loadChoices(more = false) {
-    const epoch = ++this.epoch;
-    this.setData({ loading: true, error: '' });
-    const page = more ? this.data.choicePage + 1 : 1;
-    try {
-      if (!this.data.community) {
-        const result = await api.communities(this.data.communityQuery, page);
-        if (epoch !== this.epoch) return;
-        this.setData({
-          communityResults: more
-            ? [...this.data.communityResults, ...result.items]
-            : result.items,
-          communityTotal: result.total,
-          choicePage: page,
-        });
-      } else {
-        const trail = this.data.trail;
-        const node = trail[trail.length - 1];
-        const community = this.data.community;
-        const [nodes, houses] = await Promise.all([
-          api.nodes(community.id, node?.id, page),
-          node && node.node_type !== 'phase'
-            ? api.houses(community.id, node.id, this.data.roomQuery, page)
-            : Promise.resolve({ items: [] as House[], total: 0 }),
-        ]);
-        if (epoch !== this.epoch) return;
-        this.setData({
-          nodes: more ? [...this.data.nodes, ...nodes.items] : nodes.items,
-          houses: more ? [...this.data.houses, ...houses.items] : houses.items,
-          nodeTotal: nodes.total,
-          houseTotal: houses.total,
-          choicePage: page,
-        });
-      }
-    } catch (error) {
-      if (epoch === this.epoch) this.setData({ error: errorText(error) });
-    } finally {
-      if (epoch === this.epoch) this.setData({ loading: false });
-    }
-  },
-  more() {
-    if (!this.data.loading) void this.loadChoices(true);
-  },
-  communityInput(event: WechatMiniprogram.Input) {
-    this.setData({ communityQuery: event.detail.value });
-  },
-  roomInput(event: WechatMiniprogram.Input) {
-    this.setData({ roomQuery: event.detail.value });
-  },
-  search() {
-    if (!this.data.loading) void this.loadChoices();
-  },
-  selectCommunity(event: WechatMiniprogram.TouchEvent) {
-    const community = this.data.communityResults.find(
-      (c) => c.id === event.currentTarget.dataset.id,
-    );
-    if (community) {
-      this.setData({
-        community,
-        trail: [],
-        nodes: [],
-        houses: [],
-        roomQuery: '',
-      });
-      void this.loadChoices();
-    }
-  },
-  selectNode(event: WechatMiniprogram.TouchEvent) {
-    const node = this.data.nodes.find(
-      (n) => n.id === event.currentTarget.dataset.id,
-    );
-    if (node) {
-      this.setData({
-        trail: [...this.data.trail, node],
-        nodes: [],
-        houses: [],
-        roomQuery: '',
-      });
-      void this.loadChoices();
-    }
-  },
-  breadcrumb(event: WechatMiniprogram.TouchEvent) {
-    const index = Number(event.currentTarget.dataset.index);
-    this.setData({
-      trail: this.data.trail.slice(0, index + 1),
-      nodes: [],
-      houses: [],
-      roomQuery: '',
-    });
-    void this.loadChoices();
-  },
-  changeCommunity() {
-    this.setData({ community: null, trail: [], nodes: [], houses: [] });
-    void this.loadChoices();
-  },
-  selectHouse(event: WechatMiniprogram.TouchEvent) {
-    const house = this.data.houses.find(
-      (h) => h.id === event.currentTarget.dataset.id,
-    );
-    if (house) {
-      this.operation = undefined;
-      this.setData({ house, step: 2, error: '' });
-      void this.loadPhones();
-    }
-  },
-  nameInput(event: WechatMiniprogram.Input) {
-    this.setData({ name: event.detail.value });
-    this.operation = undefined;
-  },
-  remarkInput(event: WechatMiniprogram.Input) {
-    this.setData({ remark: event.detail.value });
-    this.operation = undefined;
-  },
-  selectPhone(event: WechatMiniprogram.TouchEvent) {
-    if (this.data.unknown) return;
-    const phone = this.data.phones.find(
-      (p) => p.id === event.currentTarget.dataset.id,
-    );
-    if (phone) {
-      this.setData({ phoneId: phone.id, phoneDisplay: phone.display_phone });
-      this.operation = undefined;
-    }
-  },
-  addPhone() {
-    wx.navigateTo({ url: '/pages/phones/index' });
-  },
-  next() {
-    if (!this.data.name.trim()) {
-      this.setData({ error: '请填写你的姓名，便于物业核实' });
-      return;
-    }
-    if (!this.data.phoneId) {
-      this.setData({ error: '请先添加并验证一个手机号' });
-      return;
-    }
-    this.setData({ step: 3, error: '' });
-    wx.pageScrollTo({ scrollTop: 0 });
-  },
-  back() {
-    if (this.data.busy || this.data.unknown) return;
-    this.setData({ step: this.data.step - 1, error: '' });
-    if (this.data.step === 1) {
-      this.initialHouse = '';
-      this.initialCommunity = '';
-      void this.loadChoices();
-    }
-  },
-  async submit() {
-    if (this.data.busy || !this.data.house) return;
-    const epoch = ++this.writeEpoch;
-    if (!this.operation)
-      this.operation = {
-        key: newKey(),
-        data: {
-          house_id: this.data.house.id,
-          applicant_name: this.data.name.trim(),
-          phone_binding_id: this.data.phoneId,
-          applicant_remark: this.data.remark.trim() || null,
-        },
-      };
-    this.setData({ busy: true, error: '' });
-    try {
-      const result = await api.createClaim(
-        this.operation.data,
-        this.operation.key,
-      );
-      if (epoch !== this.writeEpoch) return;
-      this.operation = undefined;
-      this.setData({
-        name: '',
-        remark: '',
-        phones: [],
-        phoneId: '',
-        phoneDisplay: '',
-        unknown: false,
-      });
-      wx.redirectTo({ url: detailUrl('claim', result.id) });
-    } catch (error) {
-      if (epoch !== this.writeEpoch) return;
-      const unknown =
-        error instanceof ApiError &&
-        (error.status === 0 || error.status >= 500);
-      if (!unknown) this.operation = undefined;
-      this.setData({
-        unknown,
-        error: errorText(
-          error,
-          unknown
-            ? '提交结果尚未确认，请点击重试，或到“我的申请”查看。'
+    if (
+      !requireSession(
+        pageUrl(
+          'claim',
+          this.initialHouseId
+            ? {
+                house_id: this.initialHouseId,
+                community_id: this.initialCommunityId,
+              }
             : undefined,
         ),
+      )
+    ) {
+      this.clearDraft();
+      return;
+    }
+    if (!this.scope.enter()) {
+      this.clearDraft();
+      this.submission.reset();
+      this.initialized = false;
+    }
+    this.setData({
+      busy: this.submission.busy,
+      unknown: this.submission.unknown,
+    });
+    void this.load();
+  },
+  onHide() {
+    this.scope.leave();
+    this.setData({ picker: false, leaving: false });
+  },
+  onUnload() {
+    this.scope.dispose();
+    this.submission.dispose();
+    this.clearDraft();
+  },
+  clearDraft() {
+    this.bindings = [];
+    this.pendingClaims = [];
+    this.setData({
+      step: 1,
+      title: '选择房屋',
+      house: null,
+      community: '',
+      room: '',
+      name: '',
+      remark: '',
+      phones: [],
+      phoneId: '',
+      confirmedPhone: '',
+      error: '',
+      phoneError: '',
+      picker: false,
+      unknown: false,
+      busy: false,
+    });
+  },
+  async load() {
+    const valid = this.scope.next();
+    this.setData({ loading: true, phoneError: '' });
+    try {
+      const [phones, house, bindings, claims] = await Promise.all([
+        loadAll((page) => api.listPhones(page)),
+        !this.initialized && this.initialHouseId && this.initialCommunityId
+          ? api.house(this.initialCommunityId, this.initialHouseId)
+          : Promise.resolve(null),
+        loadAll((page) => api.bindings(page, 'active')),
+        loadAll((page) => api.claims(page, 'pending')),
+      ]);
+      if (!valid()) return;
+      this.bindings = bindings;
+      this.pendingClaims = claims;
+      const active = phones.filter((phone) => phone.status === 'active');
+      const existing = active.find((phone) => phone.id === this.data.phoneId);
+      this.setData({
+        phones: active.map((phone) => ({
+          ...phone,
+          masked: maskPhone(phone.phone),
+        })),
+        phoneId: this.submission.unknown
+          ? this.data.phoneId
+          : existing?.id || (active.length === 1 ? active[0].id : ''),
+        loading: false,
       });
-    } finally {
-      if (epoch === this.writeEpoch) this.setData({ busy: false });
+      if (house) this.applyHouse(house);
+      if (!this.initialized) {
+        this.initialized = true;
+        if (!this.data.house) this.setData({ picker: true });
+      }
+    } catch (error) {
+      if (valid())
+        this.setData({ loading: false, phoneError: errorText(error) });
     }
   },
-  applications() {
-    wx.navigateTo({ url: '/packages/resident/pages/claims/index' });
+  openPicker() {
+    if (!this.data.busy && !this.data.unknown) this.setData({ picker: true });
+  },
+  closePicker() {
+    this.setData({ picker: false });
+  },
+  applyHouse(house: House) {
+    const conflict = houseClaimConflict(
+      house.id,
+      this.bindings,
+      this.pendingClaims,
+    );
+    if (conflict) {
+      this.setData({ error: conflict });
+      return;
+    }
+    const address = addressParts(house.display_address);
+    this.setData({
+      house,
+      community: address.community,
+      room: address.room,
+      error: '',
+    });
+  },
+  selectHouse(event: WechatMiniprogram.CustomEvent<{ house: House }>) {
+    if (this.data.unknown || this.data.busy) return;
+    this.applyHouse(event.detail.house);
+    this.setData({ picker: false });
+  },
+  next() {
+    if (this.data.busy || this.data.unknown) return;
+    if (!this.data.house) {
+      this.setData({ error: '请选择要认领的房屋。' });
+      return;
+    }
+    const conflict = houseClaimConflict(
+      this.data.house.id,
+      this.bindings,
+      this.pendingClaims,
+    );
+    if (conflict) {
+      this.setData({ error: conflict });
+      return;
+    }
+    if (this.data.step === 2) {
+      if (!this.data.name.trim()) {
+        this.setData({ error: '请填写你的姓名。' });
+        return;
+      }
+      if (
+        !this.data.phones.some(
+          (phone) =>
+            phone.id === this.data.phoneId && phone.status === 'active',
+        )
+      ) {
+        this.setData({ error: '请选择本次用于认领的已验证号码。' });
+        return;
+      }
+      this.setData({
+        name: this.data.name.trim(),
+        remark: this.data.remark.trim(),
+        confirmedPhone:
+          this.data.phones.find((phone) => phone.id === this.data.phoneId)
+            ?.masked || '',
+      });
+    }
+    const step = Math.min(3, this.data.step + 1);
+    this.setData({
+      step,
+      title: ['选择房屋', '填写资料', '确认提交'][step - 1],
+      error: '',
+    });
+  },
+  previous() {
+    if (this.data.busy || this.data.unknown) return;
+    const step = Math.max(1, this.data.step - 1);
+    this.setData({
+      step,
+      title: ['选择房屋', '填写资料', '确认提交'][step - 1],
+      error: '',
+    });
+  },
+  nameInput(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
+    if (!this.data.busy && !this.data.unknown)
+      this.setData({ name: event.detail.value });
+  },
+  remarkInput(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
+    if (!this.data.busy && !this.data.unknown)
+      this.setData({ remark: event.detail.value });
+  },
+  selectPhone(event: WechatMiniprogram.TouchEvent) {
+    if (!this.data.busy && !this.data.unknown)
+      this.setData({ phoneId: event.currentTarget.dataset.id });
+  },
+  addPhone() {
+    if (!this.data.busy && !this.data.unknown)
+      go('phones', { returnTo: pageUrl('claim') });
+  },
+  async submit() {
+    if (this.data.busy || !this.data.house || this.data.step !== 3) return;
+    if (!this.submission.unknown) {
+      const conflict = houseClaimConflict(
+        this.data.house.id,
+        this.bindings,
+        this.pendingClaims,
+      );
+      if (conflict) {
+        this.setData({ error: conflict });
+        return;
+      }
+    }
+    const valid = this.scope.next();
+    this.setData({ busy: true, error: '' });
+    try {
+      const claim = this.submission.unknown
+        ? await this.submission.retry()
+        : await this.submission.submit({
+            house_id: this.data.house.id,
+            applicant_name: this.data.name.trim(),
+            phone_binding_id: this.data.phoneId,
+            applicant_remark: this.data.remark.trim() || null,
+          });
+      if (!valid()) return;
+      this.setData({ busy: false, unknown: false });
+      this.clearDraft();
+      wx.redirectTo({ url: pageUrl('claim-detail', { id: claim.id }) });
+    } catch (error) {
+      if (valid())
+        this.setData({
+          busy: false,
+          unknown: this.submission.unknown,
+          error: errorText(error),
+        });
+    }
+  },
+  leave() {
+    if (this.data.busy) return;
+    if (
+      this.data.house ||
+      this.data.name ||
+      this.data.remark ||
+      this.data.unknown
+    )
+      this.setData({ leaving: true });
+    else back('houses');
+  },
+  stay() {
+    this.setData({ leaving: false });
+  },
+  confirmLeave() {
+    this.submission.reset();
+    this.clearDraft();
+    this.setData({ leaving: false });
+    back('houses');
+  },
+  claims() {
+    go('claims');
   },
 });

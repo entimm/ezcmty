@@ -2,8 +2,8 @@
   "name": "resident-miniapp",
   "private": true,
   "scripts": {
-    "build": "node --env-file-if-exists=.env.local scripts/copy-static.mjs && tsc && node --env-file-if-exists=.env.local scripts/write-config.mjs && node scripts/check-build.mjs",
-    "typecheck": "tsc --noEmit && tsc --project tsconfig.test.json",
+    "build": "node --env-file-if-exists=.env.local scripts/build.mjs",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "lint": "eslint . && node scripts/check-boundaries.mjs",
     "test": "vitest run",
     "check:native": "node scripts/check-native.mjs"

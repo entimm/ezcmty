@@ -1,0 +1,86 @@
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(38, 48, 43, 0.4);
+  display: flex;
+  align-items: flex-end;
+}
+.sheet {
+  width: 100%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 44rpx 44rpx 0 0;
+  padding: 0 40rpx;
+  box-sizing: border-box;
+}
+.sheet-handle {
+  width: 68rpx;
+  height: 8rpx;
+  flex-shrink: 0;
+  background: #e5e7df;
+  border-radius: 8rpx;
+  margin: 18rpx auto 6rpx;
+}
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  min-height: 94rpx;
+  font-size: 36rpx;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.sheet-close {
+  background: transparent;
+  width: 88rpx;
+  height: 88rpx;
+  padding: 0;
+  margin: 0 -16rpx 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-height: 44px;
+  min-width: 44px;
+}
+.sheet-close::after {
+  border: 0;
+}
+.sheet-body {
+  font-size: 28rpx;
+  line-height: 1.8;
+  color: #626b5e;
+  min-height: 0;
+  overflow: auto;
+  max-height: 60vh;
+}
+.sheet-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  margin-top: 24rpx;
+  flex-shrink: 0;
+}
+.sheet-actions.single {
+  grid-template-columns: 1fr;
+}
+.sheet-actions .xp-button {
+  font-size: 28rpx;
+  min-height: 44px;
+  min-height: max(44px, 90rpx);
+  border-radius: 26rpx;
+}
+.sheet-actions .xp-neutral {
+  background: #f4f5f2;
+}
+.sheet-custom-footer {
+  margin-top: 24rpx;
+}
+.sheet-safe {
+  height: calc(28rpx + env(safe-area-inset-bottom));
+  flex-shrink: 0;
+}

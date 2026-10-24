@@ -1,0 +1,7 @@
+.xp-empty-title {
+  font-size: 36rpx;
+  font-weight: 500;
+}
+.xp-empty .xp-button {
+  margin-top: 28rpx;
+}

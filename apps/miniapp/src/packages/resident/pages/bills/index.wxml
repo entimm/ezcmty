@@ -1,7 +1,130 @@
-<view class="screen"><view class="title">账单缴费</view><view class="muted">选择房屋，逐张缴纳全部待缴金额</view>
-<view class="card" wx:for="{{houses}}" wx:key="id" data-id="{{item.house_id}}" bindtap="choose"><view>{{item.house_label_snapshot}}</view><text wx:if="{{item.house_id === houseId}}" class="badge active">当前房屋</text></view>
-<view wx:if="{{houseId}}" class="row"><button class="quiet" data-scope="outstanding" bindtap="scope">待缴账单</button><button class="quiet" data-scope="all" bindtap="scope">全部账单</button></view>
-<screen-state loading="{{loading}}" error="{{error}}" bind:retry="loadHouses" empty="{{!loading && !error && !houses.length}}" message="暂无有效房屋授权，请先认领房屋"/>
-<view wx:if="{{houseId && !loading && !error && !items.length}}" class="notice">暂无{{scope === 'outstanding' ? '待缴' : ''}}账单</view>
-<view wx:for="{{items}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="open"><view class="row"><text>{{item.billing_month}} 物业费</text><text>待缴 ¥{{item.amount}}</text></view><view wx:if="{{item.is_overdue}}" class="notice">历史欠费</view><view class="muted">{{item.hint}} →</view></view>
-<button wx:if="{{items.length < total}}" class="quiet" bindtap="more" disabled="{{loading}}">加载更多</button></view>
+<app-shell
+  title="账单缴费"
+  tab="bills"
+  refreshable="{{signed}}"
+  refreshing="{{loading}}"
+  bindrefresh="onPullDownRefresh"
+>
+  <state-view
+    wx:if="{{!signed}}"
+    empty
+    title="登录后继续"
+    description="微信登录后，查看你的房屋账单和缴费记录。"
+    action-text="微信登录"
+    icon="user-round"
+    bindaction="login"
+  />
+  <state-view
+    wx:if="{{signed}}"
+    loading="{{loading}}"
+    error="{{error}}"
+    bindretry="load"
+  />
+  <block wx:if="{{signed && !loading && !error}}">
+    <block wx:if="{{selected}}">
+      <button
+        class="xp-listbutton xp-house-picker"
+        bindtap="openPicker"
+        aria-label="切换缴费房屋"
+      >
+        <view class="xp-row">
+          <view class="bill-house-copy">
+            <view class="xp-address">{{selected.community}}</view>
+            <view wx:if="{{selected.room}}" class="xp-address-sub"
+              >{{selected.room}}</view
+            >
+          </view>
+          <ui-icon name="chevron-down" size="34" />
+        </view>
+      </button>
+      <view class="xp-tabs">
+        <button
+          class="{{scope === 'outstanding' ? 'active' : ''}}"
+          data-scope="outstanding"
+          bindtap="filter"
+        >
+          待缴账单
+        </button>
+        <button
+          class="{{scope === 'all' ? 'active' : ''}}"
+          data-scope="all"
+          bindtap="filter"
+        >
+          全部账单
+        </button>
+      </view>
+      <view class="xp-row xp-bill-summary"
+        ><text>{{total}} 笔账单 · 每次付清一笔余款</text
+        ><button class="xp-link" bindtap="records">缴费记录</button></view
+      >
+      <view wx:if="{{items.length}}" class="xp-bill-list">
+        <button
+          wx:for="{{items}}"
+          wx:key="id"
+          class="xp-bill-item"
+          data-id="{{item.id}}"
+          bindtap="open"
+        >
+          <view class="xp-bill-copy"
+            ><text class="bill-month">{{item.month}}</text
+            ><text class="xp-caption">物业服务费</text
+            ><text class="xp-caption"
+              >应收 ¥{{item.receivable}}<text wx:if="{{item.settled_cents}}">
+                · 已缴 ¥{{item.settled}}</text
+              ></text
+            ></view
+          >
+          <view class="xp-bill-due"
+            ><text class="xp-tag {{item.tone}}">{{item.label}}</text
+            ><text class="bill-amount">¥ {{item.amount}}</text
+            ><text class="xp-caption"
+              >{{item.paid ? '已缴金额' : '待缴金额'}}</text
+            ></view
+          >
+        </button>
+      </view>
+      <state-view
+        wx:else
+        empty
+        title="{{scope === 'outstanding' ? '暂无待缴账单' : '暂无账单记录'}}"
+        description="当前房屋账单由物业维护，可稍后查看。"
+        action-text="{{scope === 'outstanding' ? '查看全部账单' : ''}}"
+        bindaction="emptyAction"
+      />
+      <view wx:if="{{moreError}}" class="xp-notice warn"
+        >{{moreError}}<button class="xp-link" bindtap="more">
+          重试加载
+        </button></view
+      >
+      <button
+        wx:if="{{hasMore}}"
+        class="xp-link bill-more"
+        loading="{{moreLoading}}"
+        disabled="{{moreLoading}}"
+        bindtap="more"
+      >
+        {{moreLoading ? '正在加载…' : '加载更多账单'}}
+      </button>
+      <view wx:elif="{{items.length}}" class="xp-legal">已显示全部账单</view>
+    </block>
+    <block wx:else
+      ><state-view
+        empty
+        title="尚无可用房屋"
+        description="认领审核通过后，可查看房屋账单。本人历史缴费记录仍保留。"
+        action-text="认领房屋"
+        bindaction="claim"
+      /><button class="xp-button xp-secondary" bindtap="records">
+        查看本人缴费记录
+      </button></block
+    >
+  </block>
+</app-shell>
+<house-picker
+  open="{{pickerOpen}}"
+  mode="switch"
+  selected-id="{{selected ? selected.id : ''}}"
+  bindings="{{houses}}"
+  bindconfirm="confirmHouse"
+  bindclose="closePicker"
+/>

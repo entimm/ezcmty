@@ -1,1 +1,75 @@
-<view class="screen"><view class="title">我的缴费记录</view><view class="muted">包含已解绑房屋及待确认的本人支付</view><view class="row"><button class="quiet" data-status="" bindtap="filter">全部</button><button class="quiet" data-status="succeeded" bindtap="filter">缴费成功</button><button class="quiet" data-status="unknown" bindtap="filter">结果待确认</button></view><screen-state loading="{{loading}}" error="{{error}}" bind:retry="retry" empty="{{!loading && !error && !items.length}}" message="暂无本人缴费记录"/><view wx:for="{{items}}" wx:key="id" class="card" data-id="{{item.id}}" bindtap="open"><view class="row"><text>{{item.merchant_name}}</text><text>¥{{item.amount}}</text></view><view>{{item.items[0].house_label_snapshot}} · {{item.items[0].billing_month}}</view><view class="notice">{{item.label}}</view><text class="muted">{{item.order_no}} →</text></view><button wx:if="{{items.length < total}}" bindtap="more" disabled="{{loading}}">加载更多</button></view>
+<app-shell
+  title="本人缴费记录"
+  refreshable
+  refreshing="{{loading}}"
+  bindrefresh="onPullDownRefresh"
+>
+  <view class="xp-sub records-intro">解绑房屋后，自己的缴费记录仍保留</view>
+  <view class="xp-tabs"
+    ><button
+      class="{{filter === 'all' ? 'active' : ''}}"
+      data-filter="all"
+      bindtap="filter"
+    >
+      全部</button
+    ><button
+      class="{{filter === 'success' ? 'active' : ''}}"
+      data-filter="success"
+      bindtap="filter"
+    >
+      已成功</button
+    ><button
+      class="{{filter === 'pending' ? 'active' : ''}}"
+      data-filter="pending"
+      bindtap="filter"
+    >
+      待确认
+    </button></view
+  >
+  <state-view loading="{{loading}}" error="{{error}}" bindretry="retry" />
+  <block wx:if="{{!loading && !error}}">
+    <button
+      wx:for="{{items}}"
+      wx:key="id"
+      class="xp-listbutton order-card"
+      data-id="{{item.id}}"
+      bindtap="open"
+    >
+      <view class="xp-row"
+        ><text class="order-title">物业费缴纳</text
+        ><text class="xp-tag {{item.labelTone}}">{{item.label}}</text></view
+      ><view class="xp-address-sub">{{item.summary}}</view
+      ><view class="xp-divider" /><view class="xp-row"
+        ><text class="xp-caption">{{item.created}}</text
+        ><text class="xp-amount-small">¥ {{item.amount}}</text></view
+      >
+    </button>
+    <state-view
+      wx:if="{{!items.length && !hasMore}}"
+      empty
+      title="{{filter === 'all' ? '暂无本人缴费记录' : '当前筛选下没有记录'}}"
+      description="发起缴费后，可在这里查看订单与处理进度。"
+      action-text="{{filter === 'all' ? '前往账单' : '查看全部记录'}}"
+      bindaction="emptyAction"
+    />
+    <view wx:if="{{!items.length && hasMore}}" class="xp-notice"
+      >已查看最近 {{scanned}} 笔记录，可继续查找待确认订单。</view
+    >
+    <view wx:if="{{moreError}}" class="xp-notice warn"
+      >{{moreError}}<button class="xp-link" bindtap="more">
+        重试加载
+      </button></view
+    >
+    <button
+      wx:if="{{hasMore}}"
+      class="xp-link order-more"
+      loading="{{moreLoading}}"
+      disabled="{{moreLoading}}"
+      bindtap="more"
+    >
+      {{moreLoading ? '正在加载…' : !items.length ? '继续查找待确认订单' :
+      '加载更多记录'}}
+    </button>
+    <view wx:elif="{{items.length}}" class="xp-legal">已显示全部缴费记录</view>
+  </block>
+</app-shell>

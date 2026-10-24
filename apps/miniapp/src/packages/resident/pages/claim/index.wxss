@@ -1,0 +1,84 @@
+.claim-step-label {
+  display: block;
+  font-size: 26rpx;
+  color: #8c752a;
+  margin-bottom: 6rpx;
+}
+.claim-steps {
+  display: flex;
+  gap: 12rpx;
+  margin: 20rpx 0 28rpx;
+}
+.claim-steps > view {
+  height: 6rpx;
+  border-radius: 6rpx;
+  background: #e6e8e9;
+  flex: 1;
+}
+.claim-steps > .done {
+  background: #36342b;
+}
+.claim-location {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  min-height: 148rpx;
+  margin-top: 24rpx;
+  padding: 26rpx 28rpx;
+  border-radius: 28rpx;
+  background: #fff;
+  text-align: left;
+}
+.claim-location-icon {
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 24rpx;
+  background: #fff1bd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.claim-location-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  flex: 1;
+  min-width: 0;
+}
+.claim-first-card {
+  margin-top: 0;
+}
+.claim-first-field {
+  margin-top: 0;
+}
+.claim-phone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  min-height: max(44px, 92rpx);
+  padding: 18rpx 24rpx;
+  margin-top: 12rpx;
+  border: 2rpx solid #e5e8e9;
+  border-radius: 20rpx;
+  background: #fff;
+  font-size: 30rpx;
+  text-align: left;
+}
+.claim-phone.selected {
+  border-color: #6a613a;
+  background: #fff8dc;
+}
+.claim-phone-hint {
+  display: block;
+  margin-top: 12rpx;
+}
+.xp-field input {
+  height: 92rpx;
+}
+.xp-field textarea {
+  height: 164rpx;
+}

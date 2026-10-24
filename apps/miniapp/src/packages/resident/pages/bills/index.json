@@ -1,1 +1,9 @@
-{ "navigationBarTitleText": "账单缴费" }
+{
+  "usingComponents": {
+    "house-picker": "../../components/house-picker/index",
+    "app-shell": "/components/app-shell/index",
+    "state-view": "/components/state-view/index",
+    "ui-icon": "/components/ui-icon/index"
+  },
+  "navigationStyle": "custom"
+}

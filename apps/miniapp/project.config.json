@@ -1,18 +1,18 @@
 {
-  "description": "Community property resident mini-program",
-  "compileType": "miniprogram",
+  "description": "美好社区居民小程序",
   "miniprogramRoot": "dist/",
-  "libVersion": "3.8.0",
+  "compileType": "miniprogram",
+  "appid": "wx3b69e45c2a10f4da",
+  "projectname": "美好社区",
   "setting": {
     "es6": true,
-    "enhance": true,
     "postcss": true,
-    "minified": false,
-    "urlCheck": false,
-    "scriptsEnable": true,
+    "minified": true,
+    "urlCheck": true,
     "compileWorklet": false,
     "uglifyFileName": false,
     "uploadWithSourceMap": true,
+    "enhance": true,
     "packNpmManually": false,
     "packNpmRelationList": [],
     "minifyWXSS": true,
@@ -25,19 +25,19 @@
       "ignore": [],
       "disablePlugins": [],
       "outputPath": ""
-    }
+    },
+    "scriptsEnable": true
   },
-  "appid": "wx3b69e45c2a10f4da",
-  "projectname": "resident-miniapp",
-  "simulatorPluginLibVersion": {},
   "scripts": {
     "beforeCompile": "sh scripts/devtools-build.sh",
     "beforePreview": "sh scripts/devtools-build.sh",
     "beforeUpload": "sh scripts/devtools-build.sh"
   },
+  "simulatorPluginLibVersion": {},
   "packOptions": {
     "ignore": [],
     "include": []
   },
-  "editorSetting": {}
+  "editorSetting": {},
+  "libVersion": "3.8.0"
 }

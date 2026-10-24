@@ -1,0 +1,229 @@
+.picker-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(24, 33, 43, 0.44);
+  display: flex;
+  align-items: flex-end;
+}
+.picker-sheet {
+  width: 100%;
+  max-height: 88vh;
+  background: #fff;
+  border-radius: 44rpx 44rpx 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.picker-handle {
+  width: 64rpx;
+  height: 8rpx;
+  background: #e6e8e9;
+  border-radius: 8rpx;
+  align-self: center;
+  margin: 18rpx 0 2rpx;
+}
+.picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16rpx 8rpx;
+}
+.picker-icon {
+  margin: 0;
+  min-width: 44px;
+  min-width: max(44px, 88rpx);
+  flex-shrink: 0;
+  border: 0;
+  line-height: 1.55;
+  width: 88rpx;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  padding: 0;
+  min-height: 44px;
+}
+.picker-title {
+  font-size: 34rpx;
+  font-weight: 600;
+}
+.picker-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4rpx;
+  padding: 0 24rpx 10rpx;
+  border-bottom: 1rpx solid #eceeef;
+}
+.picker-crumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: auto;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  line-height: 1.55;
+  padding: 8rpx 4rpx;
+  min-height: 44px;
+  min-height: max(44px, 80rpx);
+  background: transparent;
+  font-size: 25rpx;
+  color: #333;
+  min-width: 44px;
+}
+.picker-separator {
+  color: #a2a7aa;
+}
+.picker-body {
+  flex-shrink: 1;
+  min-height: 0;
+  width: auto;
+  margin: 0 28rpx;
+}
+.picker-search {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  background: #f4f5f6;
+  border-radius: 20rpx;
+  padding: 0 14rpx;
+  margin: 16rpx 0 8rpx;
+  min-height: 88rpx;
+}
+.picker-search-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 28rpx;
+  min-height: 44px;
+}
+.picker-search-submit {
+  width: auto;
+  margin: 0;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 0;
+  line-height: 1.55;
+  padding: 12rpx 0;
+  min-width: 44px;
+  min-width: max(44px, 72rpx);
+  font-size: 25rpx;
+  background: none;
+  color: #4e5c65;
+  min-height: 44px;
+}
+.picker-option {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  height: auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 20rpx 4rpx;
+  min-height: 44px;
+  min-height: max(44px, 100rpx);
+  background: none;
+  text-align: left;
+  border-bottom: 1rpx solid #eceeef;
+  line-height: 1.5;
+}
+.picker-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 0;
+}
+.picker-name {
+  font-size: 30rpx;
+  font-weight: 500;
+  word-break: break-all;
+}
+.picker-option.selected {
+  background: #fff7d6;
+  border-radius: 20rpx;
+  padding-left: 20rpx;
+  padding-right: 20rpx;
+  border-color: transparent;
+}
+.picker-option.selected .picker-option-check {
+  color: #373321;
+}
+.picker-group {
+  display: block;
+  color: #7b8389;
+  font-size: 24rpx;
+  margin: 20rpx 0 4rpx;
+}
+.picker-empty {
+  padding: 36rpx 8rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  text-align: center;
+  font-size: 30rpx;
+}
+.picker-confirm {
+  padding: 28rpx 12rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+.picker-confirm-icon {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 26rpx;
+  background: #fff4c2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8rpx;
+}
+.picker-confirm-room {
+  font-size: 36rpx;
+  font-weight: 500;
+  text-align: center;
+  word-break: break-all;
+}
+.picker-foot {
+  padding: 16rpx 28rpx 18rpx;
+  border-top: 1rpx solid #eceeef;
+  flex-shrink: 0;
+}
+.picker-foot .xp-link {
+  width: 100%;
+  min-height: 44px;
+  min-height: max(44px, 88rpx);
+  text-align: center;
+}
+
+.picker-icon::after,
+.picker-crumb::after,
+.picker-search-submit::after,
+.picker-option::after,
+.picker-submit::after,
+.picker-contact::after {
+  border: 0;
+}
+.picker-submit {
+  width: 100%;
+  margin: 0;
+  min-height: 44px;
+  min-height: max(44px, 92rpx);
+  border: 0;
+  line-height: 1.55;
+}
+.picker-contact {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  line-height: 1.55;
+  min-height: 44px;
+}

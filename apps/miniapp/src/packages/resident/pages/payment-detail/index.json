@@ -1,1 +1,9 @@
-{ "navigationBarTitleText": "缴费结果" }
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "app-shell": "/components/app-shell/index",
+    "bottom-sheet": "/components/bottom-sheet/index",
+    "state-view": "/components/state-view/index",
+    "ui-icon": "/components/ui-icon/index"
+  }
+}

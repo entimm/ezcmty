@@ -1,115 +1,113 @@
-import { onSessionReset, requireSession } from '../../../../auth/resident';
-import { ApiError, errorText } from '../../../../shared/http/client';
-import {
-  claimPage,
-  confirm,
-  formatTime,
-  toastError,
-} from '../../../../shared/wechat/ui';
-import { binding, releaseBinding } from '../../api';
-import { bindingLabels } from '../../presentation';
-import { Binding } from '../../types';
+import * as api from '../../../../core/api';
+import { requireSession } from '../../../../core/session';
+import { ApiError, errorText } from '../../../../core/request';
+import { setSelectedBindingId } from '../../../../core/selection';
+import { go, pageUrl } from '../../../../ui/navigation';
+import { PageScope } from '../../page-state';
+import { bindingView } from '../../presentation';
 Page({
   data: {
-    loading: true,
+    loading: false,
     error: '',
+    binding: null as ReturnType<typeof bindingView> | null,
+    confirming: false,
     busy: false,
-    item: null as Binding | null,
-    label: '',
-    granted: '',
-    ended: '',
+    actionError: '',
   },
   id: '',
-  off: () => {},
-  epoch: 0,
-  writeEpoch: 0,
-  onLoad(options) {
+  scope: null as unknown as PageScope,
+  onLoad(options: Record<string, string>) {
+    this.scope = new PageScope();
     this.id = options.id || '';
-    this.off = onSessionReset(() => {
-      this.epoch++;
-      this.writeEpoch++;
-      this.setData({ item: null, error: '', loading: false, busy: false });
+    this.scope.watch((visible) => {
+      this.setData({
+        binding: null,
+        busy: false,
+        confirming: false,
+        loading: false,
+      });
+      if (visible) requireSession(pageUrl('house-detail', { id: this.id }));
     });
   },
-  onUnload() {
-    this.off();
-    this.epoch++;
-    this.writeEpoch++;
-  },
   onShow() {
+    if (!requireSession(pageUrl('house-detail', { id: this.id }))) {
+      this.setData({ binding: null });
+      return;
+    }
+    if (!this.scope.enter()) this.setData({ binding: null, confirming: false });
+    this.setData({ busy: false });
     void this.load();
   },
+  onHide() {
+    this.scope.leave();
+    this.setData({ confirming: false });
+  },
+  onUnload() {
+    this.scope.dispose();
+  },
+  onPullDownRefresh() {
+    void this.load().finally(() => wx.stopPullDownRefresh());
+  },
   async load() {
-    const epoch = ++this.epoch;
-    if (
-      !requireSession(
-        '/packages/resident/pages/house-detail/index?id=' + this.id,
-      )
-    )
-      return;
+    const valid = this.scope.next();
     this.setData({ loading: true, error: '' });
     try {
-      const item = await binding(this.id);
-      if (epoch !== this.epoch) return;
-      this.setData({
-        item,
-        label: bindingLabels[item.status],
-        granted: formatTime(item.granted_at),
-        ended: formatTime(item.ended_at),
-      });
+      const binding = await api.binding(this.id);
+      if (valid())
+        this.setData({ binding: bindingView(binding), loading: false });
     } catch (error) {
-      if (epoch === this.epoch) this.setData({ error: errorText(error) });
-    } finally {
-      if (epoch === this.epoch) this.setData({ loading: false });
+      if (valid()) {
+        if (error instanceof ApiError && [403, 404].includes(error.status))
+          this.setData({ binding: null, confirming: false });
+        this.setData({ loading: false, error: errorText(error) });
+      }
     }
-  },
-  async release() {
-    const item = this.data.item;
-    if (!item || this.data.busy || this.data.loading || this.data.error) return;
-    const epoch = ++this.writeEpoch;
-    if (
-      !(await confirm(
-        '解绑房屋',
-        '解绑后将失去此房屋的服务权限。如需再次绑定，需要重新提交物业审核。',
-      )) ||
-      epoch !== this.writeEpoch ||
-      this.data.busy
-    )
-      return;
-    this.setData({ busy: true });
-    try {
-      await releaseBinding(item);
-      if (epoch !== this.writeEpoch) return;
-      await this.load();
-    } catch (error) {
-      if (epoch !== this.writeEpoch) return;
-      toastError(error);
-      if (
-        error instanceof ApiError &&
-        (error.status === 409 || error.status === 0 || error.status >= 500)
-      )
-        await this.load();
-    } finally {
-      if (epoch === this.writeEpoch) this.setData({ busy: false });
-    }
-  },
-  again() {
-    const item = this.data.item;
-    if (item)
-      wx.navigateTo({
-        url:
-          claimPage +
-          '?house_id=' +
-          item.house_id +
-          '&community_id=' +
-          item.community_id,
-      });
   },
   bills() {
-    const item = this.data.item;
-    if (item?.status === 'active' && item.effective_enabled)
-      wx.navigateTo({
-        url: '/packages/resident/pages/bills/index?house_id=' + item.house_id,
+    const binding = this.data.binding;
+    if (!binding?.enabled) return;
+    setSelectedBindingId(binding.id);
+    go('bills');
+  },
+  orders() {
+    go('payment-orders');
+  },
+  reclaim() {
+    const binding = this.data.binding;
+    if (binding)
+      go('claim', {
+        house_id: binding.house_id,
+        community_id: binding.community_id,
       });
+  },
+  release() {
+    if (this.data.binding?.status === 'active')
+      this.setData({ confirming: true, actionError: '' });
+  },
+  close() {
+    if (!this.data.busy) this.setData({ confirming: false });
+  },
+  async confirmRelease() {
+    const binding = this.data.binding;
+    if (!binding || binding.status !== 'active' || this.data.busy) return;
+    const valid = this.scope.next();
+    this.setData({ busy: true, actionError: '' });
+    try {
+      const updated = await api.releaseBinding(binding);
+      if (valid()) {
+        setSelectedBindingId(null);
+        this.setData({
+          binding: bindingView(updated),
+          confirming: false,
+          busy: false,
+        });
+        wx.showToast({ title: '房屋已解绑', icon: 'success' });
+      }
+    } catch (error) {
+      if (valid()) {
+        this.setData({ actionError: errorText(error), busy: false });
+        await this.load();
+      }
+    }
   },
 });

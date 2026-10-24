@@ -1,22 +1,32 @@
-import { onSessionReset, requireSession } from '../../../../auth/resident';
-import { errorText } from '../../../../shared/http/client';
-import { bill } from '../../billing/api';
-import { availability, money } from '../../billing/presentation';
-import { ResidentBill } from '../../billing/types';
-import { PaymentController } from '../../payments/controller';
-import { paymentUrl } from '../../payments/presentation';
+import { bill } from '../../../../core/api';
+import { money } from '../../../../core/format';
+import {
+  canContinuePayment,
+  PaymentController,
+} from '../../../../core/payments';
+import { ApiError, errorText } from '../../../../core/request';
+import { onSessionReset, requireSession } from '../../../../core/session';
+import { PaymentOrder, ResidentBill } from '../../../../core/types';
+import { go, pageUrl } from '../../../../ui/navigation';
+import { billPresentation, rememberPanelMessage } from '../payment-detail/view';
+
 Page({
   data: {
-    loading: false,
-    error: '',
+    loading: true,
     busy: false,
+    error: '',
     item: null as ResidentBill | null,
+    month: '',
     amount: '',
+    receivable: '',
+    settled: '',
     hint: '',
     canPay: false,
+    needsRecovery: false,
   },
   id: '',
   epoch: 0,
+  visible: false,
   off: () => {},
   controller: null as PaymentController | null,
   onLoad(options) {
@@ -24,92 +34,167 @@ Page({
     this.controller = new PaymentController();
     this.off = onSessionReset(() => {
       this.epoch++;
-      this.setData({ item: null, busy: false, loading: false, error: '' });
+      this.setData({
+        item: null,
+        busy: false,
+        loading: false,
+        error: '登录状态已更新，请重新登录后继续。',
+        needsRecovery: false,
+      });
     });
   },
-  onUnload() {
-    this.off();
-    this.controller?.dispose();
-    this.epoch++;
+  onShow() {
+    this.visible = true;
+    void this.load();
+  },
+  async onPullDownRefresh() {
+    if (this.data.busy) {
+      wx.stopPullDownRefresh();
+      return;
+    }
+    try {
+      await this.load();
+    } finally {
+      wx.stopPullDownRefresh();
+    }
   },
   onHide() {
+    this.visible = false;
     this.epoch++;
     this.controller?.pause();
     this.setData({ busy: false, loading: false });
   },
-  onShow() {
-    void this.load();
+  onUnload() {
+    this.visible = false;
+    this.epoch++;
+    this.controller?.dispose();
+    this.off();
   },
-  show(item: ResidentBill) {
+  showBill(item: ResidentBill) {
+    const presentation = billPresentation(item);
     this.setData({
       item,
+      month: item.billing_month.slice(0, 7).replace('-', '年') + '月',
       amount: money(item.outstanding_cents),
-      hint: availability[item.payment_availability],
-      canPay: ['available', 'own_payment_in_progress'].includes(
-        item.payment_availability,
-      ),
+      receivable: money(item.receivable_cents),
+      settled: money(item.settled_cents),
+      canPay: presentation.canPay,
+      hint: presentation.hint,
     });
   },
   async load() {
-    if (
-      !requireSession(
-        '/packages/resident/pages/payment-confirm/index?id=' + this.id,
-      )
-    )
-      return;
+    if (this.data.busy) return;
+    if (!requireSession(pageUrl('payment-confirm', { id: this.id }))) return;
     const epoch = ++this.epoch;
-    this.setData({ loading: true, error: '' });
+    this.setData({ loading: true, error: '', needsRecovery: false });
     try {
       const item = await bill(this.id);
-      if (epoch === this.epoch) this.show(item);
+      if (epoch === this.epoch && this.visible) this.showBill(item);
     } catch (error) {
-      if (epoch === this.epoch)
-        this.setData({ error: errorText(error), item: null });
+      if (epoch === this.epoch && this.visible)
+        this.setData({
+          item: null,
+          error: errorText(error),
+          needsRecovery: true,
+        });
     } finally {
-      if (epoch === this.epoch) this.setData({ loading: false });
+      if (epoch === this.epoch && this.visible)
+        this.setData({ loading: false });
     }
   },
   async submit() {
     const item = this.data.item;
+    const controller = this.controller;
     if (
       !item ||
+      !controller ||
       !this.data.canPay ||
       this.data.busy ||
-      this.data.loading ||
-      !this.controller
+      this.data.loading
     )
       return;
     const epoch = this.epoch;
     this.setData({ busy: true, error: '' });
+    let knownOrder: PaymentOrder | null = null;
     try {
-      const fresh = await bill(item.id);
-      if (epoch !== this.epoch) return;
+      // A retained request is resolved before reading current house data. It may
+      // already have created a personal order even if house access later ended.
+      const recovered = await controller.recover(this.id);
+      if (epoch !== this.epoch || !this.visible) return;
+      if (recovered) {
+        go('payment-detail', { id: recovered.id });
+        return;
+      }
+      const fresh = await bill(this.id);
+      if (epoch !== this.epoch || !this.visible) return;
       if (
         fresh.row_version !== item.row_version ||
         fresh.outstanding_cents !== item.outstanding_cents
       ) {
-        this.show(fresh);
-        this.setData({ error: '账单金额或状态已变化，请重新核对后确认' });
+        this.showBill(fresh);
+        this.setData({ error: '账单金额或状态已变化，请重新核对后确认。' });
         return;
       }
-      if (
-        !['available', 'own_payment_in_progress'].includes(
-          fresh.payment_availability,
-        )
-      ) {
-        this.show(fresh);
-        return;
+      this.showBill(fresh);
+      if (!billPresentation(fresh).canPay) return;
+      knownOrder = await controller.create(fresh);
+      if (epoch !== this.epoch || !this.visible) return;
+      if (canContinuePayment(knownOrder)) {
+        const result = await controller.pay(knownOrder);
+        if (epoch !== this.epoch || !this.visible) return;
+        knownOrder = result.order;
+        rememberPanelMessage(result.order.id, result.message);
       }
-      const order = await this.controller.create(fresh);
-      if (epoch !== this.epoch) return;
-      wx.redirectTo({ url: paymentUrl(order.id) });
+      go('payment-detail', { id: knownOrder.id });
     } catch (error) {
-      if (epoch === this.epoch)
+      if (epoch !== this.epoch || !this.visible) return;
+      if (knownOrder) {
+        go('payment-detail', { id: knownOrder.id });
+        return;
+      }
+      this.setData({
+        error: errorText(error) || '结果尚未确认，请恢复原支付结果。',
+        needsRecovery: true,
+        ...(error instanceof ApiError && [401, 403, 404].includes(error.status)
+          ? { item: null, canPay: false }
+          : {}),
+      });
+    } finally {
+      if (epoch === this.epoch && this.visible) this.setData({ busy: false });
+    }
+  },
+  async recover() {
+    if (!this.controller || this.data.busy || this.data.loading) return;
+    const epoch = this.epoch;
+    this.setData({ busy: true, error: '' });
+    try {
+      const item = await this.controller.recover(this.id);
+      if (epoch !== this.epoch || !this.visible) return;
+      if (item) go('payment-detail', { id: item.id });
+      else
         this.setData({
-          error: errorText(error) + '；请核实原支付，勿重复付款。',
+          error:
+            '暂未找到可恢复的原订单。请查看本人缴费记录，或重新读取账单核对。',
+          needsRecovery: true,
+        });
+    } catch (error) {
+      if (epoch === this.epoch && this.visible)
+        this.setData({
+          error: errorText(error),
+          needsRecovery: true,
+          ...(error instanceof ApiError &&
+          [401, 403, 404].includes(error.status)
+            ? { item: null, canPay: false }
+            : {}),
         });
     } finally {
-      if (epoch === this.epoch) this.setData({ busy: false });
+      if (epoch === this.epoch && this.visible) this.setData({ busy: false });
     }
+  },
+  backToBill() {
+    if (!this.data.busy) go('bill-detail', { id: this.id });
+  },
+  records() {
+    if (!this.data.busy) go('payment-orders');
   },
 });

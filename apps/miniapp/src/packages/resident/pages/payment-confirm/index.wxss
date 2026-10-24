@@ -1,0 +1,31 @@
+.xp-pay-title {
+  font-size: 26rpx;
+  text-align: center;
+  color: #646d5e;
+}
+.xp-money-center {
+  text-align: center;
+  font-size: 68rpx;
+  margin: 28rpx 0;
+}
+.currency {
+  font-size: 40rpx;
+  margin-right: 10rpx;
+}
+.xp-address {
+  font-size: 34rpx;
+  line-height: 1.6;
+  font-weight: 500;
+  word-break: break-all;
+}
+.xp-info .xp-row {
+  align-items: flex-start;
+}
+.xp-info .xp-row > text:first-child {
+  color: #646d5e;
+  flex-shrink: 0;
+}
+.xp-info .xp-row > text:last-child {
+  text-align: right;
+  word-break: break-all;
+}

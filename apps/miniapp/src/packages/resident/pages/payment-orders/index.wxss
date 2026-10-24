@@ -1,0 +1,25 @@
+.records-intro {
+  margin-top: 0;
+}
+.order-card {
+  text-align: left;
+}
+.order-title {
+  font-size: 30rpx;
+  font-weight: 500;
+}
+.order-card .xp-address-sub {
+  font-size: 28rpx;
+  color: #646d5e;
+  margin-top: 6rpx;
+  line-height: 1.6;
+  word-break: break-all;
+}
+.xp-amount-small {
+  font-size: 48rpx;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.order-more {
+  margin: 12rpx auto 0;
+}

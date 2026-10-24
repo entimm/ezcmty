@@ -192,29 +192,28 @@ src/
 
 ## 居民小程序目录
 
-路径相对 `apps/miniapp/src/`，沿用原生页面文件和既有居民子包。
+路径相对 `apps/miniapp/src/`。原生页面与居民子包保留，具体职责以[平台微信小程序架构](miniapp.md#前端边界)为准。
 
 ```text
 src/
 ├─ app.json                            页面注册
-├─ shared/wechat/
-│  ├─ payment.ts                       支付 SDK 协议适配
-│  └─ ui.ts                            安全返回白名单
+├─ core/                              居民契约、会话及请求恢复
+│  ├─ api.ts、types.ts
+│  ├─ session.ts、request.ts
+│  ├─ claims.ts、phones.ts
+│  └─ payments.ts                    SDK 与原单恢复协调
+├─ ui/navigation.ts                   安全返回白名单
+├─ components/                        无业务副作用的统一展示
 └─ packages/resident/
-   ├─ api.ts、types.ts                 保留原身份及认领归属
-   ├─ billing/
-   │  └─ api.ts、types.ts、presentation.ts
-   ├─ payments/
-   │  ├─ api.ts、types.ts、presentation.ts
-   │  ├─ controller.ts                支付交互协调
-   │  └─ pending.ts                   原请求恢复
+   ├─ presentation.ts、page-state.ts   展示转换与页面隔离
+   ├─ components/house-picker/         分层认领/已授权切换抽屉
    └─ pages/
       ├─ home、house-detail、profile  入口
       ├─ bills、bill-detail
       └─ payment-confirm、payment-orders、payment-detail
 ```
 
-支付确认页负责展示和按钮，`controller.ts` 协调原请求恢复、调起和结果刷新，SDK 适配只返回面板操作结果。恢复状态及调起参数的隔离要求见 [小程序身份、请求与状态](miniapp.md#身份请求与状态)。SDK 成功只触发服务端核实，取消或未知结果继续处理原订单。
+支付确认页负责展示和按钮，`core/payments.ts` 协调原请求恢复、调起和结果刷新，SDK 适配只返回面板操作结果。恢复状态及调起参数的隔离要求见 [小程序身份、请求与状态](miniapp.md#身份请求与状态)。SDK 成功只触发服务端核实，取消或未知结果继续处理原订单。
 
 账单页面检查当前房屋授权，本人订单页面使用本人订单授权；不对全部支付页面统一要求当前房屋绑定。居民响应使用单独的白名单 Mapper，不复用管理员完整记录。新页面注册、安全回跳和查询参数一并调整，不将调起参数放进导航。
 
@@ -244,8 +243,10 @@ apps/admin-web/tests/
 └─ shared/{imports,payments}/          任务策略、资金状态与提交保护
 
 apps/miniapp/tests/
-├─ resident/{billing,payments}/
-└─ shared/wechat/
+├─ core/                              会话、契约与幂等恢复
+├─ platform/                          登录与手机号生命周期
+├─ resident/                          展示和页面隔离
+└─ payments/                          账单与支付页面交互
 ```
 
 Domain 测试验证规则，应用集成测试验证状态和事务，PostgreSQL 测试验证实际锁与约束，API 测试验证各端隔离及协议，契约测试验证运行入口和 Schema。各层覆盖不同边界，不重复复制同一组断言。

@@ -1,2 +1,95 @@
-<view class="screen"><screen-state loading="{{loading}}" error="{{error}}" bind:retry="load"/><block wx:if="{{item}}"><view class="card"><view class="title">{{item.billing_month}} 物业费</view><view class="address">{{item.house_label_snapshot}}</view><view class="muted">收款物业：{{item.property_company_name}}</view><view class="muted">{{item.period_start}} 至 {{item.period_end}}</view><view class="row"><text>应收 ¥{{amount}}</text><text>已缴 ¥{{settled}}</text></view><view class="title">待缴 ¥{{outstanding}}</view><view wx:if="{{item.is_overdue}}" class="notice">历史欠费</view><view class="notice">{{hint}}</view><button class="primary" bindtap="pay" disabled="{{!canPay || loading}}">{{canPay ? '前往缴费' : '暂不可缴费'}}</button></view>
-<view class="card"><view class="section-title">收款流水</view><screen-state loading="{{entryLoading}}" error="{{entryError}}" bind:retry="retryEntries"/><view wx:for="{{entries}}" wx:key="id" class="tap-row"><view class="row"><text>{{item.label}}</text><text>¥{{item.amount}}</text></view><text class="muted">{{item.received}}</text></view><view wx:if="{{!entryLoading && !entries.length}}" class="muted">暂无收款记录</view><button wx:if="{{entries.length < entryTotal}}" bindtap="more" disabled="{{entryLoading}}">更多流水</button></view></block></view>
+<app-shell
+  title="账单详情"
+  refreshable
+  refreshing="{{loading}}"
+  bindrefresh="onPullDownRefresh"
+>
+  <state-view loading="{{loading}}" error="{{error}}" bindretry="load" />
+  <block wx:if="{{!loading && !error && item}}">
+    <text class="xp-tag {{tone}}">{{label}}</text><view class="xp-gap" />
+    <view class="xp-heading">{{month}}物业费</view
+    ><view class="xp-sub">{{item.house_label_snapshot}}</view>
+    <view class="xp-card">
+      <view class="xp-caption">待缴金额</view
+      ><view class="xp-money"
+        ><text class="currency">¥</text>{{outstanding}}</view
+      ><view class="xp-divider" />
+      <view class="xp-info"
+        ><view class="xp-row"
+          ><text>应收金额</text><text>¥ {{receivable}}</text></view
+        ><view class="xp-row"
+          ><text>已缴金额</text><text>¥ {{settled}}</text></view
+        ><view class="xp-row"
+          ><text>费用周期</text
+          ><text>{{item.period_start}} 至 {{item.period_end}}</text></view
+        ><view class="xp-row"
+          ><text>收款物业</text
+          ><text>{{item.property_company_name}}</text></view
+        ></view
+      >
+    </view>
+    <view wx:if="{{!paid}}" class="xp-notice {{warning ? 'warn' : ''}}"
+      >{{hint}}</view
+    >
+    <view class="xp-actions"
+      ><button
+        wx:if="{{!paid}}"
+        class="xp-button"
+        disabled="{{!canPay}}"
+        bindtap="pay"
+      >
+        {{button}}</button
+      ><button wx:else class="xp-button xp-secondary" bindtap="records">
+        查看本人缴费记录
+      </button></view
+    >
+    <view class="xp-section-head"
+      ><view class="section-title">收款流水</view
+      ><text class="xp-caption">仅展示脱敏事实</text></view
+    >
+    <view class="xp-card settlement-card">
+      <view
+        wx:for="{{entries}}"
+        wx:key="id"
+        wx:for-item="entry"
+        class="settlement-row"
+      >
+        <view class="xp-row"
+          ><text>{{entry.label}}</text
+          ><text class="settlement-amount">¥ {{entry.amount}}</text></view
+        >
+        <view class="xp-caption settlement-date"
+          >{{entry.received}} · 收款日期</view
+        ><view class="xp-caption">{{entry.registered}} · 登记时间</view>
+        <button
+          wx:if="{{entry.orderId}}"
+          class="xp-link"
+          data-id="{{entry.id}}"
+          bindtap="openOrder"
+        >
+          查看本人订单 <ui-icon name="chevron-right" size="28" />
+        </button>
+      </view>
+      <view wx:if="{{entryLoading && !entries.length}}" class="xp-muted"
+        >正在加载收款流水…</view
+      >
+      <view wx:elif="{{!entries.length && !entryError}}" class="xp-muted"
+        >暂无收款流水</view
+      >
+      <view wx:if="{{entryError}}" class="xp-notice warn"
+        >{{entryError}}<button class="xp-link" bindtap="retryEntries">
+          重新加载流水
+        </button></view
+      >
+      <button
+        wx:if="{{entriesMore}}"
+        class="xp-link"
+        loading="{{entryLoading}}"
+        disabled="{{entryLoading}}"
+        bindtap="moreEntries"
+      >
+        加载更多流水
+      </button>
+    </view>
+  </block>
+</app-shell>
