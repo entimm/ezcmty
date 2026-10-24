@@ -30,6 +30,7 @@
 
 ## 专题约定
 
+- 管理后台前端的组件复用、视觉、交互及交付评审遵循 [后台前端开发规范](../conventions/admin-frontend.md)。
 - 本地环境准备、配置、运行和检查命令见 [本地开发指南](local-development.md)。
 - 测试分类、组织、隔离与执行要求见 [测试规范](../conventions/testing.md)。
 - 代码目录与业务接入见 [代码组织方案](../architecture/code-organization.md)，进程边界见 [系统架构](../architecture/overview.md)。
