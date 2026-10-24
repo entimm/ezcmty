@@ -552,7 +552,7 @@ a:focus-visible {
 .ant-table-wrapper .ant-table-cell .ant-space {
   gap: 5px !important;
 }
-.ant-form-item-label > label {
+.ant-form-item-label > label:not(.auth-fields label) {
   font-size: 12px !important;
   color: #647187 !important;
 }
@@ -1236,9 +1236,8 @@ a:focus-visible {
 }
 .auth-page {
   min-height: 100vh;
-  padding-top: 64px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   background: #fff;
 }
 .auth-story {
@@ -1246,27 +1245,59 @@ a:focus-visible {
   color: #fff;
   position: relative;
   overflow: hidden;
-  padding: 110px 13% 80px;
+  display: flex;
+  flex-direction: column;
+  padding: 48px 13%;
 }
-.auth-story > .eyebrow {
-  color: #819cbd;
-  letter-spacing: 3px;
+.auth-brand {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.auth-brand .brand-symbol {
+  flex-shrink: 0;
+  background: var(--brand);
+  border-color: #ffffff4d;
+}
+.auth-brand strong {
+  display: block;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 2px;
+}
+.auth-brand > div > span {
+  display: block;
+  margin-top: 4px;
+  color: #b4c3d8;
+  font-size: 12px;
+}
+.auth-story-copy {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 64px 0;
 }
 .auth-story h1 {
-  font-size: 43px;
+  font-size: 32px;
   font-weight: 500;
-  line-height: 1.6;
-  letter-spacing: 3px;
-  margin: 24px 0;
+  line-height: 1.5;
+  letter-spacing: 2px;
+  margin: 0 0 24px;
 }
 .auth-story h1 > span {
-  color: #98b3e8;
+  display: block;
+  color: color-mix(in srgb, var(--brand) 30%, #fff);
 }
 .auth-story p {
-  font-size: 13px;
+  margin: 0;
+  font-size: 14px;
   line-height: 2;
-  color: #728daf;
-  letter-spacing: 1px;
+  color: #b4c3d8;
 }
 .auth-lines {
   font-size: 280px;
@@ -1276,30 +1307,53 @@ a:focus-visible {
   right: -30px;
   transform: rotate(-10deg);
 }
-.auth-footer {
-  position: absolute;
-  bottom: 40px;
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: #6f8baa;
-}
 .auth-form {
   display: grid;
   place-items: center;
-  padding: 60px;
+  padding: 48px 60px;
 }
 .auth-form-inner {
   max-width: 370px;
   width: 100%;
 }
 .auth-form h2 {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 600;
-  margin: 20px 0 10px;
-  color: #263953;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+.auth-workspace {
+  margin: 0 0 8px;
+  color: var(--brand);
+  font-size: 14px;
+}
+.auth-description {
+  margin: 0 0 24px;
+  color: #657187;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.auth-form .auth-notice {
+  margin-bottom: 24px;
 }
 .auth-form .ant-form-item {
-  margin-bottom: 23px;
+  margin-bottom: 24px;
+}
+.auth-fields .ant-form-item-label > label,
+.auth-fields .ant-input,
+.auth-fields .ant-input-affix-wrapper {
+  font-size: 14px;
+}
+.auth-fields .ant-input-affix-wrapper {
+  min-height: 42px;
+}
+.auth-fields .ant-input-prefix {
+  margin-inline-end: 8px;
+  color: var(--brand);
+}
+.auth-fields .ant-form-item-extra {
+  font-size: 12px;
+  color: #657187;
 }
 .auth-form .ant-btn-lg {
   height: 42px;
@@ -1310,11 +1364,12 @@ a:focus-visible {
   justify-content: space-between;
   align-items: center;
   margin-top: 24px;
-  font-size: 10px;
-  color: #a2adbe;
+  gap: 12px;
+  font-size: 12px;
+  color: #657187;
 }
 .auth-help .ant-btn {
-  font-size: 11px;
+  font-size: 12px;
 }
 .compact .panel-body {
   padding: 17px;
@@ -1509,9 +1564,6 @@ a:focus-visible {
     padding-left: 12%;
     padding-right: 9%;
   }
-  .auth-story h1 {
-    font-size: 36px;
-  }
 }
 /* Chinese office defaults: readable body, compact supporting metadata. */
 .menu-item {
@@ -1526,7 +1578,7 @@ a:focus-visible {
 .ant-table-wrapper .ant-btn-link {
   font-size: 13px !important;
 }
-.ant-form-item-label > label {
+.ant-form-item-label > label:not(.auth-fields label) {
   font-size: 13px !important;
 }
 .ant-input,
@@ -1600,8 +1652,9 @@ a:focus-visible {
 .topbar-center {
   min-width: 20px;
 }
-.auth-error {
-  margin-bottom: 18px;
+.auth-form .auth-error {
+  margin-bottom: 24px;
+  overflow-wrap: anywhere;
 }
 .command-modal .ant-modal-body {
   max-height: 75vh;

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Alert, App, Button, Form, Input, Space, Tabs, Tag } from 'antd';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, App, Button, Form, Input, Space, Tabs } from 'antd';
 import {
   ApartmentOutlined,
+  LockOutlined,
   SafetyCertificateOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -12,6 +13,86 @@ import { useAdmin } from '../shared/context';
 import { hasFormChanges, passwordRules } from '../shared/forms';
 import { useResource } from '../shared/hooks';
 import { PageHeader, Panel, ReadError } from '../shared/ui';
+import { ApiError } from '../shared/request';
+
+type AuthOperation = 'login' | 'password' | 'logout';
+function AuthError({
+  error,
+  operation,
+}: {
+  error: unknown;
+  operation: AuthOperation;
+}) {
+  if (error == null) return null;
+  if (error instanceof DOMException && error.name === 'AbortError') return null;
+  const forced = operation === 'password';
+  let title =
+    operation === 'logout'
+      ? '退出登录失败'
+      : forced
+        ? '密码更新失败'
+        : '登录失败';
+  let description = error instanceof Error ? error.message : '请稍后再试。';
+  const unconfirmedPassword =
+    '请先退出登录，再使用新密码登录确认。若密码未更新，请使用原密码登录。';
+  if (
+    error instanceof TypeError ||
+    (error instanceof Error && error.cause instanceof TypeError)
+  ) {
+    title =
+      operation === 'logout'
+        ? '退出登录失败'
+        : forced
+          ? '密码更新结果待确认'
+          : '网络连接失败';
+    description =
+      operation === 'logout'
+        ? '请检查网络连接后重新退出。'
+        : forced
+          ? unconfirmedPassword
+          : '请检查网络连接后重新提交。';
+  } else if (error instanceof ApiError) {
+    if (error.status === 401 && operation === 'login') {
+      description = '登录名或密码错误';
+    } else if (error.status === 429) {
+      title = '操作过于频繁';
+      const seconds = /^\d+$/.test(error.retryAfter?.trim() || '')
+        ? Number(error.retryAfter)
+        : 0;
+      description =
+        Number.isSafeInteger(seconds) && seconds > 0
+          ? `请在 ${seconds} 秒后重试。`
+          : '请稍后再试。';
+    } else if (error.status >= 500) {
+      title = '服务暂不可用';
+      description =
+        operation === 'logout'
+          ? '请稍后重新退出。'
+          : forced
+            ? unconfirmedPassword
+            : '请稍后重新提交。';
+    }
+  }
+  return (
+    <Alert
+      className="auth-error"
+      type="error"
+      showIcon
+      title={title}
+      description={
+        <>
+          {description}
+          {error instanceof ApiError && error.requestId && (
+            <details>
+              <summary>请求标识</summary>
+              {error.requestId}
+            </details>
+          )}
+        </>
+      }
+    />
+  );
+}
 
 interface PasswordValues {
   current_password: string;
@@ -64,14 +145,20 @@ export function AuthPage({
 }) {
   const auth = useSession(),
     { message } = App.useApp();
+  const workspace = auth.scope === 'property' ? '物业工作空间' : '平台管理中心';
   useEffect(() => {
     document.title = `${forced ? '更新安全密码' : '登录'} · ${auth.scope === 'property' ? '物业工作空间' : '平台管理中心'} · 美好社区`;
   }, [forced, auth.scope]);
   const [form] = Form.useForm();
+  const submitting = useRef(false);
   const [busy, setBusy] = useState(false),
-    [error, setError] = useState<unknown>();
+    [error, setError] = useState<{
+      reason: unknown;
+      operation: AuthOperation;
+    }>();
   async function submit(values: Record<string, string>) {
-    if (busy) return;
+    if (submitting.current) return;
+    submitting.current = true;
     setBusy(true);
     setError(undefined);
     try {
@@ -85,60 +172,81 @@ export function AuthPage({
         form.resetFields();
       }
     } catch (reason) {
-      setError(reason);
+      setError({ reason, operation: forced ? 'password' : 'login' });
       form.setFieldValue(forced ? 'current_password' : 'password', '');
     } finally {
+      submitting.current = false;
+      setBusy(false);
+    }
+  }
+  async function logout() {
+    if (submitting.current) return;
+    submitting.current = true;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await auth.logout();
+    } catch (reason) {
+      setError({ reason, operation: 'logout' });
+    } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }
   return (
     <main className="auth-page">
       <div className="auth-story">
-        <span className="eyebrow">NEIGHBORHOOD, CONNECTED</span>
-        <h1>
-          让每一天的
-          <br />
-          社区工作，
-          <br />
-          <span>清晰而从容。</span>
-        </h1>
-        <p>
-          连接物业服务与居民生活
-          <br />
-          专注业务，让管理更有序。
-        </p>
-        <div className="auth-lines">
+        <div className="auth-brand">
+          <span className="brand-symbol" aria-hidden="true">
+            <ApartmentOutlined />
+          </span>
+          <div>
+            <strong>美好社区</strong>
+            <span>社区物业服务平台</span>
+          </div>
+        </div>
+        <div className="auth-story-copy">
+          <h1>
+            让社区工作，
+            <span>清晰而从容。</span>
+          </h1>
+          <p>
+            连接物业服务与居民生活
+            <br />
+            专注业务，让管理更有序。
+          </p>
+        </div>
+        <div className="auth-lines" aria-hidden="true">
           <ApartmentOutlined />
         </div>
-        <div className="auth-footer">美好社区 · 社区物业服务平台</div>
       </div>
-      <div className="auth-form">
+      <section className="auth-form" aria-labelledby="auth-title">
         <div className="auth-form-inner">
-          <Tag color="blue">
-            {auth.scope === 'property' ? '物业工作空间' : '平台管理中心'}
-          </Tag>
-          <h2>{forced ? '设置新的安全密码' : '欢迎回来'}</h2>
-          <p className="muted">
+          {forced && <p className="auth-workspace">{workspace}</p>}
+          <h2 id="auth-title">{forced ? '设置新的安全密码' : workspace}</h2>
+          <p className="auth-description">
             {forced
               ? '首次登录或重置密码后，需要先完成密码更新。'
-              : '请输入当前后台的账号与密码，开始今天的工作。'}
+              : `请使用${auth.scope === 'property' ? '物业' : '平台'}账号登录`}
           </p>
           {forced && (
             <Alert
               type="info"
               showIcon
               title="请验证当前密码，并设置新的安全密码。"
-              style={{ margin: '24px 0' }}
+              className="auth-notice"
             />
           )}
-          {error !== undefined && <ReadError error={error} />}
+          {error && (
+            <AuthError error={error.reason} operation={error.operation} />
+          )}
           <Form
+            className="auth-fields"
             form={form}
             layout="vertical"
             onFinish={(values) => void submit(values as Record<string, string>)}
             disabled={busy}
             size="large"
-            style={{ marginTop: 28 }}
           >
             {forced ? (
               <PasswordFields />
@@ -170,6 +278,7 @@ export function AuthPage({
                   <Input.Password
                     autoComplete="current-password"
                     placeholder="请输入密码"
+                    prefix={<LockOutlined />}
                     maxLength={128}
                   />
                 </Form.Item>
@@ -187,21 +296,16 @@ export function AuthPage({
           </Form>
           <div className="auth-help">
             <span>
-              <SafetyCertificateOutlined />{' '}
-              {auth.scope === 'property' ? '物业' : '平台'}独立安全会话
+              <SafetyCertificateOutlined /> 请妥善保管账号与密码
             </span>
             {forced && (
-              <Button
-                type="link"
-                disabled={busy}
-                onClick={() => void auth.logout().catch(setError)}
-              >
+              <Button type="link" disabled={busy} onClick={() => void logout()}>
                 退出登录
               </Button>
             )}
           </div>
         </div>
-      </div>
+      </section>
     </main>
   );
 }
