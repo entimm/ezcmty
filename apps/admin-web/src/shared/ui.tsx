@@ -171,7 +171,7 @@ export function NoAccess({ back }: { back?: () => void }) {
         status="403"
         title="暂无访问权限"
         subTitle="请联系管理员核实当前账号权限。"
-        extra={back && <Button onClick={back}>返回工作台</Button>}
+        extra={back && <Button onClick={back}>返回工作概览</Button>}
       />
     </Panel>
   );
@@ -183,7 +183,7 @@ export function NotFound({ back }: { back?: () => void }) {
         status="404"
         title="页面或记录不存在"
         subTitle="请核对地址或返回当前后台继续工作。"
-        extra={back && <Button onClick={back}>返回工作台</Button>}
+        extra={back && <Button onClick={back}>返回工作概览</Button>}
       />
     </Panel>
   );

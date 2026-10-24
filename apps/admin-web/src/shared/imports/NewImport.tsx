@@ -157,7 +157,7 @@ export function NewImport({
           operation.current.create &&
           operation.current.create.body !== signature
         )
-          throw new Error('上次创建结果尚未核实，请先返回导入历史核对。');
+          throw new Error('上次创建结果尚未核实，请先返回导入中心核对。');
         operation.current.create ??= {
           key: crypto.randomUUID(),
           body: signature,
@@ -497,7 +497,7 @@ export function NewImport({
                   type="warning"
                   showIcon
                   title="请求结果待核实"
-                  description="请先查看原批次或导入历史。确认原草稿仍待上传时，可使用保留的原幂等键重试同一文件。"
+                  description="请先查看原批次或导入中心。确认原草稿仍待上传时，可使用保留的原幂等键重试同一文件。"
                 />
               )}
               {!busy && (
@@ -507,7 +507,7 @@ export function NewImport({
                       核实原批次
                     </Button>
                   )}
-                  <Button onClick={() => go('imports')}>查看导入历史</Button>
+                  <Button onClick={() => go('imports')}>查看导入中心</Button>
                   <Button type="primary" onClick={() => void submit()}>
                     使用原请求重试
                   </Button>

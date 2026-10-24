@@ -161,7 +161,7 @@ export function Reconciliation({
   return (
     <>
       <PageHeader
-        title={r.scope === 'platform' ? '资金核对' : '核对结果'}
+        title={r.scope === 'platform' ? '资金对账' : '对账结果'}
         description={
           r.scope === 'platform'
             ? '对齐渠道与本地事实，按证据恢复原业务或记录外部处置。'

@@ -51,7 +51,7 @@ import {
   safeReturn,
 } from './routes';
 import { navigate, setNavigationGuard, useAddress } from './navigation';
-import { menus } from './menus';
+import { menus, matchesMenuSearch } from './menus';
 import { Dashboard } from './Dashboard';
 import './styles.css';
 
@@ -503,10 +503,7 @@ function Workspace({
             : []),
         ]
       : [];
-  const results = flat.filter(
-      (item) =>
-        item.label.includes(search) || item.page.includes(search.toLowerCase()),
-    ),
+  const results = flat.filter((item) => matchesMenuSearch(item, search)),
     quick = actions.filter((item) => item.label.includes(search));
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
@@ -753,7 +750,7 @@ function Workspace({
         </div>
         <main className="workspace-scroll">
           <div className="breadcrumb">
-            <button onClick={() => go('home')}>工作台</button>
+            <button onClick={() => go('home')}>工作概览</button>
             {page !== 'home' && (
               <>
                 <span>/</span>

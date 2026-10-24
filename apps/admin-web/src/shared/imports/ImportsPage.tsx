@@ -108,7 +108,7 @@ function ImportCenter({
   return (
     <>
       <PageHeader
-        title={r.scope === 'platform' ? '导入历史' : '导入中心'}
+        title="导入中心"
         description="集中查看批次、核对预检问题，安全处理批量资料。"
         extra={
           r.can('create') && (

@@ -315,18 +315,53 @@ describe('工作空间完整组装', () => {
     fireEvent.click(screen.getByRole('button', { name: /搜索功能或操作/ }));
     const dialog = await screen.findByRole('dialog');
     expect(
-      within(dialog).getByRole('button', { name: /房屋管理/ }),
+      within(dialog).getByRole('button', { name: /房屋档案/ }),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByRole('button', { name: /物业费账单/ }),
+      within(dialog).getByRole('button', { name: /物业账单/ }),
     ).toBeInTheDocument();
     expect(
       within(dialog).queryByRole('button', {
-        name: /管理员|物业公司|角色与权限|新增物业费账单|新建批量导入/,
+        name: /账号管理|物业公司|角色权限|新增物业费账单|新建批量导入/,
       }),
     ).not.toBeInTheDocument();
     expect(within(dialog).getByText(/物业后台 · 锦绣华庭/)).toBeInTheDocument();
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: '搜索菜单、常用操作' }),
+      { target: { value: '管理员' } },
+    );
+    expect(
+      within(dialog).getByText('没有匹配的功能，请尝试业务名称'),
+    ).toBeInTheDocument();
   });
+  it.each([
+    ['房屋管理', '房屋档案', 'houses'],
+    ['物业费账单', '物业账单', 'bills'],
+  ])(
+    '原名称%s可搜索到%s，并跳转到原业务页面',
+    async (oldName, newName, page) => {
+      show('/property/houses', [
+        'property.company.read',
+        'property.community.read',
+        'property.house.read',
+        'property.bill.read',
+      ]);
+      await ready('houses');
+      fireEvent.click(screen.getByRole('button', { name: /搜索功能或操作/ }));
+      const dialog = await screen.findByRole('dialog');
+      fireEvent.change(
+        within(dialog).getByRole('textbox', { name: '搜索菜单、常用操作' }),
+        { target: { value: oldName } },
+      );
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: new RegExp(newName) }),
+      );
+      await ready(page);
+      expect(window.location.pathname).toBe(
+        `/property/communities/${firstCommunity}/${page}`,
+      );
+    },
+  );
   it('从列表进详情再返回，恢复筛选、分页和同一小区', async () => {
     show(
       '/property/communities/' +

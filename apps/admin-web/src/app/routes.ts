@@ -8,7 +8,7 @@ export interface Route {
   companyScope?: boolean;
 }
 const shared: Route[] = [
-  { page: 'home', path: '/', title: '工作台', companyScope: true },
+  { page: 'home', path: '/', title: '工作概览', companyScope: true },
   { page: 'login', path: '/login', title: '登录' },
   { page: 'change-password', path: '/change-password', title: '强制改密' },
   { page: 'profile', path: '/profile', title: '个人中心', companyScope: true },
@@ -38,19 +38,19 @@ export const routes: Record<Scope, Route[]> = {
     {
       page: 'accounts',
       path: '/system/accounts',
-      title: '管理员',
+      title: '账号管理',
       permission: 'admin.account.read',
     },
     {
       page: 'roles',
       path: '/system/roles',
-      title: '角色与权限',
+      title: '角色权限',
       permission: 'admin.role.read',
     },
     {
       page: 'audit',
       path: '/system/audit-logs',
-      title: '审计日志',
+      title: '操作日志',
       permission: 'admin.audit.read',
     },
     {
@@ -69,7 +69,7 @@ export const routes: Record<Scope, Route[]> = {
     {
       page: 'reconciliation',
       path: '/payment-reconciliation',
-      title: '资金核对',
+      title: '资金对账',
       permission: 'platform.payment_reconciliation.read',
     },
     {
@@ -100,13 +100,13 @@ export const routes: Record<Scope, Route[]> = {
     {
       page: 'houses',
       path: '/houses',
-      title: '房屋管理',
+      title: '房屋档案',
       permission: 'property.house.read',
     },
     {
       page: 'houses',
       path: '/communities/:community_id/houses',
-      title: '房屋管理',
+      title: '房屋档案',
       permission: 'property.house.read',
     },
     {
@@ -177,7 +177,7 @@ export const routes: Record<Scope, Route[]> = {
     {
       page: 'reconciliation',
       path: '/payment-reconciliation',
-      title: '核对结果',
+      title: '对账结果',
       permission: 'property.payment_reconciliation.read',
       companyScope: true,
     },
@@ -196,7 +196,7 @@ function importRoutes(scope: Scope): Route[] {
     {
       page: 'imports',
       path: '/imports',
-      title: scope === 'platform' ? '导入历史' : '导入中心',
+      title: '导入中心',
       permission: `${scope}.import.read`,
     },
     {

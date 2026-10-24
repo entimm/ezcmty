@@ -105,7 +105,7 @@ export function Dashboard({ companyName }: { companyName?: string }) {
         {
           label: '待核对差异',
           value: unavailable(value?.pending_reconciliation_count),
-          note: '本公司全部小区 · 核对结果',
+          note: '本公司全部小区 · 对账结果',
           icon: FileSearchOutlined,
           color: 'purple',
         },
@@ -158,7 +158,7 @@ export function Dashboard({ companyName }: { companyName?: string }) {
         },
         {
           title: '线上收款核对',
-          note: '查看本公司核对结果，资金处理由平台执行',
+          note: '查看本公司对账结果，资金处理由平台执行',
           page: 'reconciliation',
           permission: 'property.payment_reconciliation.read',
           icon: FileSearchOutlined,
@@ -228,13 +228,13 @@ export function Dashboard({ companyName }: { companyName?: string }) {
           icon: WalletOutlined,
         },
         {
-          title: '资金核对',
+          title: '资金对账',
           page: 'reconciliation',
           permission: 'platform.payment_reconciliation.read',
           icon: FileSearchOutlined,
         },
         {
-          title: '管理员',
+          title: '账号管理',
           page: 'accounts',
           permission: 'admin.account.read',
           icon: UserOutlined,
@@ -255,7 +255,7 @@ export function Dashboard({ companyName }: { companyName?: string }) {
   return (
     <>
       <PageHeader
-        title="工作台"
+        title="工作概览"
         description={
           property
             ? '本公司业务总览与当前小区常用入口'
@@ -466,7 +466,7 @@ export function Dashboard({ companyName }: { companyName?: string }) {
               <div>
                 <h4>物业接入与支付资金分域管理</h4>
                 <p>
-                  公司资料、管理员与收款配置在公司详情衔接；支付记录和资金核对保留独立处理入口。
+                  公司资料、管理员与收款配置在公司详情衔接；支付记录和资金对账保留独立处理入口。
                 </p>
                 {can('property.company.read') && (
                   <Button type="link" onClick={() => go('companies')}>
@@ -499,7 +499,8 @@ export function Dashboard({ companyName }: { companyName?: string }) {
                   : 'platform.payment_reconciliation.read',
               ) && (
                 <Button type="link" onClick={() => go('reconciliation')}>
-                  查看核对{property ? '结果' : '工作台'} <ArrowRightOutlined />
+                  查看{property ? '对账结果' : '资金对账'}{' '}
+                  <ArrowRightOutlined />
                 </Button>
               )}
               {property && !communityId && (

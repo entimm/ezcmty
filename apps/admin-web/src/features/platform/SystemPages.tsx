@@ -557,7 +557,7 @@ export function SystemPages({ page, params, go }: PlatformPagesProps) {
   const accountContent = (
     <>
       <PageHeader
-        title="平台管理员"
+        title="平台账号管理"
         description="管理平台账号与角色。账号授权仅在平台后台生效。"
         extra={
           can('admin.account.create') && (
@@ -710,7 +710,7 @@ export function SystemPages({ page, params, go }: PlatformPagesProps) {
   const rolesContent = (
     <>
       <PageHeader
-        title="角色与权限"
+        title="角色权限"
         description="按岗位配置业务权限；管理员与角色管理写权限仅限系统超级管理员。"
         extra={
           can('admin.role.create') && (
@@ -860,7 +860,7 @@ export function SystemPages({ page, params, go }: PlatformPagesProps) {
   const auditContent = (
     <>
       <PageHeader
-        title="审计日志"
+        title="操作日志"
         description="追踪平台操作与关键变更，关联请求标识定位问题。时间显示与查询均按北京时间。"
       />
       <Panel>
