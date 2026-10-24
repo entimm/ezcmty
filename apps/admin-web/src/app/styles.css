@@ -32,12 +32,20 @@ a:focus-visible {
 }
 .product {
   --brand: #2859db;
+  --workspace-header-bg: #10284f;
+  --workspace-login-start: #1b3968;
+  --workspace-login-end: #112540;
   min-height: 100vh;
   font-size: 14px;
 }
+.product[data-scope='property'] {
+  --workspace-header-bg: #24294d;
+  --workspace-login-start: #394675;
+  --workspace-login-end: #222a4c;
+}
 .topbar {
   height: 64px;
-  background: #111f38;
+  background: var(--workspace-header-bg);
   color: #eef3ff;
   display: flex;
   align-items: center;
@@ -1241,7 +1249,11 @@ a:focus-visible {
   background: #fff;
 }
 .auth-story {
-  background: linear-gradient(135deg, #182c4b, #112039);
+  background: linear-gradient(
+    135deg,
+    var(--workspace-login-start),
+    var(--workspace-login-end)
+  );
   color: #fff;
   position: relative;
   overflow: hidden;

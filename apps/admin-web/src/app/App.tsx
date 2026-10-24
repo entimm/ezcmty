@@ -155,6 +155,7 @@ export default function App() {
       <AntApp>
         <div
           className={'product ' + (compact ? 'compact' : '')}
+          data-scope={scope}
           style={{ '--brand': color, '--primary': color } as CSSProperties}
         >
           {scope === 'portal' ? (
