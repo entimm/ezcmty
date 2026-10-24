@@ -99,6 +99,86 @@ interface PasswordValues {
   new_password: string;
   confirm: string;
 }
+function AuthBrand({ mobile = false }: { mobile?: boolean }) {
+  return (
+    <div className={`auth-brand${mobile ? ' auth-brand-mobile' : ''}`}>
+      <span className="brand-symbol" aria-hidden="true">
+        <ApartmentOutlined />
+      </span>
+      <div>
+        <strong>美好社区</strong>
+        <span>社区物业服务平台</span>
+      </div>
+    </div>
+  );
+}
+
+function CommunityIllustration() {
+  return (
+    <svg
+      className="auth-community"
+      viewBox="0 0 560 300"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <defs>
+        <pattern
+          id="auth-windows"
+          x="0"
+          y="0"
+          width="24"
+          height="28"
+          patternUnits="userSpaceOnUse"
+        >
+          <path d="M8 8h6v10H8z" fill="currentColor" opacity=".25" />
+        </pattern>
+      </defs>
+      <circle cx="280" cy="156" r="130" stroke="currentColor" opacity=".1" />
+      <circle cx="280" cy="156" r="100" stroke="currentColor" opacity=".08" />
+      <path
+        d="M44 254h472M88 254V138h94v116m24 0V82h124v172m24 0V118h106v136"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        opacity=".65"
+      />
+      <path
+        d="M206 82l62-30 62 30M354 118l53-24 53 24M88 138l47-22 47 22"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        opacity=".65"
+      />
+      <path
+        d="M104 150h62v84h-62zm118-52h92v136h-92zm148 34h74v102h-74z"
+        fill="url(#auth-windows)"
+      />
+      <path
+        d="M254 254v-36h28v36m-158 0v-24h22v24m250 0v-24h22v24M58 254v-34m436 34v-44"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        opacity=".65"
+      />
+      <path
+        d="M58 222c-23 0-23-30 0-42 23 12 23 42 0 42zm436-8c-27 0-27-35 0-49 27 14 27 49 0 49z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="currentColor"
+        fillOpacity=".04"
+        opacity=".65"
+      />
+      <path
+        d="M84 276c108-12 284-12 392 0M352 58h32m-16-16v32M142 68h20m-10-10v20"
+        stroke="currentColor"
+        strokeLinecap="round"
+        opacity=".25"
+      />
+      <circle cx="415" cy="58" r="4" fill="currentColor" opacity=".4" />
+    </svg>
+  );
+}
+
 function PasswordFields() {
   return (
     <>
@@ -196,16 +276,9 @@ export function AuthPage({
   return (
     <main className="auth-page">
       <div className="auth-story">
-        <div className="auth-brand">
-          <span className="brand-symbol" aria-hidden="true">
-            <ApartmentOutlined />
-          </span>
-          <div>
-            <strong>美好社区</strong>
-            <span>社区物业服务平台</span>
-          </div>
-        </div>
+        <AuthBrand />
         <div className="auth-story-copy">
+          <CommunityIllustration />
           <h1>
             让社区工作，
             <span>清晰而从容。</span>
@@ -216,19 +289,20 @@ export function AuthPage({
             专注业务，让管理更有序。
           </p>
         </div>
-        <div className="auth-lines" aria-hidden="true">
-          <ApartmentOutlined />
-        </div>
+        <p className="auth-story-footer">物业服务 · 居民生活 · 美好社区</p>
       </div>
       <section className="auth-form" aria-labelledby="auth-title">
+        <AuthBrand mobile />
         <div className="auth-form-inner">
-          {forced && <p className="auth-workspace">{workspace}</p>}
-          <h2 id="auth-title">{forced ? '设置新的安全密码' : workspace}</h2>
-          <p className="auth-description">
-            {forced
-              ? '首次登录或重置密码后，需要先完成密码更新。'
-              : `请使用${auth.scope === 'property' ? '物业' : '平台'}账号登录`}
-          </p>
+          <header className="auth-form-heading">
+            {forced && <p className="auth-workspace">{workspace}</p>}
+            <h2 id="auth-title">{forced ? '设置新的安全密码' : workspace}</h2>
+            <p className="auth-description">
+              {forced
+                ? '首次登录或重置密码后，需要先完成密码更新。'
+                : `请使用${auth.scope === 'property' ? '物业' : '平台'}账号登录`}
+            </p>
+          </header>
           {forced && (
             <Alert
               type="info"
