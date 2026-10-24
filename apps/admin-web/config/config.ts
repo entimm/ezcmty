@@ -3,7 +3,7 @@ const platform = process.env.UMI_APP_PLATFORM_API_BASE || '/api/platform';
 const property = process.env.UMI_APP_PROPERTY_API_BASE || '/api/property';
 export default defineConfig({
   npmClient: 'pnpm',
-  title: process.env.UMI_APP_NAME || '邻里云 · 社区物业平台',
+  title: process.env.UMI_APP_NAME || '美好社区 · 社区物业平台',
   routes: [{ path: '/*', component: '@/app/App' }],
   history: { type: 'browser' },
   hash: true,

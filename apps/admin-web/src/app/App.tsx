@@ -185,7 +185,7 @@ function Portal() {
       <span className="brand-symbol">
         <ApartmentOutlined />
       </span>
-      <h1>邻里云 · 管理后台</h1>
+      <h1>美好社区 · 管理后台</h1>
       <p>请选择当前工作空间</p>
       <div className="portal-grid">
         {(['platform', 'property'] as const).map((scope) => (
@@ -523,7 +523,7 @@ function Workspace({
     return () => window.removeEventListener('keydown', key);
   }, []);
   useEffect(() => {
-    document.title = `${title} · ${auth.scope === 'property' ? '物业工作空间' : '平台管理中心'} · 邻里云`;
+    document.title = `${title} · ${auth.scope === 'property' ? '物业工作空间' : '平台管理中心'} · 美好社区`;
   }, [title, auth.scope]);
   function switchCommunity(id: string) {
     if (id === communityId) return;
@@ -611,7 +611,7 @@ function Workspace({
           <span className="brand-symbol">
             <ApartmentOutlined />
           </span>
-          <strong>邻里云</strong>
+          <strong>美好社区</strong>
           <span className="brand-divider" />
           <span className="workspace-name">
             {auth.scope === 'property' ? '物业工作空间' : '平台管理中心'}
@@ -655,7 +655,7 @@ function Workspace({
             <strong>
               {auth.scope === 'property'
                 ? company.data?.name || '物业工作空间'
-                : '邻里云运营平台'}
+                : '美好社区运营平台'}
             </strong>
             <small>
               {auth.scope === 'property'
@@ -781,7 +781,7 @@ function Workspace({
             </div>
           </Suspense>
           <footer className="workspace-footer">
-            邻里云 · 让社区服务更有序
+            美好社区 · 让社区服务更有序
           </footer>
         </main>
       </div>

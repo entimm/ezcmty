@@ -65,7 +65,7 @@ export function AuthPage({
   const auth = useSession(),
     { message } = App.useApp();
   useEffect(() => {
-    document.title = `${forced ? '更新安全密码' : '登录'} · ${auth.scope === 'property' ? '物业工作空间' : '平台管理中心'} · 邻里云`;
+    document.title = `${forced ? '更新安全密码' : '登录'} · ${auth.scope === 'property' ? '物业工作空间' : '平台管理中心'} · 美好社区`;
   }, [forced, auth.scope]);
   const [form] = Form.useForm();
   const [busy, setBusy] = useState(false),
@@ -110,7 +110,7 @@ export function AuthPage({
         <div className="auth-lines">
           <ApartmentOutlined />
         </div>
-        <div className="auth-footer">邻里云 · 社区物业服务平台</div>
+        <div className="auth-footer">美好社区 · 社区物业服务平台</div>
       </div>
       <div className="auth-form">
         <div className="auth-form-inner">
