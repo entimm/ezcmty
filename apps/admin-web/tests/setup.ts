@@ -1,25 +1,25 @@
 import '@testing-library/jest-dom/vitest';
-
+import { cleanup } from '@testing-library/react';
+import { afterEach } from 'vitest';
+afterEach(() => cleanup());
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: (query: string) => ({
+  value: () => ({
     matches: false,
-    media: query,
-    onchange: null,
     addListener() {},
     removeListener() {},
     addEventListener() {},
     removeEventListener() {},
-    dispatchEvent: () => false,
+    dispatchEvent() {
+      return false;
+    },
   }),
 });
-
-globalThis.ResizeObserver = class {
+class ResizeObserverMock {
   observe() {}
   unobserve() {}
   disconnect() {}
-};
-
-// jsdom has no pseudo-element layout, which Ant Design's scrollbar probe uses.
-const getComputedStyle = window.getComputedStyle;
-window.getComputedStyle = (element) => getComputedStyle(element);
+}
+Object.defineProperty(globalThis, 'ResizeObserver', {
+  value: ResizeObserverMock,
+});

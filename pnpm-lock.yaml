@@ -32,6 +32,9 @@ importers:
       antd:
         specifier: 6.6.6
         version: 6.6.6(date-fns@2.30.0)(moment@2.31.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      dayjs:
+        specifier: 1.11.23
+        version: 1.11.23
       react:
         specifier: 19.3.0
         version: 19.3.0

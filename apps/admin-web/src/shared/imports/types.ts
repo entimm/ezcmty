@@ -1,5 +1,11 @@
-import type { Page } from '../api/admin';
-export type ScopeType = 'company' | 'community';
+export interface Page<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+export type Filters = Record<string, string | number | boolean | undefined>;
+export type Scalar = string | number | boolean | null;
 export type BatchStatus =
   | 'draft'
   | 'uploading'
@@ -22,34 +28,19 @@ export type NextAction =
   | 'recover'
   | 'generate_error_file'
   | 'download_error_file';
-export type Scalar = string | number | boolean | null;
-export interface Version {
-  version_no: number;
-  config_hash: string;
-  available_for_new_batches: boolean;
-  template_downloadable: boolean;
-  released_at: string;
-  release_notes: string;
-}
 export interface ImportType {
   key: string;
   name: string;
-  allowed_scope_types: ScopeType[];
-  supported_modes: ['create'];
-  versions: Version[];
-}
-export interface TemplateField {
-  key: string;
-  label: string;
-  order: number;
-  required: boolean;
-  data_type: string;
-  max_length: number | null;
-  format: string | null;
-  enum_values: Scalar[];
-  example: Scalar;
-  description: string;
-  normalization_rules: string[];
+  allowed_scope_types: ('company' | 'community')[];
+  supported_modes: 'create'[];
+  versions: {
+    version_no: number;
+    config_hash: string;
+    available_for_new_batches: boolean;
+    template_downloadable: boolean;
+    released_at: string;
+    release_notes: string;
+  }[];
 }
 export interface Template {
   key: string;
@@ -57,16 +48,25 @@ export interface Template {
   version_no: number;
   config_hash: string;
   available_for_new_batches: boolean;
-  released_at: string;
   release_notes: string;
-  fields: TemplateField[];
+  fields: {
+    key: string;
+    label: string;
+    order: number;
+    required: boolean;
+    data_type: string;
+    max_length: number | null;
+    format: string | null;
+    enum_values: Scalar[];
+    example: Scalar;
+    description: string;
+    normalization_rules: string[];
+  }[];
 }
-export interface TaskIdentity {
+export interface Task {
   id: string;
   phase: 'parse' | 'precheck' | 'apply' | 'artifact';
   status: 'ready' | 'running' | 'completed' | 'paused' | 'cancelled';
-}
-export interface Task extends TaskIdentity {
   progress_done: number;
   progress_total: number | null;
   updated_at: string;
@@ -77,13 +77,12 @@ export interface BatchAction {
   status: BatchStatus;
   phase: string;
   preview_version: number;
-  active_task: TaskIdentity | null;
-  source_artifact: { id: string; size_bytes: number; sha256: string } | null;
+  active_task: Pick<Task, 'id' | 'phase' | 'status'> | null;
 }
 export interface BatchCreate {
   import_type: string;
   template_version_no: number;
-  scope: { type: ScopeType; id: string };
+  scope: { type: 'company' | 'community'; id: string };
   mode: 'create';
   property_company_id?: string;
 }
@@ -93,21 +92,6 @@ export interface ConfirmInput {
   apply_policy: 'all_rows' | 'valid_rows_only';
   include_warning_rows: boolean;
 }
-export interface BusinessField {
-  key: string;
-  label: string;
-  format: 'text' | 'money_cents';
-}
-export interface BusinessPreview {
-  fields: BusinessField[];
-  summary: {
-    key: string;
-    label: string;
-    format: 'integer' | 'money_cents';
-    without_warning_rows: string;
-    with_warning_rows: string;
-  }[];
-}
 export interface Batch {
   id: string;
   parent_batch_id: string | null;
@@ -115,7 +99,7 @@ export interface Batch {
   import_type_name: string;
   property_company_id: string;
   template: { key: string; version_no: number; config_hash: string };
-  scope: { type: ScopeType; id: string; name: string };
+  scope: { type: 'company' | 'community'; id: string; name: string };
   mode: 'create';
   status: BatchStatus;
   phase: string;
@@ -129,7 +113,16 @@ export interface Batch {
   } | null;
   apply_policy: ConfirmInput['apply_policy'] | null;
   include_warning_rows: boolean | null;
-  business_preview?: BusinessPreview | null;
+  business_preview?: {
+    fields: { key: string; label: string; format: 'text' | 'money_cents' }[];
+    summary: {
+      key: string;
+      label: string;
+      format: 'integer' | 'money_cents';
+      without_warning_rows: string;
+      with_warning_rows: string;
+    }[];
+  } | null;
   statistics: {
     total_rows: number;
     preview: {
@@ -194,7 +187,7 @@ export interface ImportRow {
 export interface Issue {
   id: string;
   preview_version: number;
-  phase: 'parse' | 'precheck' | 'apply';
+  phase: string;
   row_no: number | null;
   column_index: number | null;
   column_name: string | null;
@@ -211,7 +204,7 @@ export interface Issue {
 export interface ImportEvent {
   id: string;
   event_type: string;
-  phase: TaskIdentity['phase'] | null;
+  phase: string | null;
   message: string;
   created_at: string;
 }
@@ -230,13 +223,7 @@ export interface ErrorFile {
   format: 'csv' | 'xlsx' | null;
   task: Task | null;
   file_name: string | null;
-  media_type: string | null;
-  size_bytes: number | null;
-  sha256: string | null;
-  generated_at: string | null;
   expires_at: string | null;
   last_error_code: string | null;
   downloadable: boolean;
 }
-export type Filters = Record<string, string | number | boolean | undefined>;
-export type { Page };

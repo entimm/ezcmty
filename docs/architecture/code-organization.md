@@ -168,29 +168,27 @@ flowchart TD
 
 ```text
 src/
-├─ app/{platform,property}/routes.ts      本端路由与权限
+├─ app/                                  入口、路由、菜单、工作台与批准的主题布局
+├─ auth/                                 每端独立会话、登录、本人资料和密码
 ├─ features/
 │  ├─ platform/
-│  │  ├─ property/CompanyDetailPage.tsx  仅增加收款配置入口
-│  │  └─ payments/
-│  │     ├─ api.ts、hooks.ts
-│  │     ├─ PaymentConfigurationPage.tsx
-│  │     ├─ PaymentOrdersPage.tsx、PaymentDetailPage.tsx
-│  │     ├─ ReconciliationPage.tsx、RecoveryForm.tsx
-│  │     └─ ExternalResolutionForm.tsx
+│  │  ├─ PlatformPages.tsx、SystemPages.tsx、api.ts
+│  │  ├─ imports/index.tsx                平台导入能力绑定
+│  │  └─ payments/{index.tsx,api.ts}       平台资金读取与独占写方法
 │  └─ property/
-│     ├─ billing/                       线上流水和占用兼容
-│     └─ payments/
-│        ├─ api.ts、hooks.ts
-│        └─ PaymentOrdersPage.tsx、PaymentDetailPage.tsx
-└─ shared/payments/
-   ├─ types.ts、presentation.ts
-   └─ PaymentSummary.tsx、FundsProgress.tsx
+│     ├─ Housing.tsx、Billing.tsx、BillModal.tsx、Residents.tsx
+│     ├─ Communities.tsx、api.ts          本公司资料及物业业务契约
+│     ├─ imports/index.tsx                物业导入能力绑定
+│     └─ payments/{index.tsx,api.ts}       物业资金受限只读投影
+└─ shared/
+   ├─ context.tsx、request.ts、hooks.ts、forms.tsx、ui.tsx
+   ├─ imports/                           注入当前端能力的通用任务交互
+   └─ payments/                          注入当前端能力的资金页面与展示
 ```
 
-`api.ts` 定义本端可调用操作；`hooks.ts` 协调本端 QueryClient、查询键和失效；页面负责路由、筛选和交互。共享类型只覆盖相同契约，共享展示组件不持有身份、数据请求或恢复权限。物业接口和响应保留只读公司投影，不能通过隐藏平台页面按钮实现隔离。
+当前页面交互以[已确认后台体验设计](../design/admin/experience.md)为准。两端 `api.ts` 定义各自可调用操作；共享页面只接收所属端注入的窄能力，不导入平台或物业业务模块。物业资金运行时不提供写方法，并使用服务端受限投影，不能通过隐藏按钮实现隔离。
 
-平台公司详情只链接收款配置页，商户绑定、规则和核验表单归支付模块；资金恢复的原因与幂等提交也归该模块。外部处置表单归平台支付模块，独立收集原因和依据引用，使用差异令牌提交；不复用资金恢复的异步受理结果。物业账单详情仍归 billing，展示系统来源及占用，不承载渠道执行。
+平台公司详情链接收款配置；商户绑定、规则、核验、恢复与外部处置通过平台支付运行时接入。外部处置独立收集原因、依据引用和差异令牌；受理、已记录与资金成功分别呈现。物业账单保留线下写入、版本和幂等核实，支付资金只读，不承载渠道执行。
 
 ## 居民小程序目录
 
@@ -241,9 +239,9 @@ services/backend/tests/
 └─ support/payments.py                 确有共用的构造器和渠道替身
 
 apps/admin-web/tests/
-├─ features/{platform,property}/payments/
-├─ features/property/                  现有账单回归
-└─ shared/payments/
+├─ app/、auth/                         路由、会话、认证和资料
+├─ features/{platform,property}/       各端契约、权限与业务交互
+└─ shared/{imports,payments}/          任务策略、资金状态与提交保护
 
 apps/miniapp/tests/
 ├─ resident/{billing,payments}/

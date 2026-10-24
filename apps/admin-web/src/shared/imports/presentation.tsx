@@ -1,79 +1,123 @@
-import { Alert, Descriptions, Progress, Space, Tag, Typography } from 'antd';
-import type { Batch, BatchStatus, BusinessPreview, Task } from './types';
-import { businessValue, statusNames, phaseNames, time } from './values';
-export function BusinessSummary({
-  preview,
-  comparison = false,
-  includeWarningRows,
-  blocked = false,
+import type { ReactNode } from 'react';
+import { Alert, Button, Progress, Space, Tag } from 'antd';
+import { ApiError } from '../request';
+import type { Task } from './types';
+export const batchNames: Record<string, string> = {
+  draft: '待上传',
+  uploading: '接收文件中',
+  prechecking: '解析预检中',
+  preview_ready: '预检完成',
+  executing: '执行中',
+  completed: '已完成',
+  partial_failed: '部分完成',
+  failed: '执行失败',
+  blocked: '待核实',
+  cancel_requested: '正在取消',
+  cancelled: '已取消',
+  expired: '已过期',
+};
+export const rowNames: Record<string, string> = {
+  pending: '待处理',
+  valid: '通过',
+  warning: '警告',
+  error: '错误',
+  none: '无动作',
+  create: '新增',
+  skip: '跳过',
+  conflict: '拒绝',
+  created: '执行成功',
+  skipped: '业务跳过',
+  failed: '执行失败',
+  uncertain: '结果待核实',
+  cancelled: '取消未执行',
+  excluded: '策略排除',
+};
+export const phaseNames: Record<string, string> = {
+  awaiting_source_file: '等待上传',
+  uploading: '接收文件',
+  parse_queued: '等待解析',
+  parse: '解析文件',
+  precheck_queued: '等待预检',
+  precheck: '业务预检',
+  awaiting_confirmation: '等待确认',
+  apply_queued: '等待执行',
+  apply: '异步执行',
+  recovery_queued: '等待恢复',
+  recovery: '核实原任务',
+  cancelling: '安全停止',
+  finished: '已结束',
+  artifact: '生成问题文件',
+};
+export function time(value: string | null | undefined) {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf())
+    ? value
+    : date.toLocaleString('zh-CN', { hour12: false });
+}
+export function ErrorNotice({
+  error,
+  retry,
 }: {
-  preview: BusinessPreview | null | undefined;
-  comparison?: boolean;
-  includeWarningRows?: boolean;
-  blocked?: boolean;
+  error: unknown;
+  retry?: () => void;
 }) {
-  if (!preview?.summary.length) return null;
+  if (!error) return null;
   return (
-    <Space orientation="vertical" style={{ width: '100%' }}>
-      <Descriptions
-        title="预计新增影响"
-        column={1}
-        items={preview.summary.map((item) => ({
-          key: item.key,
-          label: item.label,
-          children: comparison ? (
-            <>
-              <div>
-                不含警告行：
-                {businessValue(item.without_warning_rows, item.format)}
-              </div>
-              <div>
-                含警告行：{businessValue(item.with_warning_rows, item.format)}
-              </div>
-            </>
-          ) : blocked ? (
-            '当前策略有错误行，请先调整执行策略'
-          ) : includeWarningRows === undefined ? (
-            '请先选择是否执行警告行'
-          ) : (
-            businessValue(
-              includeWarningRows
-                ? item.with_warning_rows
-                : item.without_warning_rows,
-              item.format,
-            )
-          ),
-        }))}
-      />
-      <Typography.Text type="secondary">
-        合计由服务端按完整预览计算，排除跳过、错误和非新增行。此处为预计新增影响，实际结果以已提交行记录为准。
-      </Typography.Text>
-    </Space>
+    <Alert
+      showIcon
+      type="error"
+      style={{ marginBottom: 20 }}
+      title={error instanceof Error ? error.message : '读取失败，请重试'}
+      description={
+        error instanceof ApiError && error.requestId
+          ? `请求编号：${error.requestId}`
+          : undefined
+      }
+      action={retry && <Button onClick={retry}>重试</Button>}
+    />
   );
 }
-export function BatchStatusTag({ status }: { status: BatchStatus }) {
+export function BatchTag({ value }: { value: string }) {
   return (
     <Tag
       color={
-        status === 'blocked'
-          ? 'warning'
-          : status === 'completed'
-            ? 'success'
-            : undefined
+        value === 'completed'
+          ? 'success'
+          : ['failed', 'partial_failed'].includes(value)
+            ? 'error'
+            : value === 'blocked'
+              ? 'warning'
+              : ['prechecking', 'executing', 'uploading'].includes(value)
+                ? 'processing'
+                : undefined
       }
     >
-      {statusNames[status]}
+      {batchNames[value] || value}
     </Tag>
+  );
+}
+export function Stats({ items }: { items: [string, ReactNode, string?][] }) {
+  return (
+    <div className="stats-grid">
+      {items.map(([label, value, sub]) => (
+        <div className="metric" key={label}>
+          <span>{label}</span>
+          <strong>{value}</strong>
+          {sub && <small>{sub}</small>}
+        </div>
+      ))}
+    </div>
   );
 }
 export function TaskProgress({ task }: { task: Task | null }) {
   if (!task) return null;
   return (
     <Space orientation="vertical" style={{ width: '100%' }}>
-      <Typography.Text>
-        {phaseNames[task.phase]} · 已处理 {task.progress_done} /{' '}
-        {task.progress_total === null ? '总行数未知' : task.progress_total}
-      </Typography.Text>
+      <strong>
+        {phaseNames[task.phase] || task.phase} · 已处理 {task.progress_done} /{' '}
+        {task.progress_total ?? '总量待确定'}
+      </strong>
       {task.progress_total !== null && task.progress_total > 0 && (
         <Progress
           percent={Math.min(
@@ -83,73 +127,45 @@ export function TaskProgress({ task }: { task: Task | null }) {
           status={task.status === 'paused' ? 'exception' : 'active'}
         />
       )}
-      <Typography.Text type="secondary">
+      <span style={{ color: '#64748b' }}>
         最近更新：{time(task.updated_at)}
-        {task.last_error_code ? ` · ${task.last_error_code}` : ''}
-      </Typography.Text>
+        {task.last_error_code && ` · ${task.last_error_code}`}
+      </span>
       {task.status === 'paused' && (
         <Alert
           type="warning"
-          title="任务已暂停，需要核实阻断原因后恢复原任务"
-        />
-      )}
-    </Space>
-  );
-}
-export function Statistics({ batch }: { batch: Batch }) {
-  const p = batch.statistics.preview,
-    e = batch.statistics.execution;
-  return (
-    <Space orientation="vertical" style={{ width: '100%' }}>
-      <Descriptions
-        title="预览计划与问题"
-        size="small"
-        bordered
-        items={[
-          {
-            key: 'total',
-            label: '总行数',
-            children:
-              batch.source_artifact && batch.preview
-                ? batch.statistics.total_rows
-                : '未知',
-          },
-          ...Object.entries({
-            新增: p.create_rows,
-            更新: p.update_rows,
-            跳过: p.skip_rows,
-            警告: p.warning_rows,
-            错误: p.error_rows,
-          }).map(([label, children]) => ({ key: label, label, children })),
-        ]}
-      />
-      <Typography.Text type="secondary">
-        创建模式，不会更新已有数据。计划动作与问题统计可以重叠，不能相加。
-      </Typography.Text>
-      <Descriptions
-        title="本批次实际结果"
-        size="small"
-        bordered
-        items={Object.entries({
-          创建成功: e.created_rows,
-          更新成功: e.updated_rows,
-          业务跳过: e.skipped_rows,
-          执行失败: e.failed_rows,
-          待核实: e.uncertain_rows,
-          策略排除: e.excluded_rows,
-          取消未执行: e.cancelled_rows,
-          已处理: e.processed_rows,
-          可安全重试: e.retryable_failed_rows,
-        }).map(([label, children]) => ({ key: label, label, children }))}
-      />
-      {e.uncertain_rows > 0 && (
-        <Alert
-          type="warning"
           showIcon
-          title="存在待核实结果，请核实并恢复原任务"
-          description="未知结果不计为失败，不能通过失败行重跑创建新操作。"
+          title="任务已暂停，请核实原因后恢复原任务"
         />
       )}
     </Space>
   );
 }
+export function scalar(value: unknown) {
+  return value === null || value === undefined
+    ? '—'
+    : typeof value === 'boolean'
+      ? value
+        ? '是'
+        : '否'
+      : String(value);
+}
+export function cents(value: string | number | bigint | null | undefined) {
+  if (value === null || value === undefined) return '待核对';
+  try {
+    const n = BigInt(value);
+    const negative = n < 0n;
+    const x = negative ? -n : n;
+    return `${negative ? '-' : ''}¥${x / 100n}.${String(x % 100n).padStart(2, '0')}`;
+  } catch {
+    return '待核对';
+  }
+}
+export const notices: Record<string, string> = {
+  property_fee_bills:
+    '仅新建账单，创建后立即生效。已有有效账单不覆盖；线上收款不能通过线下操作冲正。',
+  houses:
+    '请先建立分区、楼栋和单元。仅新增房屋，不携带业主；相同资料跳过，不同资料报冲突。',
+  house_owners:
+    '仅新增业主登记，不创建房屋、居民账号或房屋授权；相同停用登记不会自动启用。',
+};

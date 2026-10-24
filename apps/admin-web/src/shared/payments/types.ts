@@ -1,3 +1,4 @@
+export type { Page, Filters } from '../imports/types';
 export interface MerchantBinding {
   id: string;
   property_company_id: string;
@@ -180,4 +181,12 @@ export interface RecoveryAccepted {
   target_id: string;
   accepted_at: string;
 }
-export type Filters = Record<string, string | number | boolean | undefined>;
+export interface BindingInput {
+  merchant_no: string;
+  merchant_name: string;
+  expected_configuration_token: string;
+}
+export interface RuleInput {
+  expected_configuration_token: string;
+  items: [{ rate_bps: number }];
+}
