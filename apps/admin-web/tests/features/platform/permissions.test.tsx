@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from 'antd';
 import { describe, expect, it, vi } from 'vitest';
-import { SystemPages } from '../../../src/features/platform/SystemPages';
+import { SystemPages } from '../../../src/shared/system/SystemPages';
 import {
   AdminContext,
   type AdminContextValue,

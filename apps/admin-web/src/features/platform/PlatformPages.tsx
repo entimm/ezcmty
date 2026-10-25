@@ -44,7 +44,7 @@ import {
   usePlatformApi,
   usePlatformWrite,
 } from './components';
-import { SystemPages } from './SystemPages';
+import { SystemPages } from '../../shared/system/SystemPages';
 
 type Go = (page: string, params?: Record<string, string | undefined>) => void;
 export interface PlatformPagesProps {

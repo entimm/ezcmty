@@ -173,7 +173,7 @@ src/
 ├─ auth/                                 每端独立会话、登录、本人资料和密码
 ├─ features/
 │  ├─ platform/
-│  │  ├─ PlatformPages.tsx、SystemPages.tsx、api.ts
+│  │  ├─ PlatformPages.tsx、api.ts
 │  │  ├─ imports/index.tsx                平台导入能力绑定
 │  │  └─ payments/{index.tsx,api.ts}       平台资金读取与独占写方法
 │  └─ property/
