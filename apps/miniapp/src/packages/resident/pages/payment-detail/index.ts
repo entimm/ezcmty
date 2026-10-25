@@ -4,7 +4,7 @@ import {
   canContinuePayment,
   PaymentController,
   reconcilePaymentOrder,
-} from '../../../../core/payments';
+} from '../../payments';
 import { ApiError, errorText } from '../../../../core/request';
 import { onSessionReset, requireSession } from '../../../../core/session';
 import { PaymentOrder } from '../../../../core/types';

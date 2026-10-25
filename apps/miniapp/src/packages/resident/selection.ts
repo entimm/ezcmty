@@ -1,5 +1,5 @@
-import { API_BASE_URL } from '../config';
-import { currentCredential, onSessionReset } from './session';
+import { API_BASE_URL } from '../../config';
+import { currentCredential, onSessionReset } from '../../core/session';
 
 const prefix = 'xlife:' + API_BASE_URL + ':resident-house:';
 let owner: string | undefined;

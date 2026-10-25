@@ -17,7 +17,8 @@ it('replays an uncertain claim with the same key and rejects edits until it is r
     .mockRejectedValueOnce(new ApiError(503, 'service.unavailable', '稍后重试'))
     .mockResolvedValue({ id: 'claim-a', status: 'pending' });
   vi.doMock('../../src/core/api', () => ({ createClaim }));
-  const { ClaimSubmission } = await import('../../src/core/claims');
+  const { ClaimSubmission } =
+    await import('../../src/packages/resident/claims');
   const controller = new ClaimSubmission();
   const data = {
     house_id: 'house-a',
@@ -77,7 +78,8 @@ it('discards a late claim write after the resident session changes', async () =>
       }),
   );
   vi.doMock('../../src/core/api', () => ({ createClaim }));
-  const { ClaimSubmission } = await import('../../src/core/claims');
+  const { ClaimSubmission } =
+    await import('../../src/packages/resident/claims');
   const { clearSession } = await import('../../src/core/session');
   const controller = new ClaimSubmission();
   const pending = controller.submit({

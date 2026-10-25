@@ -78,7 +78,9 @@ global.wx = {
 };
 
 const load = (name) => require(path.join(compiled, name));
-const { PaymentController, canContinuePayment } = load('core/payments.js');
+const { PaymentController, canContinuePayment } = load(
+  'packages/resident/payments.js',
+);
 const api = load('core/api.js');
 const { residentRequest } = load('core/session.js');
 const { ApiError } = load('core/request.js');

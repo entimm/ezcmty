@@ -1,7 +1,7 @@
 import * as api from '../../../../core/api';
 import { requireSession } from '../../../../core/session';
 import { ApiError, errorText } from '../../../../core/request';
-import { setSelectedBindingId } from '../../../../core/selection';
+import { setSelectedBindingId } from '../../selection';
 import { go, pageUrl } from '../../../../ui/navigation';
 import { PageScope } from '../../page-state';
 import { bindingView } from '../../presentation';

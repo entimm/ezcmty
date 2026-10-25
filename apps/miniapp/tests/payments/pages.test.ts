@@ -50,11 +50,11 @@ vi.mock('../../src/core/session', () => ({
   },
   currentCredential: mocks.credential,
 }));
-vi.mock('../../src/core/selection', () => ({
+vi.mock('../../src/packages/resident/selection', () => ({
   getSelectedBindingId: () => 'binding-1',
   setSelectedBindingId: mocks.setSelection,
 }));
-vi.mock('../../src/core/payments', () => ({
+vi.mock('../../src/packages/resident/payments', () => ({
   reconcilePaymentOrder: (item: PaymentOrder) => item,
   canContinuePayment: mocks.canContinue,
   hasUncertainPayment: mocks.uncertain,

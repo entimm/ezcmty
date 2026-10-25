@@ -2,10 +2,7 @@ import * as api from '../../../../core/api';
 import { currentCredential } from '../../../../core/session';
 import { ApiError, errorText } from '../../../../core/request';
 import { money } from '../../../../core/format';
-import {
-  getSelectedBindingId,
-  setSelectedBindingId,
-} from '../../../../core/selection';
+import { getSelectedBindingId, setSelectedBindingId } from '../../selection';
 import type { Binding } from '../../../../core/types';
 import { go, pageUrl } from '../../../../ui/navigation';
 import { PageScope } from '../../page-state';

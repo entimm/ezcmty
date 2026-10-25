@@ -200,14 +200,15 @@ src/
 ```text
 src/
 ├─ app.json                            页面注册
-├─ core/                              居民契约、会话及请求恢复
+├─ core/                              居民契约、会话及主包请求能力
 │  ├─ api.ts、types.ts
 │  ├─ session.ts、request.ts
-│  ├─ claims.ts、phones.ts
-│  └─ payments.ts                    SDK 与原单恢复协调
+│  └─ phones.ts                       本人手机号提交与恢复
 ├─ ui/navigation.ts                   安全返回白名单
 ├─ components/                        无业务副作用的统一展示
 └─ packages/resident/
+   ├─ claims.ts、payments.ts           居民认领与支付原请求恢复、SDK 适配
+   ├─ selection.ts                    按环境和居民用户隔离的房屋选择 ID
    ├─ presentation.ts、page-state.ts   展示转换与页面隔离
    ├─ components/house-picker/         分层认领/已授权切换抽屉
    └─ pages/
@@ -216,7 +217,7 @@ src/
       └─ payment-confirm、payment-orders、payment-detail
 ```
 
-支付确认页负责展示和按钮，`core/payments.ts` 协调原请求恢复、调起和结果刷新，SDK 适配只返回面板操作结果。恢复状态及调起参数的隔离要求见 [小程序身份、请求与状态](miniapp.md#身份请求与状态)。SDK 成功只触发服务端核实，取消或未知结果继续处理原订单。
+支付确认页负责展示和按钮，`packages/resident/payments.ts` 协调原请求恢复、调起和结果刷新，SDK 适配只返回面板操作结果。恢复状态及调起参数的隔离要求见 [小程序身份、请求与状态](miniapp.md#身份请求与状态)。SDK 成功只触发服务端核实，取消或未知结果继续处理原订单。
 
 账单页面检查当前房屋授权，本人订单页面使用本人订单授权；不对全部支付页面统一要求当前房屋绑定。居民响应使用单独的白名单 Mapper，不复用管理员完整记录。新页面注册、安全回跳和查询参数一并调整，不将调起参数放进导航。
 

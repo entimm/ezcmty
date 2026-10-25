@@ -1,8 +1,8 @@
-import { createClaim } from './api';
-import { newKey } from './ids';
-import { isUnknownResult, StaleSessionError } from './request';
-import { onSessionReset } from './session';
-import { Claim, ClaimInput } from './types';
+import { createClaim } from '../../core/api';
+import { newKey } from '../../core/ids';
+import { isUnknownResult, StaleSessionError } from '../../core/request';
+import { onSessionReset } from '../../core/session';
+import { Claim, ClaimInput } from '../../core/types';
 
 /** A claim draft never leaves memory; an uncertain write can only replay its original input. */
 export class ClaimSubmission {

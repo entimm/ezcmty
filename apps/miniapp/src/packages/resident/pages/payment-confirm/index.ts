@@ -1,9 +1,6 @@
 import { bill } from '../../../../core/api';
 import { money } from '../../../../core/format';
-import {
-  canContinuePayment,
-  PaymentController,
-} from '../../../../core/payments';
+import { canContinuePayment, PaymentController } from '../../payments';
 import { ApiError, errorText } from '../../../../core/request';
 import { onSessionReset, requireSession } from '../../../../core/session';
 import { PaymentOrder, ResidentBill } from '../../../../core/types';

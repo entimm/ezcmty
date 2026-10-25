@@ -1,7 +1,4 @@
-import {
-  canContinuePayment,
-  hasUncertainPayment,
-} from '../../../../core/payments';
+import { canContinuePayment, hasUncertainPayment } from '../../payments';
 import { currentCredential, onSessionReset } from '../../../../core/session';
 import { ResidentBill, PaymentOrder } from '../../../../core/types';
 

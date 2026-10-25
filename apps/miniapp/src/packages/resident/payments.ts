@@ -1,14 +1,18 @@
-import { API_BASE_URL } from '../config';
-import * as api from './api';
-import { newKey } from './ids';
-import { ApiError, isUnknownResult, StaleSessionError } from './request';
-import { currentCredential, onSessionReset } from './session';
+import { API_BASE_URL } from '../../config';
+import * as api from '../../core/api';
+import { newKey } from '../../core/ids';
+import {
+  ApiError,
+  isUnknownResult,
+  StaleSessionError,
+} from '../../core/request';
+import { currentCredential, onSessionReset } from '../../core/session';
 import {
   ClientParameters,
   PaymentInput,
   PaymentOrder,
   ResidentBill,
-} from './types';
+} from '../../core/types';
 
 interface PendingPayment {
   key: string;

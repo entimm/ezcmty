@@ -14,6 +14,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import './check-boundaries.mjs';
+import { subpackageOnlyModules } from './check-package-usage.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = path.join(root, 'src');
@@ -143,7 +144,8 @@ for (const page of pages) {
   for (const suffix of ['js', 'json', 'wxml', 'wxss'])
     await access(path.join(output, page + '.' + suffix));
 }
-for (const file of await files(output)) {
+const outputFiles = await files(output);
+for (const file of outputFiles) {
   if (!file.endsWith('.json')) continue;
   const config = JSON.parse(await readFile(file, 'utf8'));
   for (const reference of Object.values(config.usingComponents || {})) {
@@ -154,6 +156,22 @@ for (const file of await files(output)) {
       await access(destination + '.' + suffix);
   }
 }
+
+const runtimeContents = new Map(
+  await Promise.all(
+    outputFiles
+      .filter((file) => ['.js', '.json'].includes(path.extname(file)))
+      .map(async (file) => [
+        path.relative(output, file).split(path.sep).join('/'),
+        await readFile(file, 'utf8'),
+      ]),
+  ),
+);
+const misplaced = subpackageOnlyModules(runtimeContents, app);
+assert(
+  misplaced.length === 0,
+  `Main-package JS used only by one subpackage:\n${misplaced.join('\n')}`,
+);
 
 const iconNames = new Set(['circle-help']);
 for (const file of await files(source)) {
@@ -188,7 +206,7 @@ const sizes = new Map([
   ['main', 0],
   ...packages.map((group) => [group.root, 0]),
 ]);
-for (const file of await files(output)) {
+for (const file of outputFiles) {
   const relative = path.relative(output, file).split(path.sep).join('/');
   const scope =
     packages.find((group) => relative.startsWith(group.root + '/'))?.root ||

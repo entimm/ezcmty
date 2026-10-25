@@ -6,7 +6,7 @@ import {
 } from '../../../../core/session';
 import { errorText } from '../../../../core/request';
 import { maskPhone } from '../../../../core/format';
-import { ClaimSubmission } from '../../../../core/claims';
+import { ClaimSubmission } from '../../claims';
 import type {
   Binding,
   Claim,

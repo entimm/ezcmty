@@ -1,10 +1,7 @@
 import { bindings, bills } from '../../../../core/api';
 import { money } from '../../../../core/format';
 import { ApiError, errorText } from '../../../../core/request';
-import {
-  getSelectedBindingId,
-  setSelectedBindingId,
-} from '../../../../core/selection';
+import { getSelectedBindingId, setSelectedBindingId } from '../../selection';
 import { currentCredential, onSessionReset } from '../../../../core/session';
 import { Binding, ResidentBill } from '../../../../core/types';
 import { go, pageUrl } from '../../../../ui/navigation';
