@@ -207,36 +207,6 @@ a:focus-visible {
   display: flex;
   flex-direction: column;
 }
-.org-block {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 21px 18px 19px;
-  border-bottom: 1px solid #f0f2f6;
-  margin-bottom: 4px;
-}
-.org-icon {
-  height: 33px;
-  width: 33px;
-  border-radius: 7px;
-  display: grid;
-  place-items: center;
-  color: #5b6a84;
-  background: #edf1f7;
-  font-size: 18px;
-  flex-shrink: 0;
-}
-.org-block strong {
-  font-size: 13px;
-  font-weight: 600;
-}
-.org-block small {
-  display: block;
-  color: #8b95a6;
-  font-size: 10px;
-  margin-top: 5px;
-  white-space: nowrap;
-}
 .sidebar nav {
   padding: 0 12px 18px;
   overflow: auto;
@@ -1811,25 +1781,6 @@ body:has(.auth-page),
 }
 .standalone-state > section {
   width: min(720px, 100%);
-}
-.org-button {
-  border: 0;
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-}
-.org-button:disabled {
-  cursor: default;
-  opacity: 1;
-}
-.org-block strong {
-  max-width: 145px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: block;
 }
 .theme-swatch {
   display: inline-block;

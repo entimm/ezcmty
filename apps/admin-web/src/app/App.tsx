@@ -648,27 +648,6 @@ function Workspace({
         </div>
       </header>
       <aside className="sidebar">
-        <button
-          className="org-block org-button"
-          disabled={auth.scope === 'platform'}
-          onClick={() => go('company')}
-        >
-          <div className="org-icon">
-            <BankOutlined />
-          </div>
-          <div>
-            <strong>
-              {auth.scope === 'property'
-                ? company.data?.property_company_name || '物业工作空间'
-                : '美好社区运营平台'}
-            </strong>
-            <small>
-              {auth.scope === 'property'
-                ? '本公司物业管理'
-                : '平台运营与资金管理'}
-            </small>
-          </div>
-        </button>
         <nav aria-label="主导航">
           {groups.map((group) => (
             <div className="menu-group" key={group.label}>
