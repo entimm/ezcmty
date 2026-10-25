@@ -64,7 +64,8 @@ def create_admin_auth_router(
 
     def permission(code: str) -> DependsParameter:
         def check(ctx: FullContext) -> AdminContext:
-            if code not in ctx.permissions:
+            # Empty code binds a full session; the target service checks its business authority.
+            if code and code not in ctx.permissions:
                 raise AppError("auth.forbidden")
             return ctx
 

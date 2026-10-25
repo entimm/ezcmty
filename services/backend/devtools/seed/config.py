@@ -113,6 +113,7 @@ REGISTRY = {
                 "admin_audit_logs",
             }
         ),
+        version=2,
     ),
     "property": Scenario(
         PropertyParameters,

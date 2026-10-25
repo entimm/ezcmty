@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from backend_app.core.errors import AppError
+from backend_app.domain.admin.permissions import permission_prefix
 from backend_app.domain.admin.types import AdminAuthorization
 from backend_app.models.admin import AdminAccount, AdminAuditLog
 from backend_app.repositories.admin import AdminRepository
@@ -62,6 +63,6 @@ class AdminAudit:
             raise AppError("auth.forbidden")
         if context.must_change_password:
             raise AppError("auth.password_change_required")
-        if "admin.audit.read" not in context.permissions:
+        if f"{permission_prefix(self.scope)}.audit.read" not in context.permissions:
             raise AppError("auth.forbidden")
         return self.repo.audit_logs(**filters)

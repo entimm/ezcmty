@@ -73,6 +73,35 @@ class PropertyWorkspaceSummary(AdminSchema):
     pending_reconciliation_count: Annotated[int, Field(ge=0)] | None
 
 
+class PropertyWorkspaceContext(AdminSchema):
+    property_company_id: Identifier
+    property_company_name: str
+
+
+class CompanyOption(AdminSchema):
+    id: Identifier
+    name: str
+    enabled: bool
+
+
+class CompanyOptionPage(AdminSchema):
+    items: list[CompanyOption]
+    total: int
+    page: int
+    page_size: int
+
+
+class CommunityOption(CompanyOption):
+    property_company_id: Identifier
+
+
+class CommunityOptionPage(AdminSchema):
+    items: list[CommunityOption]
+    total: int
+    page: int
+    page_size: int
+
+
 class CommunityCreate(AdminSchema):
     property_company_id: Identifier
     code: Code

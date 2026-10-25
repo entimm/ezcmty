@@ -27,7 +27,7 @@ def test_uuidv7_native_storage_and_creation_times(harness: Harness) -> None:
     assert role.status_code == 201
     permissions = harness.client.put(
         f"/v1/admin-roles/{role.json()['id']}/permissions",
-        json={"permissions": ["admin.account.read"]},
+        json={"permissions": ["platform.system.read"]},
         headers=headers,
     )
     assert permissions.status_code == 200

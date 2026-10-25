@@ -319,23 +319,23 @@ def test_company_community_and_house_nested_scope(workspace: WorkspaceHarness) -
     )
 
 
-def test_house_permission_does_not_grant_owner_access_or_nested_creation(
+def test_property_maintenance_covers_house_owner_and_space_operations(
     workspace: WorkspaceHarness,
 ) -> None:
     workspace.complete_login()
     node = create_node(workspace)
     house = create_house(workspace, node["id"], owners=[{"name": "业主", "phone": "13800000000"}])
-    set_permissions(workspace, {"property.house.read", "property.house.create"})
+    set_permissions(workspace, {"property.housing.manage", "property.housing.read"})
     assert (
         workspace.client.get(housing_path(workspace, f"/houses/{house['id']}")).status_code == 200
     )
     assert (
         workspace.client.get(housing_path(workspace, f"/houses/{house['id']}/owners")).status_code
-        == 403
+        == 200
     )
-    assert workspace.client.get(housing_path(workspace, "/space-nodes")).status_code == 403
+    assert workspace.client.get(housing_path(workspace, "/space-nodes")).status_code == 200
     create_house(workspace, node["id"], "102")
-    denied = workspace.client.post(
+    created = workspace.client.post(
         housing_path(workspace, "/houses"),
         json={
             "space_node_id": node["id"],
@@ -344,8 +344,8 @@ def test_house_permission_does_not_grant_owner_access_or_nested_creation(
         },
         headers=workspace.headers(),
     )
-    assert denied.status_code == 403
-    assert workspace.client.get(housing_path(workspace, "/houses")).json()["total"] == 2
+    assert created.status_code == 201
+    assert workspace.client.get(housing_path(workspace, "/houses")).json()["total"] == 3
 
 
 def test_housing_writes_require_csrf_and_hide_invalid_owner_input(

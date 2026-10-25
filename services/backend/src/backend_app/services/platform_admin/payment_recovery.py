@@ -130,7 +130,7 @@ class PaymentRecoveryService:
         data: schema.PaymentRecoveryRequest,
         request_id: str,
     ) -> schema.PaymentRecoveryAccepted:
-        permission = "platform.payment_funds.recover"
+        permission = "platform.payment.recover"
         self._precheck(ctx, permission)
         payment, actor = self._payment(ctx, payment_id, permission)
         self._token(mapper.payment_token(self.db, payment), data.expected_state_token)
@@ -157,7 +157,7 @@ class PaymentRecoveryService:
         data: schema.PaymentRecoveryRequest,
         request_id: str,
     ) -> schema.PaymentRecoveryAccepted:
-        permission = "platform.payment_reconciliation.recheck"
+        permission = "platform.payment_reconciliation.manage"
         self._precheck(ctx, permission)
         actor = self._actor(ctx, permission)
         self.repo.run(run_id)
@@ -180,7 +180,7 @@ class PaymentRecoveryService:
         data: schema.PaymentRecoveryRequest,
         request_id: str,
     ) -> schema.PaymentRecoveryAccepted:
-        permission = "platform.payment_funds.recover"
+        permission = "platform.payment.recover"
         self._precheck(ctx, permission)
         original = self.repo.discrepancy(discrepancy_id)
         if original.payment_order_id is None:
@@ -248,7 +248,7 @@ class PaymentRecoveryService:
         data: schema.ReconciliationExternalResolutionRequest,
         request_id: str,
     ) -> schema.ManagedReconciliationDiscrepancy:
-        permissions = ("platform.payment_reconciliation.read", "platform.payment_funds.recover")
+        permissions = ("platform.payment_reconciliation.read", "platform.payment.recover")
         self._precheck(ctx, *permissions)
         actor = self._actor(ctx, *permissions)
         run, item = self._difference(self.repo.discrepancy(discrepancy_id))

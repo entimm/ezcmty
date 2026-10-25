@@ -88,11 +88,11 @@ class PropertyOnboardingService:
         )
 
     def get_company(self, context: AdminContext, company_id: str) -> schema.PropertyCompany:
-        self.identity.require_permission(context, "property.company.read")
+        self.identity.require_permission(context, "platform.onboarding.read")
         return schema.PropertyCompany.model_validate(self._company(company_id))
 
     def list_companies(self, context: AdminContext, **filters: Any) -> schema.CompanyPage:
-        self.identity.require_permission(context, "property.company.read")
+        self.identity.require_permission(context, "platform.onboarding.read")
         items, total = self.repo.companies(**filters)
         return schema.CompanyPage(
             items=[schema.PropertyCompany.model_validate(item) for item in items],
@@ -107,7 +107,7 @@ class PropertyOnboardingService:
         data: schema.CompanyCreate,
         request_id: str,
     ) -> schema.PropertyCompany:
-        actor = self._business_writer(context, "property.company.create")
+        actor = self._business_writer(context, "platform.onboarding.manage")
         if self.repo.company_by_code(data.code):
             raise AppError("property.duplicate_company_code")
         now = utc_now()
@@ -135,9 +135,20 @@ class PropertyOnboardingService:
         data: schema.CompanyUpdate,
         request_id: str,
     ) -> schema.PropertyCompany:
-        self._company_writer_precheck(context, permission="property.company.update")
+        required = []
+        if data.enabled is not None:
+            required.append("platform.onboarding.toggle")
+        if data.model_fields_set.intersection({"name", "contact_name", "contact_phone"}):
+            required.append("platform.onboarding.manage")
+        if not required:
+            required.append("platform.onboarding.manage")
+        for permission in required:
+            self._company_writer_precheck(context, permission=permission)
         company = self._company(company_id, lock=True)
-        actor = self._business_writer(context, "property.company.update")
+        actor = self._business_writer(context, required[0])
+        for permission in required[1:]:
+            if permission not in self.identity.effective_permissions(actor.id):
+                raise AppError("auth.forbidden")
         changes: list[str] = []
         if data.enabled is not None and data.enabled != company.enabled:
             company_admins = AdminRepository(self.db, "property_admin", company_id)
@@ -187,11 +198,11 @@ class PropertyOnboardingService:
         return community_view(community, name)
 
     def get_community(self, context: AdminContext, community_id: str) -> schema.Community:
-        self.identity.require_permission(context, "property.community.read")
+        self.identity.require_permission(context, "platform.onboarding.read")
         return self.community_view(self._community(community_id))
 
     def list_communities(self, context: AdminContext, **filters: Any) -> schema.CommunityPage:
-        self.identity.require_permission(context, "property.community.read")
+        self.identity.require_permission(context, "platform.onboarding.read")
         items, total = self.repo.communities(**filters)
         return schema.CommunityPage(
             items=[self.community_view(item, company_name) for item, company_name in items],
@@ -206,9 +217,9 @@ class PropertyOnboardingService:
         data: schema.CommunityCreate,
         request_id: str,
     ) -> schema.Community:
-        self._company_writer_precheck(context, permission="property.community.create")
+        self._company_writer_precheck(context, permission="platform.onboarding.manage")
         company = self._company(data.property_company_id, lock=True)
-        actor = self._business_writer(context, "property.community.create")
+        actor = self._business_writer(context, "platform.onboarding.manage")
         if self.repo.community_by_code(data.code):
             raise AppError("property.duplicate_community_code")
         now = utc_now()
@@ -234,10 +245,10 @@ class PropertyOnboardingService:
         data: schema.CommunityUpdate,
         request_id: str,
     ) -> schema.Community:
-        self._company_writer_precheck(context, permission="property.community.update")
+        self._company_writer_precheck(context, permission="platform.onboarding.manage")
         company_id = self._community(community_id).property_company_id
         self._company(company_id, lock=True)
-        actor = self._business_writer(context, "property.community.update")
+        actor = self._business_writer(context, "platform.onboarding.manage")
         community = self._community(community_id, lock=True)
         changes: list[str] = []
         for field, value in data.model_dump(exclude_none=True).items():
@@ -261,12 +272,16 @@ class PropertyOnboardingService:
     def _admin_view(
         self, repo: AdminRepository, account: AdminAccount
     ) -> schema.PropertyAdminAccount:
-        return property_admin_view(account, repo.account_roles(account.id))
+        return property_admin_view(
+            account,
+            repo.account_roles(account.id),
+            AdminIdentity(repo).effective_permissions(account.id),
+        )
 
     def get_admin(
         self, context: AdminContext, company_id: str, account_id: str
     ) -> schema.PropertyAdminAccount:
-        self.identity.require_permission(context, "property.admin.read")
+        self.identity.require_permission(context, "platform.system.read")
         self._company(company_id)
         repo = AdminRepository(self.db, "property_admin", company_id)
         account = repo.account(account_id)
@@ -277,7 +292,7 @@ class PropertyOnboardingService:
     def list_admins(
         self, context: AdminContext, company_id: str, **filters: Any
     ) -> schema.PropertyAdminPage:
-        self.identity.require_permission(context, "property.admin.read")
+        self.identity.require_permission(context, "platform.system.read")
         self._company(company_id)
         repo = AdminRepository(self.db, "property_admin", company_id)
         items, total = repo.accounts(**filters)
@@ -392,3 +407,68 @@ class PropertyOnboardingService:
             actor, "property.admin.password_reset", "account", account.id, company_id, request_id
         )
         self.db.commit()
+
+    def _options_reader(self, context: AdminContext) -> None:
+        self.identity.require_full_session(context)
+        if not set(context.permissions).intersection(
+            {
+                "platform.onboarding.read",
+                "platform.payment.read",
+                "platform.payment_reconciliation.read",
+                "platform.payment_config.read",
+                "platform.system.read",
+            }
+        ):
+            raise AppError("auth.forbidden")
+
+    def company_options(
+        self,
+        context: AdminContext,
+        *,
+        page: int,
+        page_size: int,
+        name: str | None,
+        property_company_id: str | None,
+    ) -> schema.CompanyOptionPage:
+        self._options_reader(context)
+        items, total = self.repo.companies(
+            page=page,
+            page_size=page_size,
+            name=name,
+            code=None,
+            enabled=None,
+            sort="-created_at",
+            company_id=property_company_id,
+        )
+        return schema.CompanyOptionPage(
+            items=[schema.CompanyOption.model_validate(item) for item in items],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def community_options(
+        self,
+        context: AdminContext,
+        *,
+        page: int,
+        page_size: int,
+        name: str | None,
+        property_company_id: str | None,
+    ) -> schema.CommunityOptionPage:
+        self._options_reader(context)
+        items, total = self.repo.communities(
+            page=page,
+            page_size=page_size,
+            name=name,
+            code=None,
+            enabled=None,
+            sort="-created_at",
+            property_company_id=property_company_id,
+        )
+        return schema.CommunityOptionPage(
+            items=[schema.CommunityOption.model_validate(item) for item, _ in items],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )

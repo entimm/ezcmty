@@ -27,6 +27,25 @@ def create_property_housing_router(
     Service = Annotated[PropertyHousingService, Depends(service)]
 
     @router.get(
+        "/house-options",
+        response_model=schema.HouseOptionPage,
+        operation_id="listHouseOptions",
+        responses=ok,
+    )
+    def house_options(
+        community_id: Identifier,
+        svc: Service,
+        ctx: Annotated[AdminContext, permission("")],
+        page: Annotated[int, Query(ge=1)] = 1,
+        page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+        room_no: Annotated[str | None, Query(max_length=32)] = None,
+        house_id: Identifier | None = None,
+    ) -> schema.HouseOptionPage:
+        return svc.house_options(
+            ctx, community_id, page=page, page_size=page_size, room_no=room_no, house_id=house_id
+        )
+
+    @router.get(
         "/space-nodes",
         response_model=schema.SpaceNodePage,
         operation_id="listSpaceNodes",
@@ -35,7 +54,7 @@ def create_property_housing_router(
     def list_nodes(
         community_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.space.read")],
+        ctx: Annotated[AdminContext, permission("property.housing.read")],
         parent_id: Identifier | None = None,
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
@@ -57,7 +76,7 @@ def create_property_housing_router(
         data: schema.SpaceNodeCreate,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.space.create")],
+        ctx: Annotated[AdminContext, permission("property.housing.manage")],
     ) -> schema.SpaceNode:
         return svc.create_node(ctx, community_id, data, request.state.request_id)
 
@@ -71,7 +90,7 @@ def create_property_housing_router(
         community_id: Identifier,
         node_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.space.read")],
+        ctx: Annotated[AdminContext, permission("property.housing.read")],
     ) -> schema.SpaceNode:
         return svc.get_node(ctx, community_id, node_id)
 
@@ -88,7 +107,7 @@ def create_property_housing_router(
         data: schema.SpaceNodeUpdate,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.space.update")],
+        ctx: Annotated[AdminContext, permission("property.housing.manage")],
     ) -> schema.SpaceNode:
         return svc.update_node(ctx, community_id, node_id, data, request.state.request_id)
 
@@ -96,7 +115,7 @@ def create_property_housing_router(
     def list_houses(
         community_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.house.read")],
+        ctx: Annotated[AdminContext, permission("property.housing.read")],
         space_node_id: Identifier | None = None,
         room_no: Annotated[str | None, Query(max_length=32)] = None,
         external_code: Annotated[str | None, Query(max_length=64)] = None,
@@ -132,7 +151,7 @@ def create_property_housing_router(
         data: schema.HouseCreate,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.house.create")],
+        ctx: Annotated[AdminContext, permission("property.housing.manage")],
     ) -> schema.House:
         return svc.create_house(ctx, community_id, data, request.state.request_id)
 
@@ -143,7 +162,7 @@ def create_property_housing_router(
         community_id: Identifier,
         house_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.house.read")],
+        ctx: Annotated[AdminContext, permission("property.housing.read")],
     ) -> schema.House:
         return svc.get_house(ctx, community_id, house_id)
 
@@ -160,7 +179,7 @@ def create_property_housing_router(
         data: schema.HouseUpdate,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.house.update")],
+        ctx: Annotated[AdminContext, permission("property.housing.manage")],
     ) -> schema.House:
         return svc.update_house(ctx, community_id, house_id, data, request.state.request_id)
 
@@ -174,7 +193,7 @@ def create_property_housing_router(
         community_id: Identifier,
         house_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.house_owner.read")],
+        ctx: Annotated[AdminContext, permission("property.housing.read")],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         sort: Literal["created_at", "-created_at"] = "-created_at",
@@ -197,7 +216,7 @@ def create_property_housing_router(
         data: schema.HouseOwnerCreate,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.house_owner.create")],
+        ctx: Annotated[AdminContext, permission("property.housing.manage")],
     ) -> schema.HouseOwner:
         return svc.create_owner(ctx, community_id, house_id, data, request.state.request_id)
 
@@ -212,7 +231,7 @@ def create_property_housing_router(
         house_id: Identifier,
         owner_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.house_owner.read")],
+        ctx: Annotated[AdminContext, permission("property.housing.read")],
     ) -> schema.HouseOwner:
         return svc.get_owner(ctx, community_id, house_id, owner_id)
 
@@ -230,7 +249,7 @@ def create_property_housing_router(
         data: schema.HouseOwnerUpdate,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.house_owner.update")],
+        ctx: Annotated[AdminContext, permission("property.housing.manage")],
     ) -> schema.HouseOwner:
         return svc.update_owner(
             ctx, community_id, house_id, owner_id, data, request.state.request_id

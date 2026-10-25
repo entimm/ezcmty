@@ -1,5 +1,9 @@
+"""Business permissions, their fixed read dependencies and role presets."""
+
+from collections.abc import Iterable
 from dataclasses import dataclass
 
+from backend_app.core.errors import AppError
 from backend_app.domain.admin.types import AdminScope
 
 
@@ -9,91 +13,138 @@ class PermissionDefinition:
     name: str
     group: str
     assignable: bool
+    level: str = "查看"
+    requires: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class RoleTemplateDefinition:
+    code: str
+    name: str
+    permissions: tuple[str, ...]
+
+
+def permission_prefix(scope: AdminScope) -> str:
+    return "platform" if scope == "platform_admin" else "property"
 
 
 def permission_catalog(scope: AdminScope) -> list[PermissionDefinition]:
-    imports = [
-        PermissionDefinition(
-            code=f"{'platform' if scope == 'platform_admin' else 'property'}.import.{code}",
-            name=name,
-            group="批量导入",
-            assignable=True,
-        )
-        for code, name in (
-            ("read", "查看导入"),
-            ("create", "新建导入"),
-            ("upload", "上传导入文件"),
-            ("precheck", "预检导入"),
-            ("execute", "执行导入"),
-            ("cancel", "取消导入"),
-            ("retry", "重跑失败行"),
-            ("recover", "恢复原任务"),
-            ("generate_error_file", "生成错误文件"),
-            ("download", "下载错误文件"),
-        )
+    prefix = permission_prefix(scope)
+    common = [
+        ("system.read", "查看系统资料", "系统资料", "查看", ()),
+        ("system.manage", "管理账号、角色与授权", "系统管理", "系统管理", ("system.read",)),
+        ("audit.read", "查看操作日志", "操作日志", "查看", ()),
     ]
-    if scope == "property_admin":
-        return imports + [
-            PermissionDefinition(code=c, name=n, group=g, assignable=True)
-            for c, n, g in (
-                ("property.company.read", "查看本公司资料", "物业公司"),
-                ("property.payment_config.read", "查看收款配置", "支付"),
-                ("property.payment.read", "查看支付记录", "支付"),
-                ("property.payment_funds.read", "查看资金处理", "支付"),
-                ("property.payment_reconciliation.read", "查看本公司核对结果", "支付"),
-                ("property.house_claim.read", "查看房屋认领申请", "房屋认领"),
-                ("property.house_claim.review", "审核房屋认领申请", "房屋认领"),
-                ("property.resident_house_binding.read", "查看居民房屋授权", "居民房屋"),
-                ("property.resident_house_binding.revoke", "撤销居民房屋授权", "居民房屋"),
-                ("property.fee_basis.read", "查看物业费计费依据及试算", "计费依据"),
-                ("property.fee_basis.create", "新增计费依据版本", "计费依据"),
-                ("property.bill.read", "查看账单及收款历史", "账单"),
-                ("property.bill.create", "建立账单", "账单"),
-                ("property.bill.update", "修改账单资料", "账单"),
-                ("property.bill.void", "作废账单", "账单"),
-                ("property.bill_receipt.create", "登记线下收款", "收款"),
-                ("property.bill_receipt.correct", "纠正及撤销收款登记", "收款"),
-                ("property.community.read", "查看本公司小区", "小区"),
-                ("property.space.read", "查看空间节点", "空间管理"),
-                ("property.space.create", "创建空间节点", "空间管理"),
-                ("property.space.update", "编辑及启停空间节点", "空间管理"),
-                ("property.house.read", "查看房屋", "房屋管理"),
-                ("property.house.create", "创建房屋", "房屋管理"),
-                ("property.house.update", "编辑及启停房屋", "房屋管理"),
-                ("property.house_owner.read", "查看房屋业主", "业主资料"),
-                ("property.house_owner.create", "登记房屋业主", "业主资料"),
-                ("property.house_owner.update", "编辑及启停房屋业主", "业主资料"),
-            )
+    if scope == "platform_admin":
+        definitions = [
+            ("onboarding.read", "查看物业接入资料", "物业接入", "查看", ()),
+            ("onboarding.manage", "维护物业接入资料", "物业接入", "维护", ("onboarding.read",)),
+            ("onboarding.toggle", "启停物业公司", "关键操作", "关键操作", ("onboarding.read",)),
+            ("payment.read", "查看支付资金", "支付资金", "查看", ()),
+            ("payment_reconciliation.read", "查看资金核对", "资金核对", "查看", ()),
+            (
+                "payment_reconciliation.manage",
+                "重新核对资金",
+                "资金核对",
+                "经办",
+                ("payment_reconciliation.read",),
+            ),
+            ("payment_config.read", "查看收款配置", "收款配置", "查看", ()),
+            ("payment_config.manage", "维护收款配置", "收款配置", "维护", ("payment_config.read",)),
+            (
+                "payment.recover",
+                "处理资金异常",
+                "关键操作",
+                "关键操作",
+                ("payment.read", "payment_reconciliation.read"),
+            ),
         ]
-    definitions = [
-        ("platform.payment_config.read", "查看收款配置", "支付", True),
-        ("platform.payment_config.manage", "维护收款配置", "支付", True),
-        ("platform.payment.read", "查看支付记录", "支付", True),
-        ("platform.payment_funds.read", "查看资金处理", "支付", True),
-        ("platform.payment_funds.recover", "恢复资金处理", "支付", True),
-        ("platform.payment_reconciliation.read", "查看资金核对", "支付", True),
-        ("platform.payment_reconciliation.recheck", "重新核对资金", "支付", True),
-        ("admin.account.read", "查看管理员", "管理员", True),
-        ("admin.account.create", "创建管理员", "管理员", False),
-        ("admin.account.update", "编辑及启停管理员", "管理员", False),
-        ("admin.account.reset_password", "重置管理员密码", "管理员", False),
-        ("admin.account.assign_roles", "分配管理员角色", "管理员", False),
-        ("admin.role.read", "查看角色与权限目录", "角色", True),
-        ("admin.role.create", "创建角色", "角色", False),
-        ("admin.role.update", "编辑及启停角色", "角色", False),
-        ("admin.role.assign_permissions", "配置角色权限", "角色", False),
-        ("admin.audit.read", "查看审计日志", "审计", True),
-        ("property.company.read", "查看物业公司", "物业公司", True),
-        ("property.company.create", "创建物业公司", "物业公司", True),
-        ("property.company.update", "编辑及启停物业公司", "物业公司", True),
-        ("property.community.read", "查看小区", "小区", True),
-        ("property.community.create", "创建小区", "小区", True),
-        ("property.community.update", "编辑及启停小区", "小区", True),
-        ("property.admin.read", "查看公司管理员", "公司管理员", True),
-        ("property.admin.create", "开通公司管理员", "公司管理员", False),
-        ("property.admin.update", "编辑及启停公司管理员", "公司管理员", False),
-        ("property.admin.reset_password", "重置公司管理员密码", "公司管理员", False),
+    else:
+        definitions = [
+            ("housing.read", "查看房产资料", "房产资料", "查看", ()),
+            ("housing.manage", "维护房产资料", "房产资料", "维护", ("housing.read",)),
+            ("bill.read", "查看账单及计费依据", "物业费账单", "查看", ()),
+            ("bill.manage", "经办账单", "物业费账单", "经办", ("bill.read",)),
+            ("fee_basis.manage", "维护计费依据", "计费依据", "维护", ("bill.read",)),
+            ("bill_receipt.create", "登记线下收款", "线下收款", "登记", ("bill.read",)),
+            ("bill.void", "作废账单", "关键操作", "关键操作", ("bill.read",)),
+            ("bill_receipt.correct", "纠正或撤销收款", "关键操作", "关键操作", ("bill.read",)),
+            ("resident_access.read", "查看居民房屋授权", "居民房屋授权", "查看", ()),
+            (
+                "resident_access.review",
+                "审核房屋认领",
+                "居民房屋授权",
+                "审核",
+                ("resident_access.read",),
+            ),
+            (
+                "resident_access.revoke",
+                "撤销居民房屋授权",
+                "关键操作",
+                "关键操作",
+                ("resident_access.read",),
+            ),
+            ("payment.read", "查看线上收款", "线上收款", "查看", ()),
+        ]
+    return [
+        PermissionDefinition(
+            code=f"{prefix}.{code}",
+            name=name,
+            group=group,
+            assignable=code != "system.manage",
+            level=level,
+            requires=tuple(f"{prefix}.{dependency}" for dependency in required),
+        )
+        for code, name, group, level, required in definitions + common
     ]
-    return imports + [
-        PermissionDefinition(code=c, name=n, group=g, assignable=a) for c, n, g, a in definitions
+
+
+def normalize_permissions(scope: AdminScope, permissions: Iterable[str]) -> list[str]:
+    """Validate assignable input and include only the fixed required read abilities."""
+    catalog = {item.code: item for item in permission_catalog(scope) if item.assignable}
+    codes = set(permissions)
+    if not codes <= catalog.keys():
+        raise AppError("admin.invalid_permission")
+    pending = list(codes)
+    while pending:
+        for dependency in catalog[pending.pop()].requires:
+            if dependency not in codes:
+                codes.add(dependency)
+                pending.append(dependency)
+    return sorted(codes)
+
+
+def role_templates(scope: AdminScope) -> list[RoleTemplateDefinition]:
+    prefix = permission_prefix(scope)
+    if scope == "platform_admin":
+        financial = (
+            "onboarding.read",
+            "payment.read",
+            "payment_reconciliation.read",
+            "payment_config.read",
+        )
+        definitions = [
+            ("onboarding_operator", "接入运营", ("onboarding.manage",)),
+            ("financial_reader", "财务查询", financial),
+            ("financial_operator", "财务经办", (*financial, "payment_reconciliation.manage")),
+        ]
+    else:
+        definitions = [
+            ("housing_operator", "资料专员", ("housing.manage",)),
+            ("cashier", "收费员", ("bill.manage", "bill_receipt.create", "payment.read")),
+            (
+                "resident_reviewer",
+                "客服审核员",
+                ("housing.read", "bill.read", "resident_access.review"),
+            ),
+        ]
+    return [
+        RoleTemplateDefinition(
+            code=code,
+            name=name,
+            permissions=tuple(
+                normalize_permissions(scope, (f"{prefix}.{item}" for item in permissions))
+            ),
+        )
+        for code, name, permissions in definitions
     ]

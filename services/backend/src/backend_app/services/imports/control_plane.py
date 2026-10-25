@@ -25,15 +25,6 @@ from backend_app.schemas.mappers import imports as view
 from backend_app.services.contracts.admin import AdminContext
 from backend_app.services.imports.access import ImportAccess
 
-ACTION_PERMISSION = {
-    "precheck": "precheck",
-    "confirm": "execute",
-    "cancel": "cancel",
-    "retry_failed": "retry",
-    "recover": "recover",
-    "error_file": "generate_error_file",
-}
-
 
 class ImportControlPlane:
     def __init__(self, access: ImportAccess) -> None:
@@ -94,11 +85,6 @@ class ImportControlPlane:
             self.access.db.rollback()
             _, _, current_permissions = self.access.authorize(
                 ctx,
-                "create"
-                if action == "create"
-                else "upload"
-                if action == "source_file"
-                else ACTION_PERMISSION[action],
             )
             previous = self._previous(args)
             if previous is None:
@@ -112,7 +98,7 @@ class ImportControlPlane:
                 replay_batch.template_version_no,
                 current_permissions,
                 replay_batch.template_config_hash,
-                for_write=action not in {"cancel", "error_file"},
+                for_write=action != "error_file",
             )
             if action in {"precheck", "confirm", "retry_failed", "recover"}:
                 self.access.check_business_permissions(replay_batch, current_permissions)
@@ -121,7 +107,7 @@ class ImportControlPlane:
     def create(
         self, ctx: AdminContext, data: schema.ImportBatchCreate, *, key: str, request_id: str
     ) -> dict[str, Any]:
-        identity, actor, permissions = self.access.authorize(ctx, "create")
+        identity, actor, permissions = self.access.authorize(ctx)
         company_id = self.access.company_id(ctx, data.property_company_id, creating=True)
         if company_id is None:
             raise AppError("VALIDATION_ERROR")
@@ -203,7 +189,7 @@ class ImportControlPlane:
         file: BinaryIO,
         filename: str,
     ) -> dict[str, Any]:
-        _, _, permissions = self.access.authorize(ctx, "upload")
+        _, _, permissions = self.access.authorize(ctx)
         batch = self.access.target(ctx, batch_id)
         self.access.check_scope(batch)
         self.access.definition(
@@ -236,7 +222,7 @@ class ImportControlPlane:
             key,
             fingerprint(dict(batch_id=batch_id, sha256=sha)),
         )
-        _, _, permissions = self.access.authorize(ctx, "upload")
+        _, _, permissions = self.access.authorize(ctx)
         batch = self.access.target(ctx, batch_id, lock=True)
         self.access.check_scope(batch)
         self.access.definition(
@@ -264,7 +250,7 @@ class ImportControlPlane:
             raise AppError(error.code) from None
         except OSError:
             raise AppError("system.dependency_unavailable") from None
-        identity, actor, permissions = self.access.authorize(ctx, "upload")
+        identity, actor, permissions = self.access.authorize(ctx)
         batch = self.access.target(ctx, batch_id, lock=True)
         self.access.check_scope(batch)
         self.access.definition(
@@ -354,7 +340,7 @@ class ImportControlPlane:
         key: str,
         request_id: str,
     ) -> dict[str, Any]:
-        identity, actor, permissions = self.access.authorize(ctx, ACTION_PERMISSION[action])
+        identity, actor, permissions = self.access.authorize(ctx)
         batch = self.access.target(ctx, batch_id, lock=True)
         self.access.check_scope(batch)
         self.access.definition(
@@ -362,7 +348,7 @@ class ImportControlPlane:
             batch.template_version_no,
             permissions,
             batch.template_config_hash,
-            for_write=action not in {"cancel", "error_file"},
+            for_write=action != "error_file",
         )
         if action in {"precheck", "confirm", "retry_failed", "recover"}:
             self.access.check_business_permissions(batch, permissions)

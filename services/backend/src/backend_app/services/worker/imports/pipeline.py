@@ -143,17 +143,7 @@ class ImportWorkerService:
         ):
             raise ValueError("auth.forbidden")
         permissions = frozenset(identity.effective_permissions(actor.id))
-        prefix = "platform" if actor.scope == "platform_admin" else "property"
-        action = {
-            "parse": "upload",
-            "precheck": "precheck",
-            "apply": "execute",
-            "artifact": "generate_error_file",
-        }[lease.phase]
-        if (
-            f"{prefix}.import.{action}" not in permissions
-            or not set(definition.required_permissions) <= permissions
-        ):
+        if not set(definition.required_permissions) <= permissions:
             raise ValueError("auth.forbidden")
         company = PropertyRepository(db).company(batch.property_company_id)
         community = (

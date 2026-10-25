@@ -4,7 +4,7 @@ spaceNodes:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.space.read
+      - property.housing.read
     tags:
       - housing
     summary: 查询空间子节点
@@ -68,7 +68,7 @@ spaceNodes:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.space.create
+      - property.housing.manage
     tags:
       - housing
     summary: 创建空间节点
@@ -131,7 +131,7 @@ spaceNode:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.space.read
+      - property.housing.read
     tags:
       - housing
     summary: 读取空间节点
@@ -178,7 +178,7 @@ spaceNode:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.space.update
+      - property.housing.manage
     tags:
       - housing
     summary: 修改及启停空间节点
@@ -246,7 +246,7 @@ houses:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.house.read
+      - property.housing.read
     tags:
       - housing
     summary: 查询小区房屋
@@ -351,11 +351,11 @@ houses:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.house.create
+      - property.housing.manage
     tags:
       - housing
     summary: 创建房屋及初始业主
-    description: 要求物业完整会话及声明权限，公司和路径资源由服务端限定，越界返回404。读取可安全重试。写请求校验Origin和CSRF，固定归属字段拒绝修改；创建重复返回409，PATCH相同字段重复提交保持业务结果，不自动重试未知写入结果。附带业主还要求property.house_owner.create，房屋、初始业主和审计原子提交；响应仅含房屋。
+    description: 要求物业完整会话及声明权限，公司和路径资源由服务端限定，越界返回404。读取可安全重试。写请求校验Origin和CSRF，固定归属字段拒绝修改；创建重复返回409，PATCH相同字段重复提交保持业务结果，不自动重试未知写入结果。附带业主还要求property.housing.manage，房屋、初始业主和审计原子提交；响应仅含房屋。
     security:
       - AdminSession: []
     parameters:
@@ -414,7 +414,7 @@ house:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.house.read
+      - property.housing.read
     tags:
       - housing
     summary: 读取房屋详情
@@ -461,7 +461,7 @@ house:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.house.update
+      - property.housing.manage
     tags:
       - housing
     summary: 修改及启停房屋
@@ -529,7 +529,7 @@ houseOwners:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.house_owner.read
+      - property.housing.read
     tags:
       - housing
     summary: 查询房屋业主
@@ -600,7 +600,7 @@ houseOwners:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.house_owner.create
+      - property.housing.manage
     tags:
       - housing
     summary: 新增房屋业主
@@ -668,7 +668,7 @@ houseOwner:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.house_owner.read
+      - property.housing.read
     tags:
       - housing
     summary: 读取房屋业主
@@ -720,7 +720,7 @@ houseOwner:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.house_owner.update
+      - property.housing.manage
     tags:
       - housing
     summary: 修改及启停房屋业主
@@ -787,3 +787,79 @@ houseOwner:
         application/json:
           schema:
             $ref: ../components/housing-schemas.yaml#/HouseOwnerUpdate
+
+houseOptions:
+  get:
+    operationId: listHouseOptions
+    x-runtimes:
+      - property_admin_api
+    tags:
+      - housing
+    summary: 查询账务与审核所需房屋最小选项
+    description: 要求所属后台完整会话；只返回当前授权范围内的最小选项，不授予完整资料读取。越界按既有不存在语义处理。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: community_id
+        in: path
+        required: true
+        schema:
+          $ref: ../components/schemas.yaml#/UUIDIdentifier
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: room_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 32
+            - type: 'null'
+      - name: house_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - $ref: ../components/schemas.yaml#/UUIDIdentifier
+            - type: 'null'
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/housing-schemas.yaml#/HouseOptionPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions-any:
+      - property.bill.read
+      - property.resident_access.read
+      - property.housing.read

@@ -66,6 +66,14 @@ export const menus: Record<Scope, MenuGroup[]> = {
       ],
     },
     {
+      label: '系统管理',
+      items: [
+        item('accounts', '账号管理', UserOutlined),
+        item('roles', '角色权限', SafetyCertificateOutlined),
+        item('audit', '操作日志', AuditOutlined),
+      ],
+    },
+    {
       label: '资料工具',
       items: [
         item('imports', '导入中心', ImportOutlined),
@@ -91,6 +99,7 @@ export const menus: Record<Scope, MenuGroup[]> = {
       items: [
         item('payments', '支付记录', WalletOutlined),
         item('reconciliation', '资金对账', FileSearchOutlined, ['资金核对']),
+        item('payment-configuration', '收款配置', SettingOutlined),
       ],
     },
     {

@@ -151,19 +151,21 @@ def test_cross_company_records_and_counts_are_invisible(payment_house: PaymentHo
 
 
 @pytest.mark.parametrize(
-    ("permission", "allowed", "forbidden"),
+    "resource",
     [
-        ("property.payment.read", "payment-orders", "profit-sharing-orders"),
-        ("property.payment_funds.read", "profit-sharing-orders", "payment-orders"),
-        ("property.payment_reconciliation.read", "payment-reconciliation-runs", "payment-orders"),
+        "payment-orders",
+        "profit-sharing-orders",
+        "payment-reconciliation-runs",
     ],
 )
-def test_payment_read_permissions_are_independent(
-    payment_house: PaymentHouse, permission: str, allowed: str, forbidden: str
+def test_online_payment_read_covers_payment_funds_and_reconciliation(
+    payment_house: PaymentHouse, resource: str
 ) -> None:
     house = payment_house
     managed_scenario(house)
-    set_permissions(house.workspace, {permission})
-    assert house.workspace.client.get(PREFIX + "/" + allowed).status_code == 200
-    denied = house.workspace.client.get(PREFIX + "/" + forbidden)
+    set_permissions(house.workspace, {"property.payment.read"})
+    assert house.workspace.client.get(PREFIX + "/" + resource).status_code == 200
+    denied = house.workspace.client.get(
+        PREFIX + f"/communities/{house.workspace.community_id}/houses"
+    )
     assert denied.status_code == 403 and denied.json()["code"] == "auth.forbidden"

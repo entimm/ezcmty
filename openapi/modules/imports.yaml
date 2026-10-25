@@ -5,14 +5,16 @@ types:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.create
-      property_admin_api:
-        - property.import.create
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.manage]
+      house_owners: [property.housing.manage]
+      property_fee_bills: [property.bill.manage]
     tags:
       - imports
     summary: 查询当前可用导入类型
-    description: 目录不分页，仅返回当前后台支持且同时具备导入与业务创建权限的类型；无授权类型时items=[]。生产类型property_fee_bills仅属于property_admin、community范围、create模式，要求property.bill.create；平台端不返回该类型。初始已缴大于零的输入行还要求property.bill_receipt.create。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 目录不分页，仅返回当前后台支持且具备对应业务维护或经办权限的类型；无授权类型时items=[]。生产类型property_fee_bills仅属于property_admin、community范围、create模式，要求property.bill.manage；平台端不返回该类型。初始已缴大于零的输入行还要求property.bill_receipt.create。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -56,14 +58,16 @@ template:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.create
-      property_admin_api:
-        - property.import.create
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.manage]
+      house_owners: [property.housing.manage]
+      property_fee_bills: [property.bill.manage]
     tags:
       - imports
     summary: 读取固定模板版本
-    description: 版本为正整数，配置摘要为小写64hex；停止新建的历史版本仍按权限读取，缺失版本404，固定配置漂移409。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 版本为正整数，配置摘要为小写64hex；停止新建的历史版本仍按权限读取，缺失版本404，固定配置漂移409。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -105,14 +109,16 @@ templateFile:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.create
-      property_admin_api:
-        - property.import.create
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.manage]
+      house_owners: [property.housing.manage]
+      property_fee_bills: [property.bill.manage]
     tags:
       - imports
     summary: 下载固定版本模板
-    description: 生成或读取固定版本CSV/XLSX模板，通过鉴权API流式下载，不跳转、不签公开短链；安全文件名和禁止缓存。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 生成或读取固定版本CSV/XLSX模板，通过鉴权API流式下载，不跳转、不签公开短链；安全文件名和禁止缓存。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -183,14 +189,16 @@ batches:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.create
-      property_admin_api:
-        - property.import.create
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.manage]
+      house_owners: [property.housing.manage]
+      property_fee_bills: [property.bill.manage]
     tags:
       - imports
     summary: 创建导入草稿
-    description: 平台必须显式提供property_company_id，物业禁止提供，公司从身份取得；scope仅company/community。固定配置及业务能力验证成功才创建，未上传草稿24小时失效，敏感输入保留窗口为创建后30天。创建指纹仅含创建参数。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 平台必须显式提供property_company_id，物业禁止提供，公司从身份取得；scope仅company/community。固定配置及业务能力验证成功才创建，未上传草稿24小时失效，敏感输入保留窗口为创建后30天。创建指纹仅含创建参数。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -246,14 +254,16 @@ batches:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.read
-      property_admin_api:
-        - property.import.read
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.read]
+      house_owners: [property.housing.read]
+      property_fee_bills: [property.bill.read]
     tags:
       - imports
     summary: 分页查询导入历史
-    description: items与total使用相同的后台、公司、资源过滤；旧批次结果不会随新批次重跑改变。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: items与total使用相同的后台、公司、资源过滤；旧批次结果不会随新批次重跑改变。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -357,14 +367,16 @@ batch:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.read
-      property_admin_api:
-        - property.import.read
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.read]
+      house_owners: [property.housing.read]
+      property_fee_bills: [property.bill.read]
     tags:
       - imports
     summary: 读取批次详情
-    description: 解析/预检中preview=null，行结果与统计不得暴露半成新预检或可确认旧预览。business_preview仅投影当前完整发布预览的白名单字段和完整新增集合合计；跳过、错误行不计入，警告行分别返回包含和排除的合计。金额合计为整数字符串，不能用分页行求和或用账单当前余额重算历史实际金额。保留期外仍返回最小历史，源文件名清空且available=false，业务预览投影不可用。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 解析/预检中preview=null，行结果与统计不得暴露半成新预检或可确认旧预览。business_preview仅投影当前完整发布预览的白名单字段和完整新增集合合计；跳过、错误行不计入，警告行分别返回包含和排除的合计。金额合计为整数字符串，不能用分页行求和或用账单当前余额重算历史实际金额。保留期外仍返回最小历史，源文件名清空且available=false，业务预览投影不可用。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -403,14 +415,16 @@ sourceFile:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.upload
-      property_admin_api:
-        - property.import.upload
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.manage]
+      house_owners: [property.housing.manage]
+      property_fee_bills: [property.bill.manage]
     tags:
       - imports
     summary: 接收源文件并安排解析预检
-    description: 只允许未过期草稿一次上传；multipart唯一字段file。CSV/XLSX最大10,485,760字节、50,000数据行、200列，实际类型/完整性/摘要由服务端核实，解压及解析资源有界，拒绝宏和外部链接。上传指纹含核实后sha256。关联私有文件元数据、请求响应和解析任务同事务登记。异步问题进入问题资源。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 只允许未过期草稿一次上传；multipart唯一字段file。CSV/XLSX最大10,485,760字节、50,000数据行、200列，实际类型/完整性/摘要由服务端核实，解压及解析资源有界，拒绝宏和外部链接。上传指纹含核实后sha256。关联私有文件元数据、请求响应和解析任务同事务登记。异步问题进入问题资源。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -488,14 +502,16 @@ rows:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.read
-      property_admin_api:
-        - property.import.read
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.read]
+      house_owners: [property.housing.read]
+      property_fee_bills: [property.bill.read]
     tags:
       - imports
     summary: 分页读取当前预览及本批次行结果
-    description: 按source_row_no,id升序。预检处理中返回409，不能读取半成品预检或旧预览。值按字段权限脱敏；business_values仅返回business_preview.fields声明的安全标量业务字段，不暴露内部_prepared、命令或位置核验快照。保留期外410。excluded为校验或策略排除，cancelled只属于本批次。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 按source_row_no,id升序。预检处理中返回409，不能读取半成品预检或旧预览。值按字段权限脱敏；business_values仅返回business_preview.fields声明的安全标量业务字段，不暴露内部_prepared、命令或位置核验快照。保留期外410。excluded为校验或策略排除，cancelled只属于本批次。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -566,14 +582,16 @@ issues:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.read
-      property_admin_api:
-        - property.import.read
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.read]
+      house_owners: [property.housing.read]
+      property_fee_bills: [property.bill.read]
     tags:
       - imports
     summary: 分页读取文件和行问题
-    description: 原行号空值优先、id升序，返回已结束解析阶段版本0固定问题、当前发布预览预检问题及本批次执行问题；解析失败未发布预览仍可查询version0问题。预检处理中409，保留期外410。定位和值不适用时为null，问题说明不能泄露未授权值。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 原行号空值优先、id升序，返回已结束解析阶段版本0固定问题、当前发布预览预检问题及本批次执行问题；解析失败未发布预览仍可查询version0问题。预检处理中409，保留期外410。定位和值不适用时为null，问题说明不能泄露未授权值。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -658,14 +676,16 @@ events:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.read
-      property_admin_api:
-        - property.import.read
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.read]
+      house_owners: [property.housing.read]
+      property_fee_bills: [property.bill.read]
     tags:
       - imports
     summary: 分页读取安全事件时间线
-    description: 只返回安全状态、任务阶段与文件生命周期事件，不替代管理员审计，不包含敏感元数据。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 只返回安全状态、任务阶段与文件生命周期事件，不替代管理员审计，不包含敏感元数据。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -715,14 +735,16 @@ precheck:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.precheck
-      property_admin_api:
-        - property.import.precheck
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.manage]
+      house_owners: [property.housing.manage]
+      property_fee_bills: [property.bill.manage]
     tags:
       - imports
     summary: 重新预检未确认批次
-    description: 只允许源输入仍保留、无执行确认、无活动任务且未取消/过期的批次；preview_version必须等于当前已发布版本。完整解析后才能重预检，未完成解析走recover。立即撤销旧确认资格，原预检任务完成后原子发布新版本/摘要/统计/问题，有效期24小时且不超过30天窗口。不变更文件、范围和配置。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 只允许源输入仍保留、无执行确认、无活动任务且未取消/过期的批次；preview_version必须等于当前已发布版本。完整解析后才能重预检，未完成解析走recover。立即撤销旧确认资格，原预检任务完成后原子发布新版本/摘要/统计/问题，有效期24小时且不超过30天窗口。不变更文件、范围和配置。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -781,14 +803,16 @@ confirm:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.execute
-      property_admin_api:
-        - property.import.execute
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.manage]
+      house_owners: [property.housing.manage]
+      property_fee_bills: [property.bill.manage]
     tags:
       - imports
     summary: 确认预览并安排业务执行
-    description: 校验预览版本/摘要/有效期、固定配置、当前权限和范围。all_rows要求无普通错误，valid_rows_only是显式部分执行；include_warning_rows显式决定警告行。边界错误始终阻断，无可执行行409。property_fee_bills要求property.bill.create；任一输入行初始已缴可解释为正金额时，即使该行其他字段有错，也要求property.bill_receipt.create。条件权限检查覆盖全部输入行，不能通过仅执行通过行、排除警告行或幂等成功复用绕过；确认、执行、重跑、恢复及结果复用前均复核。策略、确认时间、任务、审计、首次响应同事务保存，Worker只读取保存策略。202表示排队，phase=apply_queued。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 校验预览版本/摘要/有效期、固定配置、当前权限和范围。all_rows要求无普通错误，valid_rows_only是显式部分执行；include_warning_rows显式决定警告行。边界错误始终阻断，无可执行行409。property_fee_bills要求property.bill.manage；任一输入行初始已缴可解释为正金额时，即使该行其他字段有错，也要求property.bill_receipt.create。条件权限检查覆盖全部输入行，不能通过仅执行通过行、排除警告行或幂等成功复用绕过；确认、执行、重跑、恢复及结果复用前均复核。策略、确认时间、任务、审计、首次响应同事务保存，Worker只读取保存策略。202表示排队，phase=apply_queued。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -847,14 +871,16 @@ cancel:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.cancel
-      property_admin_api:
-        - property.import.cancel
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.manage]
+      house_owners: [property.housing.manage]
+      property_fee_bills: [property.bill.manage]
     tags:
       - imports
     summary: 请求协作式取消
-    description: 无请求体，统一202表示取消请求已记录，安全边界停止后才为cancelled。保留已提交结果；只标记本批次未执行行，不取消其他批次共享operation。终态、过期或有未知结果待核实返回409。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 无请求体，统一202表示取消请求已记录，安全边界停止后才为cancelled。保留已提交结果；只标记本批次未执行行，不取消其他批次共享operation。终态、过期或有未知结果待核实返回409。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -905,14 +931,16 @@ retryFailed:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.retry
-      property_admin_api:
-        - property.import.retry
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.manage]
+      house_owners: [property.housing.manage]
+      property_fee_bills: [property.bill.manage]
     tags:
       - imports
     summary: 创建失败行重跑批次并重新预检
-    description: 只选择明确可安全重试的failed行，无符合行409，未知结果不得重跑。新batch继承原范围/模板/输入证据，复用原operation_key，记录parent_batch_id并安排预检。新预览需用户再次显式确认；原历史不变。保留期外410，新批次不得延长复制源输入保留期。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 只选择明确可安全重试的failed行，无符合行409，未知结果不得重跑。新batch继承原范围/模板/输入证据，复用原operation_key，记录parent_batch_id并安排预检。新预览需用户再次显式确认；原历史不变。保留期外410，新批次不得延长复制源输入保留期。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -971,14 +999,16 @@ recover:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.recover
-      property_admin_api:
-        - property.import.recover
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.manage]
+      house_owners: [property.housing.manage]
+      property_fee_bills: [property.bill.manage]
     tags:
       - imports
     summary: 核实并恢复原任务
-    description: 仅blocked或原阶段任务paused，复核租约、原配置、权限和范围；有效运行租约或阻断未解除返回409。复用原task及operation_key，不新建替代操作或批次。未确认任务只恢复解析/预检，已确认任务使用已保存策略。未知结果保持blocked和uncertain_rows，无法核实时不得当失败重跑。到期后外部敏感读取与重跑关闭；仍可基于必要内部证据核实原操作并安全结束，不得安排新的业务创建。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 仅blocked或原阶段任务paused，复核租约、原配置、权限和范围；有效运行租约或阻断未解除返回409。复用原task及operation_key，不新建替代操作或批次。未确认任务只恢复解析/预检，已确认任务使用已保存策略。未知结果保持blocked和uncertain_rows，无法核实时不得当失败重跑。到期后外部敏感读取与重跑关闭；仍可基于必要内部证据核实原操作并安全结束，不得安排新的业务创建。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -1037,14 +1067,16 @@ errorFile:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.generate_error_file
-      property_admin_api:
-        - property.import.generate_error_file
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.read]
+      house_owners: [property.housing.read]
+      property_fee_bills: [property.bill.read]
     tags:
       - imports
     summary: 安排固定版本错误文件生成
-    description: 固定已发布预览和本批次结果；source_preview_version与generation追踪输出。必须已有正整数发布预览，解析失败仅提供问题查询，不生成可修复行文件。单批次不并发生成，有活动parse/precheck/apply任务时返回409，独立artifact任务不改变已完成批次结果。确认、恢复或重检改变结果后旧文件立即投影为stale、downloadable=false，重新生成新generation；生成checkpoint固定source_batch_row_version，artifact进度不改批次业务版本；发布及下载同时验证当前batch.row_version、source_preview_version和checkpoint.output_generation。错误/失败/未知结果明确区分，无问题行409，过期410。固定最小安全投影：敏感字段始终脱敏，不因生成者权限扩张；生成与下载均校验当前字段读取权限，防公式注入。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 固定已发布预览和本批次结果；source_preview_version与generation追踪输出。必须已有正整数发布预览，解析失败仅提供问题查询，不生成可修复行文件。单批次不并发生成，有活动parse/precheck/apply任务时返回409，独立artifact任务不改变已完成批次结果。确认、恢复或重检改变结果后旧文件立即投影为stale、downloadable=false，重新生成新generation；生成checkpoint固定source_batch_row_version，artifact进度不改批次业务版本；发布及下载同时验证当前batch.row_version、source_preview_version和checkpoint.output_generation。错误/失败/未知结果明确区分，无问题行409，过期410。固定最小安全投影：敏感字段始终脱敏，不因生成者权限扩张；生成与下载均校验当前字段读取权限，防公式注入。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -1103,14 +1135,16 @@ errorFileArtifact:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.read
-      property_admin_api:
-        - property.import.read
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.read]
+      house_owners: [property.housing.read]
+      property_fee_bills: [property.bill.read]
     tags:
       - imports
     summary: 读取当前错误文件生成状态
-    description: 尚未生成200 not_generated；事实改变后旧文件状态stale且downloadable=false，需重新生成。查询当前代次、安全元数据和可下载提示，不暴露存储键或下载URL。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 尚未生成200 not_generated；事实改变后旧文件状态stale且downloadable=false，需重新生成。查询当前代次、安全元数据和可下载提示，不暴露存储键或下载URL。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -1149,14 +1183,16 @@ errorFileDownload:
       - platform_admin_api
       - property_admin_api
     x-permissions-by-runtime:
-      platform_admin_api:
-        - platform.import.download
-      property_admin_api:
-        - property.import.download
+      platform_admin_api: []
+      property_admin_api: []
+    x-target-business-permissions:
+      houses: [property.housing.read]
+      house_owners: [property.housing.read]
+      property_fee_bills: [property.bill.read]
     tags:
       - imports
     summary: 鉴权下载指定代次错误文件
-    description: 只提供当前已完成且未过期的指定代次；代次不匹配或未就绪409，过期/已清理410。重新检查后台、公司、字段及批次权限，固定最小安全脱敏文件不按生成者权限增加敏感明文。通过私有目录的受控流式API输出，不跳转、不返回公开短链。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。导入权限必须叠加实际业务权限，不能扩张后台业务能力。
+    description: 只提供当前已完成且未过期的指定代次；代次不匹配或未就绪409，过期/已清理410。重新检查后台、公司、字段及批次权限，固定最小安全脱敏文件不按生成者权限增加敏感明文。通过私有目录的受控流式API输出，不跳转、不返回公开短链。 所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:

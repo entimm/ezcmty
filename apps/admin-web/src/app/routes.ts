@@ -1,10 +1,12 @@
 import type { Scope } from '../shared/types';
+import { propertyOrganizationPermissions } from '../shared/authorization';
 import { isPageAvailable } from './page-availability';
 export interface Route {
   page: string;
   path: string;
   title: string;
   permission?: string;
+  anyPermissions?: string[];
   parent?: string;
   companyScope?: boolean;
 }
@@ -21,38 +23,46 @@ export const routes: Record<Scope, Route[]> = {
       page: 'companies',
       path: '/companies',
       title: '物业公司',
-      permission: 'property.company.read',
+      anyPermissions: [
+        'platform.onboarding.read',
+        'platform.system.read',
+        'platform.payment_config.read',
+      ],
     },
     {
       page: 'company-detail',
       path: '/companies/:company',
       title: '物业公司详情',
       parent: 'companies',
-      permission: 'property.company.read',
+      anyPermissions: [
+        'platform.onboarding.read',
+        'platform.system.read',
+        'platform.payment_config.read',
+      ],
     },
     {
       page: 'platform-communities',
       path: '/communities',
       title: '小区管理',
-      permission: 'property.community.read',
+      permission: 'platform.onboarding.read',
     },
     {
       page: 'accounts',
       path: '/system/accounts',
       title: '账号管理',
-      permission: 'admin.account.read',
+      permission: 'platform.system.read',
     },
     {
       page: 'roles',
       path: '/system/roles',
       title: '角色权限',
-      permission: 'admin.role.read',
+      permission: 'platform.system.read',
     },
     {
       page: 'audit',
       path: '/system/audit-logs',
       title: '操作日志',
-      permission: 'admin.audit.read',
+      permission: 'platform.audit.read',
     },
     {
       page: 'payments',
@@ -80,6 +90,12 @@ export const routes: Record<Scope, Route[]> = {
       parent: 'companies',
       permission: 'platform.payment_config.read',
     },
+    {
+      page: 'payment-configuration',
+      path: '/payment-configuration',
+      title: '收款配置',
+      permission: 'platform.payment_config.read',
+    },
     ...importRoutes('platform'),
   ],
   property: [
@@ -88,34 +104,34 @@ export const routes: Record<Scope, Route[]> = {
       page: 'company',
       path: '/company',
       title: '公司资料',
-      permission: 'property.company.read',
+      anyPermissions: propertyOrganizationPermissions,
       companyScope: true,
     },
     {
       page: 'communities',
       path: '/communities',
       title: '小区资料',
-      permission: 'property.community.read',
+      anyPermissions: propertyOrganizationPermissions,
       companyScope: true,
     },
     {
       page: 'houses',
       path: '/houses',
       title: '房屋档案',
-      permission: 'property.house.read',
+      permission: 'property.housing.read',
     },
     {
       page: 'houses',
       path: '/communities/:community_id/houses',
       title: '房屋档案',
-      permission: 'property.house.read',
+      permission: 'property.housing.read',
     },
     {
       page: 'house-detail',
       path: '/communities/:community_id/houses/:house_id',
       title: '房屋详情',
       parent: 'houses',
-      permission: 'property.house.read',
+      permission: 'property.housing.read',
     },
     {
       page: 'bills',
@@ -140,27 +156,27 @@ export const routes: Record<Scope, Route[]> = {
       page: 'claims',
       path: '/house-claims',
       title: '房屋认领审核',
-      permission: 'property.house_claim.read',
+      permission: 'property.resident_access.read',
     },
     {
       page: 'claim-detail',
       path: '/house-claims/:claim_id',
       title: '认领申请详情',
       parent: 'claims',
-      permission: 'property.house_claim.read',
+      permission: 'property.resident_access.read',
     },
     {
       page: 'bindings',
       path: '/resident-house-bindings',
       title: '居民房屋绑定',
-      permission: 'property.resident_house_binding.read',
+      permission: 'property.resident_access.read',
     },
     {
       page: 'binding-detail',
       path: '/resident-house-bindings/:binding_id',
       title: '居民房屋绑定详情',
       parent: 'bindings',
-      permission: 'property.resident_house_binding.read',
+      permission: 'property.resident_access.read',
     },
     {
       page: 'payments',
@@ -179,16 +195,29 @@ export const routes: Record<Scope, Route[]> = {
       page: 'reconciliation',
       path: '/payment-reconciliation',
       title: '对账结果',
-      permission: 'property.payment_reconciliation.read',
+      permission: 'property.payment.read',
       companyScope: true,
     },
     {
       page: 'payment-configuration',
       path: '/payment-configuration',
       title: '收款信息',
-      permission: 'property.payment_config.read',
+      permission: 'property.payment.read',
       companyScope: true,
     },
+    ...['accounts', 'roles', 'audit'].map((page) => ({
+      page,
+      path: page === 'audit' ? '/system/audit-logs' : `/system/${page}`,
+      title:
+        page === 'accounts'
+          ? '账号管理'
+          : page === 'roles'
+            ? '角色权限'
+            : '操作日志',
+      permission:
+        page === 'audit' ? 'property.audit.read' : 'property.system.read',
+      companyScope: true,
+    })),
     ...importRoutes('property'),
   ],
 };
@@ -198,20 +227,29 @@ function importRoutes(scope: Scope): Route[] {
       page: 'imports',
       path: '/imports',
       title: '导入中心',
-      permission: `${scope}.import.read`,
+      anyPermissions:
+        scope === 'property'
+          ? ['property.housing.read', 'property.bill.read']
+          : [],
     },
     {
       page: 'import-new',
       path: '/imports/new',
       title: '新建导入',
-      permission: `${scope}.import.create`,
+      anyPermissions:
+        scope === 'property'
+          ? ['property.housing.manage', 'property.bill.manage']
+          : [],
       parent: 'imports',
     },
     {
       page: 'import-detail',
       path: '/imports/:batch_id',
       title: '导入批次详情',
-      permission: `${scope}.import.read`,
+      anyPermissions:
+        scope === 'property'
+          ? ['property.housing.read', 'property.bill.read']
+          : [],
       parent: 'imports',
     },
   ];
@@ -365,4 +403,15 @@ export function safeReturn(
   } catch {
     return home;
   }
+}
+
+export function canAccessRoute(
+  route: Route | undefined,
+  can: (permission: string) => boolean,
+) {
+  return (
+    !route ||
+    ((!route.permission || can(route.permission)) &&
+      (!route.anyPermissions || route.anyPermissions.some(can)))
+  );
 }

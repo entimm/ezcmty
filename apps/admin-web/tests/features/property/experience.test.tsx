@@ -154,9 +154,9 @@ describe('物业编辑与目标上下文', () => {
       throw new Error(`未声明的请求：${path}`);
     }) as AdminRequest;
     show(<HousingPage />, request, [
-      'property.house.read',
-      'property.house_owner.read',
-      'property.house_owner.create',
+      'property.housing.read',
+      'property.housing.read',
+      'property.housing.manage',
     ]);
     const buttons = await screen.findAllByRole('button', { name: '登记业主' });
     fireEvent.click(buttons[1]);
@@ -218,8 +218,21 @@ describe('账单资金保护', () => {
           },
         };
       if (path.endsWith('/houses/house-101')) return firstHouse;
-      if (path.includes('/houses?'))
-        return { items: [firstHouse], total: 1, page: 1, page_size: 50 };
+      if (path.includes('/house-options?'))
+        return {
+          items: [
+            {
+              id: firstHouse.id,
+              community_id: firstHouse.community_id,
+              label: firstHouse.display_address,
+              enabled: true,
+              effective_enabled: true,
+            },
+          ],
+          total: 1,
+          page: 1,
+          page_size: 50,
+        };
       if (path.endsWith('/bills') && options?.method === 'POST') {
         writes.push(options);
         if (writes.length === 1) throw new TypeError('网络中断');

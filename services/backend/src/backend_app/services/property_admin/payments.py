@@ -58,12 +58,12 @@ class PropertyPaymentService:
         )
 
     def sharing(self, ctx: AdminContext, identifier: str) -> schema.ManagedProfitSharingOrder:
-        repo = self._repo(ctx, "payment_funds.read")
+        repo = self._repo(ctx, "payment.read")
         item = repo.sharing(identifier)
         return mapper.sharing_view(self.db, item)
 
     def sharings(self, ctx: AdminContext, **filters: Any) -> schema.ManagedProfitSharingOrderPage:
-        repo = self._repo(ctx, "payment_funds.read", filters)
+        repo = self._repo(ctx, "payment.read", filters)
         items, total = repo.sharings(**filters)
         return schema.ManagedProfitSharingOrderPage(
             items=[mapper.sharing_view(self.db, i) for i in items],
@@ -73,12 +73,12 @@ class PropertyPaymentService:
         )
 
     def unfreeze(self, ctx: AdminContext, identifier: str) -> schema.ManagedUnfreezeOrder:
-        repo = self._repo(ctx, "payment_funds.read")
+        repo = self._repo(ctx, "payment.read")
         item = repo.unfreeze(identifier)
         return mapper.unfreeze_view(self.db, item)
 
     def unfreezes(self, ctx: AdminContext, **filters: Any) -> schema.ManagedUnfreezeOrderPage:
-        repo = self._repo(ctx, "payment_funds.read", filters)
+        repo = self._repo(ctx, "payment.read", filters)
         items, total = repo.unfreezes(**filters)
         return schema.ManagedUnfreezeOrderPage(
             items=[mapper.unfreeze_view(self.db, i) for i in items],
@@ -88,12 +88,12 @@ class PropertyPaymentService:
         )
 
     def run(self, ctx: AdminContext, identifier: str) -> schema.ManagedReconciliationRun:
-        repo = self._repo(ctx, "payment_reconciliation.read")
+        repo = self._repo(ctx, "payment.read")
         item = repo.run(identifier)
         return mapper.run_view(item, company_id=repo.company_id)
 
     def runs(self, ctx: AdminContext, **filters: Any) -> schema.ManagedReconciliationRunPage:
-        repo = self._repo(ctx, "payment_reconciliation.read", filters)
+        repo = self._repo(ctx, "payment.read", filters)
         items, total = repo.runs(**filters)
         return schema.ManagedReconciliationRunPage(
             items=[mapper.run_view(i, company_id=repo.company_id) for i in items],
@@ -105,14 +105,14 @@ class PropertyPaymentService:
     def discrepancy(
         self, ctx: AdminContext, identifier: str
     ) -> schema.ManagedReconciliationDiscrepancy:
-        repo = self._repo(ctx, "payment_reconciliation.read")
+        repo = self._repo(ctx, "payment.read")
         item = repo.discrepancy(identifier)
         return mapper.discrepancy_view(self.db, item)
 
     def discrepancies(
         self, ctx: AdminContext, **filters: Any
     ) -> schema.ManagedReconciliationDiscrepancyPage:
-        repo = self._repo(ctx, "payment_reconciliation.read", filters)
+        repo = self._repo(ctx, "payment.read", filters)
         items, total = repo.discrepancies(**filters)
         return schema.ManagedReconciliationDiscrepancyPage(
             items=[mapper.discrepancy_view(self.db, i) for i in items],

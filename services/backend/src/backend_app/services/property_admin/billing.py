@@ -40,8 +40,8 @@ from backend_app.services.bill_creation import create_bill
 from backend_app.services.contracts.admin import AdminContext
 
 PERMISSIONS: dict[Action, str] = {
-    "create": "property.bill.create",
-    "update": "property.bill.update",
+    "create": "property.bill.manage",
+    "update": "property.bill.manage",
     "receipt": "property.bill_receipt.create",
     "correct_receipt": "property.bill_receipt.correct",
     "reverse_receipt": "property.bill_receipt.correct",
@@ -121,7 +121,7 @@ class PropertyBillingService:
     def list_bases(
         self, ctx: AdminContext, community_id: str, house_id: str, **filters: Any
     ) -> schema.FeeBasisPage:
-        repo, _ = self._scope(ctx, "property.fee_basis.read")
+        repo, _ = self._scope(ctx, "property.bill.read")
         self._house(repo, self._community(repo, community_id), house_id)
         items, total = repo.bases(house_id, **filters)
         return schema.FeeBasisPage(items=[basis_view(i) for i in items], total=total, **filters)
@@ -129,7 +129,7 @@ class PropertyBillingService:
     def get_basis(
         self, ctx: AdminContext, community_id: str, house_id: str, version_id: str
     ) -> schema.FeeBasisVersion:
-        repo, _ = self._scope(ctx, "property.fee_basis.read")
+        repo, _ = self._scope(ctx, "property.bill.read")
         self._house(repo, self._community(repo, community_id), house_id)
         item = repo.basis(house_id, version_id)
         if item is None:
@@ -146,7 +146,7 @@ class PropertyBillingService:
     ) -> schema.FeeBasisVersion:
         try:
             repo, identity, actor, community = self._protect(
-                ctx, "property.fee_basis.create", community_id
+                ctx, "property.fee_basis.manage", community_id
             )
             assert community
             house, path = self._house(repo, community, house_id, lock=True, exclusive=True)
@@ -198,7 +198,7 @@ class PropertyBillingService:
         house_id: str,
         data: schema.FeeCalculationRequest,
     ) -> schema.FeeCalculation:
-        repo, _ = self._scope(ctx, "property.fee_basis.read")
+        repo, _ = self._scope(ctx, "property.bill.read")
         community = self._community(repo, community_id)
         house, path = self._house(repo, community, house_id)
         start = month_date(data.billing_month)
@@ -566,7 +566,7 @@ class PropertyBillingService:
         request_id: str,
     ) -> schema.BillWriteResult:
         try:
-            self._protect(ctx, "property.bill.create", community_id)
+            self._protect(ctx, "property.bill.manage", community_id)
             result = create_bill(
                 self.db,
                 company_id=ctx.property_company_id or "",
@@ -583,7 +583,7 @@ class PropertyBillingService:
         except IntegrityError as error:
             self.db.rollback()
             if is_unique_violation(error, "uq_bill_operation_key"):
-                repo, identity, actor, _ = self._protect(ctx, "property.bill.create", community_id)
+                repo, identity, actor, _ = self._protect(ctx, "property.bill.manage", community_id)
                 self._require_creation_permissions(
                     identity,
                     actor,

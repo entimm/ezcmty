@@ -157,7 +157,7 @@ def test_native_types_and_fresh_migration_schema(
         db.flush()
         db.add(
             AdminRolePermission(
-                scope="platform_admin", role_id=role.id, permission="admin.account.read"
+                scope="platform_admin", role_id=role.id, permission="platform.system.read"
             )
         )
         db.add(

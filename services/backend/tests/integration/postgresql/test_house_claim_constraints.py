@@ -79,8 +79,8 @@ def test_partial_unique_pending_claim_and_binding_origin_scope_are_native_constr
 @pytest.mark.parametrize(
     "permissions",
     [
-        ["property.house_claim.read"],
-        ["property.house_claim.review"],
+        ["property.resident_access.read"],
+        ["property.resident_access.review"],
         [],
     ],
 )

@@ -25,14 +25,14 @@ def test_role_write_rules_revocation_and_account_creation(harness: Harness) -> N
     ).json()
     result = harness.client.put(
         f"/v1/admin-roles/{role['id']}/permissions",
-        json={"permissions": ["admin.account.create"]},
+        json={"permissions": ["platform.system.manage"]},
         headers=headers,
     )
     assert result.status_code == 409 and result.json()["code"] == "admin.invalid_permission"
     assert (
         harness.client.put(
             f"/v1/admin-roles/{role['id']}/permissions",
-            json={"permissions": ["admin.account.read", "admin.role.read"]},
+            json={"permissions": ["platform.system.read"]},
             headers=headers,
         ).status_code
         == 200
@@ -62,7 +62,7 @@ def test_role_write_rules_revocation_and_account_creation(harness: Harness) -> N
     with harness.factory() as db:
         service = PlatformAdminService(db)
         context = service.authenticate(harness.store, token)
-        assert context.permissions == ["admin.account.read", "admin.role.read"]
+        assert context.permissions == ["platform.system.read"]
         with pytest.raises(AppError, match="没有操作权限"):
             service.create_role(context, schema.RoleCreate(code="illegal", name="不允许"), "test")
         db.rollback()

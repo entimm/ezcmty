@@ -17,7 +17,7 @@ class ImportCatalog:
         self.access = access
 
     def types(self, ctx: AdminContext, scope_type: str | None = None) -> dict[str, Any]:
-        _, _, permissions = self.access.authorize(ctx, "create")
+        _, _, permissions = self.access.authorize(ctx)
         grouped: dict[str, dict[str, Any]] = {}
         for definition in self.access.registry.list():
             if (
@@ -51,7 +51,7 @@ class ImportCatalog:
         return {"items": list(grouped.values())}
 
     def template(self, ctx: AdminContext, type_key: str, version_no: int) -> dict[str, Any]:
-        _, _, permissions = self.access.authorize(ctx, "create")
+        _, _, permissions = self.access.authorize(ctx)
         definition = self.access.definition(
             type_key, version_no, permissions, missing_not_found=True
         )

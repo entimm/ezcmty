@@ -191,9 +191,9 @@ def creation_permissions(
     *, initial_paid_cents: int | None = 0, basis_version_id: str | None = None
 ) -> frozenset[str]:
     """Report known authorization needs even when unrelated input fields are invalid."""
-    permissions = {"property.bill.create"}
+    permissions = {"property.bill.manage"}
     if basis_version_id is not None:
-        permissions.add("property.fee_basis.read")
+        permissions.add("property.bill.read")
     if type(initial_paid_cents) is int and initial_paid_cents > 0:
         permissions.add("property.bill_receipt.create")
     return frozenset(permissions)

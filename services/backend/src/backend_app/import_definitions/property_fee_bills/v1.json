@@ -6,7 +6,7 @@
   "allowed_scope_types": ["community"],
   "supported_modes": ["create"],
   "allowed_actor_scopes": ["property_admin"],
-  "required_permissions": ["property.bill.create"],
+  "required_permissions": ["property.bill.manage"],
   "read_permissions": ["property.bill.read"],
   "released_at": "2026-10-23T00:00:00Z",
   "release_notes": "按完整位置匹配房屋，创建物业费月账单，可同时登记初始已缴。",

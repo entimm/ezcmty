@@ -337,3 +337,43 @@ HouseOwnerPage:
     - total
     - page
     - page_size
+
+HouseOption:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    community_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    label:
+      type: string
+    enabled:
+      type: boolean
+    effective_enabled:
+      type: boolean
+  required:
+    - id
+    - community_id
+    - label
+    - enabled
+    - effective_enabled
+HouseOptionPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./housing-schemas.yaml#/HouseOption
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size

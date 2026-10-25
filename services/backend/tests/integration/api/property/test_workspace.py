@@ -57,43 +57,21 @@ def test_platform_provisioning_to_restricted_login_password_change_and_workspace
     full = w.login(NEW_PASSWORD)
     assert not full["must_change_password"]
     assert set(full["permissions"]) == {
-        "property.import.read",
-        "property.import.create",
-        "property.import.upload",
-        "property.import.precheck",
-        "property.import.execute",
-        "property.import.cancel",
-        "property.import.retry",
-        "property.import.recover",
-        "property.import.generate_error_file",
-        "property.import.download",
-        "property.company.read",
-        "property.house_claim.read",
-        "property.house_claim.review",
-        "property.resident_house_binding.read",
-        "property.resident_house_binding.revoke",
-        "property.community.read",
-        "property.space.read",
-        "property.space.create",
-        "property.space.update",
-        "property.house.read",
-        "property.house.create",
-        "property.house.update",
-        "property.house_owner.read",
-        "property.house_owner.create",
-        "property.house_owner.update",
-        "property.fee_basis.read",
-        "property.fee_basis.create",
-        "property.bill.read",
-        "property.bill.create",
-        "property.bill.update",
         "property.bill.void",
+        "property.resident_access.review",
+        "property.fee_basis.manage",
         "property.bill_receipt.create",
-        "property.bill_receipt.correct",
-        "property.payment_config.read",
         "property.payment.read",
-        "property.payment_funds.read",
-        "property.payment_reconciliation.read",
+        "property.bill.manage",
+        "property.resident_access.revoke",
+        "property.housing.read",
+        "property.system.read",
+        "property.system.manage",
+        "property.audit.read",
+        "property.bill.read",
+        "property.housing.manage",
+        "property.resident_access.read",
+        "property.bill_receipt.correct",
     }
     own = w.client.get(f"{PREFIX}/property-companies/current")
     assert own.status_code == 200 and own.json()["id"] == w.company_id
@@ -169,14 +147,15 @@ def test_workspace_permissions_and_missing_company_fail_closed(
         lambda scope: (
             [
                 PermissionDefinition(
-                    code="property.company.read", name="公司", group="公司", assignable=True
+                    code="property.audit.read", name="日志", group="日志", assignable=True
                 )
             ]
             if scope == "property_admin"
             else []
         ),
     )
-    assert w.client.get(f"{PREFIX}/property-companies/current").status_code == 200
+    assert w.client.get(f"{PREFIX}/property-workspace/context").status_code == 200
+    assert w.client.get(f"{PREFIX}/property-companies/current").status_code == 403
     assert w.client.get(f"{PREFIX}/communities").status_code == 403
     token = w.client.cookies.get("admin_session")
     assert token

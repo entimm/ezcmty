@@ -228,6 +228,7 @@ class ImportBusinessPreview(AdminSchema):
 
 
 class ImportBatch(AdminSchema):
+    template_fields: list[ImportTemplateField]
     model_config = ConfigDict(json_schema_extra={"x-sensitive-retention-days": 30})
     id: Identifier
     parent_batch_id: Identifier | None

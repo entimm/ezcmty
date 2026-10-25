@@ -79,9 +79,9 @@ def test_commands_enforce_business_boundaries_without_http_validation(
 @pytest.mark.parametrize("paid", [0, 1, MAX_CENTS])
 def test_receipt_permission_is_independent_of_unrelated_command_fields(paid: int) -> None:
     needed = creation_permissions(initial_paid_cents=paid)
-    assert "property.bill.create" in needed
+    assert "property.bill.manage" in needed
     assert ("property.bill_receipt.create" in needed) is (paid > 0)
-    assert "property.fee_basis.read" in creation_permissions(
+    assert "property.bill.read" in creation_permissions(
         initial_paid_cents=paid, basis_version_id="reference"
     )
 

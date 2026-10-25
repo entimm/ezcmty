@@ -15,14 +15,12 @@ import {
   Avatar,
   Button,
   Col,
-  DatePicker,
   Divider,
   Dropdown,
   Empty,
   Form,
   Input,
   InputNumber,
-  Radio,
   Row,
   Select,
   Space,
@@ -35,32 +33,27 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { DataNode } from 'antd/es/tree';
-import dayjs, { type Dayjs } from 'dayjs';
 import { useAdmin } from '../../shared/context';
 import { PageHeader, Panel, DetailGrid } from '../../shared/ui';
 import {
   createPropertyApi,
-  type FeeBasis,
   type House,
   type Owner,
   type SpaceNode,
   type SpaceType,
-  type Usage,
 } from './api';
 import { PropertyEditor } from './Editor';
 import {
-  basisText,
-  cents,
   HousingStatus,
   Metric,
   Metrics,
   QueryError,
   SelectCommunity,
   time,
-  toCents,
   usageLabels,
 } from './presentation';
 import { BillList, BillModal } from './Billing';
+import { FeeBasisPanel } from './BillingBasis';
 
 const spaceLabels = { phase: '分区', building: '楼栋', unit: '单元' };
 const phoneRule = {
@@ -74,13 +67,10 @@ type Editor = {
     | 'owner'
     | 'house-status'
     | 'space-status'
-    | 'owner-status'
-    | 'basis'
-    | 'basis-view';
+    | 'owner-status';
   house?: House;
   owner?: Owner;
   node?: SpaceNode;
-  basis?: FeeBasis;
 };
 
 async function loadSpaces(
@@ -131,7 +121,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
   const spaces = useQuery({
     queryKey: ['property', 'spaces', c],
     queryFn: () => loadSpaces(api, c),
-    enabled: !!c && can('property.space.read'),
+    enabled: !!c && can('property.housing.read'),
   });
   const list = useQuery({
     queryKey: ['property', 'houses', c, params],
@@ -146,12 +136,12 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
           params.enabled === undefined ? undefined : params.enabled === 'true',
         sort: '-created_at',
       }),
-    enabled: !!c && !detail && can('property.house.read'),
+    enabled: !!c && !detail && can('property.housing.read'),
   });
   const houseQuery = useQuery({
     queryKey: ['property', 'house', c, id],
     queryFn: () => api.house(c, id),
-    enabled: !!c && !!id && detail && can('property.house.read'),
+    enabled: !!c && !!id && detail && can('property.housing.read'),
   });
   const totals = useQuery({
     queryKey: ['property', 'house-counts', c],
@@ -162,7 +152,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
       ]);
       return { total: total.total, active: active.total };
     },
-    enabled: !!c && !detail && can('property.house.read'),
+    enabled: !!c && !detail && can('property.housing.read'),
   });
   const rows = list.data?.items ?? [];
   const metadata = useQueries({
@@ -172,15 +162,15 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
         'house-metadata',
         c,
         house.id,
-        can('property.house_owner.read'),
-        can('property.fee_basis.read'),
+        can('property.housing.read'),
+        can('property.bill.read'),
       ],
       queryFn: async () => {
         const [owners, bases] = await Promise.all([
-          can('property.house_owner.read')
+          can('property.housing.read')
             ? api.owners(c, house.id, { page: 1, page_size: 100 })
             : null,
-          can('property.fee_basis.read')
+          can('property.bill.read')
             ? api.bases(c, house.id, { page: 1, page_size: 1 })
             : null,
         ]);
@@ -243,7 +233,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
             <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
               {data?.data?.basis
                 ? usageLabels[data.data.basis.house_usage]
-                : can('property.fee_basis.read')
+                : can('property.bill.read')
                   ? '暂无计费依据'
                   : '无计费读取权限'}
             </div>
@@ -256,7 +246,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
       width: 160,
       render: (_, row) => {
         const data = meta.get(row.id);
-        if (!can('property.house_owner.read'))
+        if (!can('property.housing.read'))
           return <span className="muted">无读取权限</span>;
         if (data?.isPending) return <Spin size="small" />;
         if (data?.isError) return <span className="muted">读取失败</span>;
@@ -293,7 +283,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
           <Button type="link" size="small" onClick={() => openHouse(row)}>
             详情
           </Button>
-          {can('property.house_owner.create') && (
+          {can('property.housing.manage') && (
             <Tooltip
               title={
                 !row.effective_enabled
@@ -311,7 +301,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
               </Button>
             </Tooltip>
           )}
-          {can('property.house.update') && (
+          {can('property.housing.manage') && (
             <Dropdown
               menu={{
                 items: [
@@ -360,7 +350,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
               house && (
                 <>
                   <HousingStatus record={house} />
-                  {can('property.house.update') && (
+                  {can('property.housing.manage') && (
                     <Button
                       icon={<EditOutlined />}
                       onClick={() => setEditor({ kind: 'house', house })}
@@ -405,9 +395,9 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
               <Tabs
                 activeKey={
                   params.tab ||
-                  (can('property.house_owner.read')
+                  (can('property.housing.read')
                     ? 'owners'
-                    : can('property.fee_basis.read')
+                    : can('property.bill.read')
                       ? 'basis'
                       : 'bills')
                 }
@@ -416,7 +406,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
                 }
                 style={{ marginTop: 20 }}
                 items={[
-                  ...(can('property.house_owner.read')
+                  ...(can('property.housing.read')
                     ? [
                         {
                           key: 'owners',
@@ -430,17 +420,12 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
                         },
                       ]
                     : []),
-                  ...(can('property.fee_basis.read')
+                  ...(can('property.bill.read')
                     ? [
                         {
                           key: 'basis',
                           label: '计费依据',
-                          children: (
-                            <BasisPanel
-                              house={house}
-                              open={(value) => setEditor(value)}
-                            />
-                          ),
+                          children: <FeeBasisPanel house={house} />,
                         },
                       ]
                     : []),
@@ -453,7 +438,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
                             <Panel
                               title="当前房屋账单"
                               extra={
-                                can('property.bill.create') && (
+                                can('property.bill.manage') && (
                                   <Button
                                     type="primary"
                                     icon={<PlusOutlined />}
@@ -483,7 +468,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
             description="以房屋为核心，统一维护空间、业主登记与计费资料。"
             extra={
               <>
-                {can('property.import.create') && (
+                {can('property.housing.manage') && (
                   <Button
                     icon={<DownloadOutlined />}
                     onClick={() => go('import-new', { import_type: 'houses' })}
@@ -491,7 +476,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
                     导入房屋 / 业主
                   </Button>
                 )}
-                {can('property.house.create') && (
+                {can('property.housing.manage') && (
                   <Button
                     type="primary"
                     icon={<PlusOutlined />}
@@ -519,7 +504,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
             <Metric
               label="本页业主待补充"
               value={
-                !can('property.house_owner.read') ||
+                !can('property.housing.read') ||
                 metadata.some((m) => !m.isSuccess)
                   ? '—'
                   : metadata.filter(
@@ -561,7 +546,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
               title="空间定位"
               extra={<ApartmentOutlined style={{ color: '#7b89a2' }} />}
             >
-              <Spin spinning={spaces.isPending && can('property.space.read')}>
+              <Spin spinning={spaces.isPending && can('property.housing.read')}>
                 <Tree
                   blockNode
                   defaultExpandedKeys={['all']}
@@ -586,7 +571,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
                   style={{ background: 'transparent', fontSize: 13 }}
                 />
               </Spin>
-              {can('property.space.create') && (
+              {can('property.housing.manage') && (
                 <>
                   <Divider style={{ margin: '20px 0 12px' }} />
                   <Button
@@ -609,7 +594,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
               title={selectedSpace?.name ?? '全部房屋'}
               extra={
                 selectedSpace &&
-                can('property.space.update') && (
+                can('property.housing.manage') && (
                   <Space>
                     <Button
                       type="link"
@@ -774,13 +759,13 @@ function OwnerPanel({
     queryKey: ['property', 'owners', house.community_id, house.id, page],
     queryFn: () =>
       api.owners(house.community_id, house.id, { page, page_size: 20 }),
-    enabled: can('property.house_owner.read'),
+    enabled: can('property.housing.read'),
   });
   return (
     <Panel
       title="业主登记"
       extra={
-        can('property.house_owner.create') && (
+        can('property.housing.manage') && (
           <Button
             type="primary"
             size="small"
@@ -836,7 +821,7 @@ function OwnerPanel({
           {
             title: '操作',
             render: (_, owner) =>
-              can('property.house_owner.update') ? (
+              can('property.housing.manage') ? (
                 <Space>
                   <Button
                     type="link"
@@ -865,147 +850,6 @@ function OwnerPanel({
   );
 }
 
-function BasisPanel({
-  house,
-  open,
-}: {
-  house: House;
-  open: (editor: Editor) => void;
-}) {
-  const { request, can } = useAdmin();
-  const api = useMemo(() => createPropertyApi(request), [request]);
-  const [month, setMonth] = useState<Dayjs>(dayjs());
-  const [page, setPage] = useState(1);
-  const bases = useQuery({
-    queryKey: ['property', 'bases', house.community_id, house.id, page],
-    queryFn: () =>
-      api.bases(house.community_id, house.id, { page, page_size: 20 }),
-  });
-  const calculation = useQuery({
-    queryKey: [
-      'property',
-      'calculation',
-      house.community_id,
-      house.id,
-      month.format('YYYY-MM'),
-    ],
-    queryFn: () =>
-      api.calculate(house.community_id, house.id, month.format('YYYY-MM')),
-    retry: false,
-  });
-  return (
-    <>
-      <Panel
-        title="当月计费试算"
-        extra={
-          <DatePicker
-            picker="month"
-            allowClear={false}
-            value={month}
-            onChange={(value) => value && setMonth(value)}
-          />
-        }
-      >
-        <QueryError error={calculation.error} retry={calculation.refetch} />
-        <Spin spinning={calculation.isPending}>
-          <DetailGrid
-            items={[
-              [
-                '适用依据',
-                calculation.data?.basis
-                  ? `v${calculation.data.basis.version_no} · ${calculation.data.basis.effective_from_month} 起生效`
-                  : '暂无适用依据',
-              ],
-              ['计费方式', basisText(calculation.data?.basis)],
-              [
-                '建筑面积',
-                calculation.data?.basis?.area_sqm
-                  ? `${calculation.data.basis.area_sqm} ㎡`
-                  : '未设置',
-              ],
-              [
-                '本月应收',
-                calculation.data?.available
-                  ? cents(calculation.data.receivable_cents)
-                  : '请先新增计费依据',
-              ],
-            ]}
-          />
-        </Spin>
-      </Panel>
-      <div style={{ height: 18 }} />
-      <Panel
-        title="计费依据版本"
-        extra={
-          can('property.fee_basis.create') && (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              disabled={!house.effective_enabled}
-              onClick={() => open({ kind: 'basis', house })}
-            >
-              新增依据版本
-            </Button>
-          )
-        }
-      >
-        <Alert
-          type="info"
-          showIcon
-          title="版本保存后不可修改。新增版本仅影响后续试算，已经创建的账单继续使用原依据。"
-          style={{ marginBottom: 18 }}
-        />
-        <QueryError error={bases.error} retry={bases.refetch} />
-        <Table<FeeBasis>
-          rowKey="id"
-          size="middle"
-          dataSource={bases.data?.items}
-          loading={bases.isPending}
-          pagination={{
-            current: page,
-            pageSize: 20,
-            total: bases.data?.total,
-            onChange: setPage,
-          }}
-          columns={[
-            {
-              title: '版本',
-              render: (_, basis) => <Tag color="blue">v{basis.version_no}</Tag>,
-            },
-            { title: '生效月份', dataIndex: 'effective_from_month' },
-            { title: '计费标准', render: (_, basis) => basisText(basis) },
-            { title: '变更原因', dataIndex: 'change_reason' },
-            {
-              title: '操作',
-              render: (_, basis) => (
-                <Space>
-                  <Button
-                    type="link"
-                    size="small"
-                    onClick={() => open({ kind: 'basis-view', house, basis })}
-                  >
-                    详情
-                  </Button>
-                  {can('property.fee_basis.create') && (
-                    <Button
-                      type="link"
-                      size="small"
-                      disabled={!house.effective_enabled}
-                      onClick={() => open({ kind: 'basis', house, basis })}
-                    >
-                      复制为新版本
-                    </Button>
-                  )}
-                </Space>
-              ),
-            },
-          ]}
-        />
-      </Panel>
-    </>
-  );
-}
-
 function HousingEditor({
   editor,
   c,
@@ -1025,13 +869,7 @@ function HousingEditor({
   const { message } = App.useApp();
   const api = useMemo(() => createPropertyApi(request), [request]);
   const [form] = Form.useForm();
-  const { kind, house, node, owner, basis } = editor;
-  const latest = useQuery({
-    queryKey: ['property', 'latest-basis', c, house?.id],
-    queryFn: () => api.bases(c, house!.id, { page: 1, page_size: 1 }),
-    enabled: kind === 'basis' && !!house && can('property.fee_basis.read'),
-  });
-  const method = Form.useWatch('method', form) as string | undefined;
+  const { kind, house, node, owner } = editor;
   const nodeType = Form.useWatch('node_type', form) as SpaceType | undefined;
   const defaultType =
     selectedSpace?.node_type === 'phase'
@@ -1039,7 +877,6 @@ function HousingEditor({
       : selectedSpace?.node_type === 'building'
         ? 'unit'
         : 'building';
-  const basisSource = basis || latest.data?.items[0];
   const initial: Record<string, unknown> =
     kind === 'house'
       ? house
@@ -1072,30 +909,7 @@ function HousingEditor({
             }
         : kind === 'owner'
           ? { name: owner?.name, phone: owner?.phone }
-          : kind === 'basis'
-            ? {
-                month: dayjs().add(1, 'month'),
-                house_usage: basisSource?.house_usage ?? 'residential',
-                method:
-                  basisSource?.fixed_amount_cents !== null &&
-                  basisSource?.fixed_amount_cents !== undefined
-                    ? 'fixed'
-                    : 'area',
-                area: basisSource?.area_sqm
-                  ? Number(basisSource.area_sqm)
-                  : undefined,
-                rate:
-                  basisSource?.unit_price_cents !== null &&
-                  basisSource?.unit_price_cents !== undefined
-                    ? basisSource.unit_price_cents / 100
-                    : undefined,
-                fixed:
-                  basisSource?.fixed_amount_cents !== null &&
-                  basisSource?.fixed_amount_cents !== undefined
-                    ? basisSource.fixed_amount_cents / 100
-                    : undefined,
-              }
-            : {};
+          : {};
   const title = {
     house: house ? '编辑房屋资料' : '新增房屋',
     space: node ? '编辑空间' : '新增空间',
@@ -1103,19 +917,16 @@ function HousingEditor({
     'house-status': house?.enabled ? '停用房屋' : '启用房屋',
     'space-status': node?.enabled ? '停用空间' : '启用空间',
     'owner-status': owner?.enabled ? '停用业主登记' : '启用业主登记',
-    basis: '新增计费依据版本',
-    'basis-view': `计费依据 v${basis?.version_no}`,
   }[kind];
   const submit = async (values: Record<string, unknown>) => {
     if (kind === 'house') {
-      if (!can(house ? 'property.house.update' : 'property.house.create'))
-        throw new Error('没有操作权限');
+      if (!can('property.housing.manage')) throw new Error('没有操作权限');
       await api.saveHouse(c, house?.id, {
         ...(house
           ? {}
           : {
               space_node_id: values.space_node_id,
-              ...(can('property.house_owner.create')
+              ...(can('property.housing.manage')
                 ? { owners: values.owners ?? [] }
                 : {}),
             }),
@@ -1127,8 +938,7 @@ function HousingEditor({
             : null,
       });
     } else if (kind === 'space') {
-      if (!can(node ? 'property.space.update' : 'property.space.create'))
-        throw new Error('没有操作权限');
+      if (!can('property.housing.manage')) throw new Error('没有操作权限');
       await api.saveNode(c, node?.id, {
         ...(node
           ? {}
@@ -1144,68 +954,28 @@ function HousingEditor({
         sort_order: values.sort_order ?? 0,
       });
     } else if (kind === 'owner') {
-      if (
-        !can(
-          owner ? 'property.house_owner.update' : 'property.house_owner.create',
-        )
-      )
-        throw new Error('没有操作权限');
+      if (!can('property.housing.manage')) throw new Error('没有操作权限');
       await api.saveOwner(c, house!.id, owner?.id, {
         name: String(values.name).trim(),
         phone: String(values.phone).trim(),
       });
     } else if (kind === 'house-status') {
-      if (!can('property.house.update')) throw new Error('没有操作权限');
+      if (!can('property.housing.manage')) throw new Error('没有操作权限');
       await api.saveHouse(c, house!.id, { enabled: !house!.enabled });
     } else if (kind === 'space-status') {
-      if (!can('property.space.update')) throw new Error('没有操作权限');
+      if (!can('property.housing.manage')) throw new Error('没有操作权限');
       await api.saveNode(c, node!.id, { enabled: !node!.enabled });
     } else if (kind === 'owner-status') {
-      if (!can('property.house_owner.update')) throw new Error('没有操作权限');
+      if (!can('property.housing.manage')) throw new Error('没有操作权限');
       await api.saveOwner(c, house!.id, owner!.id, {
         enabled: !owner!.enabled,
-      });
-    } else if (kind === 'basis') {
-      if (!can('property.fee_basis.create')) throw new Error('没有操作权限');
-      const fresh = await api.bases(c, house!.id, { page: 1, page_size: 1 });
-      const expected = latest.data?.items[0]?.version_no ?? 0;
-      if ((fresh.items[0]?.version_no ?? 0) !== expected) {
-        await latest.refetch();
-        throw new Error('计费依据已有新版本，请核对最新依据后重新保存');
-      }
-      await api.createBasis(c, house!.id, {
-        expected_latest_version_no: expected,
-        effective_from_month: (values.month as Dayjs).format('YYYY-MM'),
-        house_usage: values.house_usage as Usage,
-        area_sqm: values.method === 'area' ? String(values.area) : null,
-        unit_price_cents:
-          values.method === 'area' ? toCents(values.rate) : null,
-        fixed_amount_cents:
-          values.method === 'fixed' ? toCents(values.fixed) : null,
-        change_reason: String(values.reason).trim(),
       });
     }
     await done();
     message.success(
-      kind === 'basis'
-        ? '新的计费依据版本已保存'
-        : kind === 'owner'
-          ? '业主登记已保存，列表已更新'
-          : '资料已保存',
+      kind === 'owner' ? '业主登记已保存，列表已更新' : '资料已保存',
     );
   };
-  const reason = (
-    <Form.Item
-      name="reason"
-      label="变更原因"
-      rules={[
-        { required: true, whitespace: true, message: '请填写变更原因' },
-        { max: 1000 },
-      ]}
-    >
-      <Input.TextArea rows={3} maxLength={1000} showCount />
-    </Form.Item>
-  );
   return (
     <PropertyEditor
       title={title}
@@ -1213,7 +983,6 @@ function HousingEditor({
       initial={initial}
       submit={submit}
       close={close}
-      readOnly={kind === 'basis-view'}
     >
       {kind === 'house' && (
         <>
@@ -1274,7 +1043,7 @@ function HousingEditor({
           <Form.Item name="external_code" label="外部房屋编号（选填）">
             <Input maxLength={64} placeholder="用于与物业原系统对应" />
           </Form.Item>
-          {!house && can('property.house_owner.create') && (
+          {!house && can('property.housing.manage') && (
             <>
               <Divider>初始业主（选填）</Divider>
               <Form.List name="owners">
@@ -1493,92 +1262,6 @@ function HousingEditor({
             {node?.name || owner?.name || house?.display_address}
           </div>
         </>
-      )}
-      {kind === 'basis' && (
-        <>
-          <Alert
-            type="info"
-            showIcon
-            title="新版本保存后不可修改，已建账单不受影响。"
-            style={{ marginBottom: 20 }}
-          />
-          <QueryError error={latest.error} retry={latest.refetch} />
-          <Form.Item name="month" label="生效月份" rules={[{ required: true }]}>
-            <DatePicker picker="month" style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item
-            name="house_usage"
-            label="房屋用途"
-            rules={[{ required: true }]}
-          >
-            <Select
-              options={Object.entries(usageLabels).map(([value, label]) => ({
-                value,
-                label,
-              }))}
-            />
-          </Form.Item>
-          <Form.Item name="method" label="计费方式">
-            <Radio.Group
-              options={[
-                { value: 'area', label: '面积 × 单价' },
-                { value: 'fixed', label: '固定月费' },
-              ]}
-            />
-          </Form.Item>
-          {method === 'fixed' ? (
-            <Form.Item
-              name="fixed"
-              label="固定月费（元）"
-              rules={[{ required: true }]}
-            >
-              <InputNumber min={0} precision={2} style={{ width: '100%' }} />
-            </Form.Item>
-          ) : (
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="area"
-                  label="建筑面积（㎡）"
-                  rules={[{ required: true }]}
-                >
-                  <InputNumber
-                    min={0}
-                    max={99999999}
-                    precision={4}
-                    style={{ width: '100%' }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="rate"
-                  label="月单价（元 / ㎡）"
-                  rules={[{ required: true }]}
-                >
-                  <InputNumber
-                    min={0}
-                    precision={2}
-                    style={{ width: '100%' }}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-          )}
-          {reason}
-        </>
-      )}
-      {kind === 'basis-view' && basis && (
-        <DetailGrid
-          items={[
-            ['依据版本', `v${basis.version_no}`],
-            ['生效月份', basis.effective_from_month],
-            ['房屋用途', usageLabels[basis.house_usage]],
-            ['计费标准', basisText(basis)],
-            ['变更原因', basis.change_reason],
-            ['创建时间', time(basis.created_at)],
-          ]}
-        />
       )}
     </PropertyEditor>
   );

@@ -113,6 +113,12 @@ RoleCreate:
       type: string
       minLength: 1
       maxLength: 80
+    permissions:
+      type: array
+      items:
+        type: string
+        minLength: 1
+        maxLength: 100
   required:
     - code
     - name
@@ -242,6 +248,10 @@ AdminAccount:
       type: array
       items:
         $ref: '#/RoleSummary'
+    effective_permissions:
+      type: array
+      items:
+        type: string
   required:
     - id
     - scope
@@ -251,6 +261,8 @@ AdminAccount:
     - must_change_password
     - created_at
     - roles
+    - effective_permissions
+
 AdminRole:
   type: object
   additionalProperties: false
@@ -269,6 +281,9 @@ AdminRole:
       type: array
       items:
         type: string
+    affected_account_count:
+      type: integer
+      minimum: 0
   required:
     - id
     - code
@@ -276,6 +291,8 @@ AdminRole:
     - enabled
     - is_system
     - permissions
+    - affected_account_count
+
 AdminPermission:
   type: object
   additionalProperties: false
@@ -288,11 +305,20 @@ AdminPermission:
       type: string
     assignable:
       type: boolean
+    level:
+      type: string
+    requires:
+      type: array
+      items:
+        type: string
   required:
     - code
     - name
     - group
     - assignable
+    - level
+    - requires
+
 AuditEntry:
   type: object
   additionalProperties: false
@@ -403,3 +429,20 @@ AuditPage:
     - total
     - page
     - page_size
+
+AdminRoleTemplate:
+  type: object
+  additionalProperties: false
+  properties:
+    code:
+      type: string
+    name:
+      type: string
+    permissions:
+      type: array
+      items:
+        type: string
+  required:
+    - code
+    - name
+    - permissions

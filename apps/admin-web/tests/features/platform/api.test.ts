@@ -65,7 +65,7 @@ describe('平台接口契约', () => {
   it('管理员角色与角色权限使用各自 PUT 资源契约', async () => {
     const { api, request } = harness();
     await api.assignRoles('account-id', ['role-id']);
-    await api.assignPermissions('role-id', ['property.company.read']);
+    await api.assignPermissions('role-id', ['platform.onboarding.read']);
     expect(request.mock.calls[0]).toEqual([
       '/v1/admin-accounts/account-id/roles',
       expect.objectContaining({
@@ -77,7 +77,7 @@ describe('平台接口契约', () => {
       '/v1/admin-roles/role-id/permissions',
       expect.objectContaining({
         method: 'PUT',
-        body: '{"permissions":["property.company.read"]}',
+        body: '{"permissions":["platform.onboarding.read"]}',
       }),
     ]);
   });

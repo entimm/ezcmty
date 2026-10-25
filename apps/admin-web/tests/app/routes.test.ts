@@ -52,8 +52,9 @@ describe('双后台域名与路由边界', () => {
       matchRoute('property', '/platform/payments', configuredHosts.property),
     ).toBeNull();
     expect(
-      matchRoute('property', '/property/system/accounts', 'localhost'),
-    ).toBeNull();
+      matchRoute('property', '/property/system/accounts', 'localhost')?.route
+        .page,
+    ).toBe('accounts');
     expect(matchRoute('platform', '/platform/houses', 'localhost')).toBeNull();
   });
   it('资源详情只接受契约 UUID，支持 v4 和 v7，保留资源标识', () => {
@@ -110,9 +111,9 @@ describe('双后台域名与路由边界', () => {
     expect(
       routePath('property', 'houses', { community_id: community }, 'localhost'),
     ).toBe('/property/communities/' + community + '/houses');
-    expect(() =>
+    expect(
       routePath('property', 'accounts', {}, configuredHosts.property),
-    ).toThrow();
+    ).toBe('/system/accounts');
     expect(() =>
       routePath('platform', 'company-detail', {}, configuredHosts.platform),
     ).toThrow();

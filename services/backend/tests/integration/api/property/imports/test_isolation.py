@@ -72,14 +72,14 @@ def test_backend_company_scope_and_pagination_are_applied_before_visibility(
     assert [row["row_no"] for row in first.json()["items"]] == [2]
 
 
-def test_generic_create_permission_does_not_grant_adapter_business_permission(
+def test_unrelated_business_permission_does_not_grant_target_import_permission(
     workspace: WorkspaceHarness,
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     workspace.complete_login()
-    install_http_registry(monkeypatch, tmp_path, required_permissions=("property.community.read",))
-    set_permissions(workspace, {"property.import.create", "property.import.read"})
+    install_http_registry(monkeypatch, tmp_path, required_permissions=("property.housing.manage",))
+    set_permissions(workspace, {"property.bill.read"})
     catalogue = workspace.client.get(f"{PREFIX}/import-types")
     assert catalogue.status_code == 200 and catalogue.json() == {"items": []}
     rejected = workspace.client.post(
@@ -138,8 +138,8 @@ def test_history_read_permissions_are_independent_from_creation_permissions(
     definition, storage = install_http_registry(
         monkeypatch,
         tmp_path,
-        required_permissions=("property.house.create",),
-        read_permissions=("property.community.read",),
+        required_permissions=("property.housing.manage",),
+        read_permissions=("property.housing.read",),
     )
     created = workspace.client.post(
         f"{PREFIX}/import-batches",
@@ -149,14 +149,7 @@ def test_history_read_permissions_are_independent_from_creation_permissions(
     assert created.status_code == 201, created.text
     batch_id = created.json()["batch_id"]
     publish_http_preview(workspace.platform.factory, batch_id, invalid=True)
-    allowed = {
-        "property.import.read",
-        "property.import.execute",
-        "property.import.cancel",
-        "property.community.read",
-        "property.import.generate_error_file",
-        "property.import.download",
-    }
+    allowed = {"property.housing.read"}
     set_permissions(workspace, allowed)
     path = f"{PREFIX}/import-batches/{batch_id}"
     detail = workspace.client.get(path)
@@ -192,11 +185,11 @@ def test_history_read_permissions_are_independent_from_creation_permissions(
         path + "/cancel",
         headers={
             **workspace.headers(),
-            "Idempotency-Key": "read-can-cancel",
+            "Idempotency-Key": "read-cannot-cancel",
         },
     )
-    assert cancelled.status_code == 202, cancelled.text
-    set_permissions(workspace, allowed - {"property.community.read"})
+    assert cancelled.status_code == 403, cancelled.text
+    set_permissions(workspace, allowed - {"property.housing.read"})
     assert workspace.client.get(path).status_code == 403
 
 
@@ -210,7 +203,7 @@ def test_condition_permissions_cover_invalid_rows_and_successful_request_replay(
             self, normalized_input: Mapping[str, Any], prepared: Mapping[str, Any] | None = None
         ) -> frozenset[str]:
             return (
-                frozenset({"property.house.create"})
+                frozenset({"property.housing.manage"})
                 if normalized_input.get("code") == "C3"
                 else frozenset()
             )
@@ -231,12 +224,12 @@ def test_condition_permissions_cover_invalid_rows_and_successful_request_replay(
         "apply_policy": "valid_rows_only",
         "include_warning_rows": False,
     }
-    permissions = {"property.import.read", "property.import.execute"}
+    permissions: set[str] = set()
     set_permissions(workspace, permissions)
     headers = {**workspace.headers(), "Idempotency-Key": "conditional-confirm"}
     denied = workspace.client.post(path, json=body, headers=headers)
     assert denied.status_code == 403, denied.text
-    set_permissions(workspace, permissions | {"property.house.create"})
+    set_permissions(workspace, permissions | {"property.housing.manage"})
     confirmed = workspace.client.post(path, json=body, headers=headers)
     assert confirmed.status_code == 202, confirmed.text
     set_permissions(workspace, permissions)

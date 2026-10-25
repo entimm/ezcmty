@@ -302,6 +302,7 @@ accounts:
     operationId: listAdminAccounts
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 分页查询管理员
@@ -332,8 +333,11 @@ accounts:
         $ref: ../components/responses.yaml#/AdminProblem
       '503':
         $ref: ../components/responses.yaml#/AdminProblem
-    x-permissions:
-      - admin.account.read
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.system.read
+      property_admin_api:
+        - property.system.read
     parameters:
       - name: page
         in: query
@@ -381,6 +385,7 @@ accounts:
     operationId: createAdminAccount
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 事务创建管理员及初始角色
@@ -411,8 +416,11 @@ accounts:
         $ref: ../components/responses.yaml#/AdminProblem
       '503':
         $ref: ../components/responses.yaml#/AdminProblem
-    x-permissions:
-      - admin.account.create
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.system.manage
+      property_admin_api:
+        - property.system.manage
     parameters:
       - name: Origin
         in: header
@@ -439,6 +447,7 @@ account:
     operationId: getAdminAccount
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 读取管理员详情
@@ -469,8 +478,11 @@ account:
         $ref: ../components/responses.yaml#/AdminProblem
       '503':
         $ref: ../components/responses.yaml#/AdminProblem
-    x-permissions:
-      - admin.account.read
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.system.read
+      property_admin_api:
+        - property.system.read
     parameters:
       - name: account_id
         in: path
@@ -481,6 +493,7 @@ account:
     operationId: updateAdminAccount
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 修改管理员资料或启停状态
@@ -511,8 +524,11 @@ account:
         $ref: ../components/responses.yaml#/AdminProblem
       '503':
         $ref: ../components/responses.yaml#/AdminProblem
-    x-permissions:
-      - admin.account.update
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.system.manage
+      property_admin_api:
+        - property.system.manage
     parameters:
       - name: account_id
         in: path
@@ -544,6 +560,7 @@ passwordReset:
     operationId: resetAdminPassword
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 重置他人密码并要求改密
@@ -570,8 +587,11 @@ passwordReset:
         $ref: ../components/responses.yaml#/AdminProblem
       '503':
         $ref: ../components/responses.yaml#/AdminProblem
-    x-permissions:
-      - admin.account.reset_password
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.system.manage
+      property_admin_api:
+        - property.system.manage
     parameters:
       - name: account_id
         in: path
@@ -603,6 +623,7 @@ accountRoles:
     operationId: setAdminAccountRoles
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 完整替换管理员角色
@@ -633,8 +654,11 @@ accountRoles:
         $ref: ../components/responses.yaml#/AdminProblem
       '503':
         $ref: ../components/responses.yaml#/AdminProblem
-    x-permissions:
-      - admin.account.assign_roles
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.system.manage
+      property_admin_api:
+        - property.system.manage
     parameters:
       - name: account_id
         in: path
@@ -666,6 +690,7 @@ roles:
     operationId: listAdminRoles
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 分页查询角色
@@ -696,8 +721,11 @@ roles:
         $ref: ../components/responses.yaml#/AdminProblem
       '503':
         $ref: ../components/responses.yaml#/AdminProblem
-    x-permissions:
-      - admin.role.read
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.system.read
+      property_admin_api:
+        - property.system.read
     parameters:
       - name: page
         in: query
@@ -745,6 +773,7 @@ roles:
     operationId: createAdminRole
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 创建普通角色
@@ -775,8 +804,11 @@ roles:
         $ref: ../components/responses.yaml#/AdminProblem
       '503':
         $ref: ../components/responses.yaml#/AdminProblem
-    x-permissions:
-      - admin.role.create
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.system.manage
+      property_admin_api:
+        - property.system.manage
     parameters:
       - name: Origin
         in: header
@@ -803,6 +835,7 @@ role:
     operationId: getAdminRole
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 读取角色详情
@@ -833,8 +866,11 @@ role:
         $ref: ../components/responses.yaml#/AdminProblem
       '503':
         $ref: ../components/responses.yaml#/AdminProblem
-    x-permissions:
-      - admin.role.read
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.system.read
+      property_admin_api:
+        - property.system.read
     parameters:
       - name: role_id
         in: path
@@ -845,6 +881,7 @@ role:
     operationId: updateAdminRole
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 修改普通角色资料或启停状态
@@ -875,8 +912,11 @@ role:
         $ref: ../components/responses.yaml#/AdminProblem
       '503':
         $ref: ../components/responses.yaml#/AdminProblem
-    x-permissions:
-      - admin.role.update
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.system.manage
+      property_admin_api:
+        - property.system.manage
     parameters:
       - name: role_id
         in: path
@@ -908,6 +948,7 @@ rolePermissions:
     operationId: setAdminRolePermissions
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 完整替换普通角色权限
@@ -938,8 +979,11 @@ rolePermissions:
         $ref: ../components/responses.yaml#/AdminProblem
       '503':
         $ref: ../components/responses.yaml#/AdminProblem
-    x-permissions:
-      - admin.role.assign_permissions
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.system.manage
+      property_admin_api:
+        - property.system.manage
     parameters:
       - name: role_id
         in: path
@@ -971,6 +1015,7 @@ permissions:
     operationId: listAdminPermissions
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 读取所属后台的权限目录
@@ -1003,13 +1048,17 @@ permissions:
         $ref: ../components/responses.yaml#/AdminProblem
       '503':
         $ref: ../components/responses.yaml#/AdminProblem
-    x-permissions:
-      - admin.role.read
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.system.read
+      property_admin_api:
+        - property.system.read
 audit:
   get:
     operationId: listAdminAuditLogs
     x-runtimes:
       - platform_admin_api
+      - property_admin_api
     tags:
       - admin
     summary: 分页查询审计日志
@@ -1042,8 +1091,11 @@ audit:
         $ref: ../components/responses.yaml#/AdminProblem
       '400':
         $ref: ../components/responses.yaml#/AdminProblem
-    x-permissions:
-      - admin.audit.read
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.audit.read
+      property_admin_api:
+        - property.audit.read
     parameters:
       - name: page
         in: query
@@ -1111,3 +1163,47 @@ audit:
             - created_at
             - -created_at
           default: -created_at
+
+roleTemplates:
+  get:
+    operationId: listAdminRoleTemplates
+    x-runtimes:
+      - platform_admin_api
+      - property_admin_api
+    tags:
+      - admin
+    summary: 查询本端岗位模板
+    description: 只返回本后台的岗位预设，权限已包含必需查询。模板仅用于创建角色预填，不绑定既有角色。
+    security:
+      - AdminSession: []
+    x-permissions-by-runtime:
+      platform_admin_api:
+        - platform.system.read
+      property_admin_api:
+        - property.system.read
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: ../components/admin-schemas.yaml#/AdminRoleTemplate
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem

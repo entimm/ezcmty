@@ -126,9 +126,9 @@ function CompanyCommunityCount({ id }: { id: string }) {
   const query = useQuery({
     queryKey: ['platform', 'company-community-count', id],
     queryFn: () => api.communities({ property_company_id: id, page_size: 1 }),
-    enabled: can('property.community.read'),
+    enabled: can('platform.onboarding.read'),
   });
-  if (!can('property.community.read'))
+  if (!can('platform.onboarding.read'))
     return <Typography.Text type="secondary">无读取权限</Typography.Text>;
   if (query.isError)
     return (
@@ -296,18 +296,34 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
   const companies = useQuery({
     queryKey: ['platform', 'companies', filters],
     queryFn: () => api.companies(filters),
-    enabled: page === 'companies' && can('property.company.read'),
+    enabled: page === 'companies' && can('platform.onboarding.read'),
   });
   const communities = useQuery({
     queryKey: ['platform', 'communities', filters],
     queryFn: () => api.communities(filters),
-    enabled: page === 'platform-communities' && can('property.community.read'),
+    enabled: page === 'platform-communities' && can('platform.onboarding.read'),
   });
   const company = useQuery({
     queryKey: ['platform', 'company', companyId],
     queryFn: () => api.company(companyId),
     enabled:
-      page === 'company-detail' && !!companyId && can('property.company.read'),
+      page === 'company-detail' &&
+      !!companyId &&
+      can('platform.onboarding.read'),
+  });
+  const companyLocator = useQuery({
+    queryKey: ['platform', 'company-locator', companyId],
+    queryFn: () =>
+      api.companyOptions({
+        property_company_id: companyId,
+        page: 1,
+        page_size: 1,
+      }),
+    enabled:
+      page === 'company-detail' &&
+      !!companyId &&
+      !can('platform.onboarding.read') &&
+      (can('platform.system.read') || can('platform.payment_config.read')),
   });
   const stats = useQuery({
     queryKey: ['platform', 'company-stats'],
@@ -315,7 +331,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
       const [all, active, places] = await Promise.all([
         api.companies({ page_size: 1 }),
         api.companies({ enabled: true, page_size: 1 }),
-        can('property.community.read')
+        can('platform.onboarding.read')
           ? api.communities({ page_size: 1 })
           : Promise.resolve(undefined),
       ]);
@@ -325,12 +341,12 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
         communities: places?.total,
       };
     },
-    enabled: page === 'companies' && can('property.company.read'),
+    enabled: page === 'companies' && can('platform.onboarding.read'),
   });
   const tab =
-    params.tab === 'admins' && can('property.admin.read')
+    params.tab === 'admins' && can('platform.system.read')
       ? 'admins'
-      : can('property.community.read')
+      : can('platform.onboarding.read')
         ? 'communities'
         : 'admins';
   const detailCommunities = useQuery({
@@ -349,7 +365,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
     enabled:
       page === 'company-detail' &&
       !!companyId &&
-      can('property.community.read'),
+      can('platform.onboarding.read'),
   });
   const admins = useQuery({
     queryKey: ['platform', 'company-admins', companyId, params.admin_page],
@@ -359,7 +375,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
         page_size: 8,
       }),
     enabled:
-      page === 'company-detail' && !!companyId && can('property.admin.read'),
+      page === 'company-detail' && !!companyId && can('platform.system.read'),
   });
   const update = (values: Record<string, string | undefined>) =>
     go(page, { ...params, ...values });
@@ -484,7 +500,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
           >
             查看
           </Button>
-          {can('property.community.update') && (
+          {can('platform.onboarding.manage') && (
             <>
               <Button
                 type="link"
@@ -514,7 +530,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
         title="物业公司"
         description="统一管理物业接入，清楚掌握公司、服务小区与账号状态。"
         extra={
-          can('property.company.create') && (
+          can('platform.onboarding.manage') && (
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -542,7 +558,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
           label="服务小区"
           value={stats.data?.communities ?? '—'}
           detail={
-            can('property.community.read')
+            can('platform.onboarding.read')
               ? '已建立的小区档案'
               : '暂无小区读取权限'
           }
@@ -664,25 +680,29 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
                     >
                       速览
                     </Button>
-                    {can('property.company.update') && (
+                    {(can('platform.onboarding.manage') ||
+                      can('platform.onboarding.toggle')) && (
                       <>
-                        <Button
-                          type="link"
-                          size="small"
-                          onClick={() =>
-                            setEdit({ kind: 'company', item: row })
-                          }
-                        >
-                          编辑
-                        </Button>
-                        {menu([
-                          {
-                            key: 'status',
-                            label: row.enabled ? '停用公司' : '启用公司',
-                            danger: row.enabled,
-                            onClick: () => toggleCompany(row),
-                          },
-                        ])}
+                        {can('platform.onboarding.manage') && (
+                          <Button
+                            type="link"
+                            size="small"
+                            onClick={() =>
+                              setEdit({ kind: 'company', item: row })
+                            }
+                          >
+                            编辑
+                          </Button>
+                        )}
+                        {can('platform.onboarding.toggle') &&
+                          menu([
+                            {
+                              key: 'status',
+                              label: row.enabled ? '停用公司' : '启用公司',
+                              danger: row.enabled,
+                              onClick: () => toggleCompany(row),
+                            },
+                          ])}
                       </>
                     )}
                   </Space>
@@ -704,7 +724,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
         title="公司管理员可管理本公司全部小区，包含以后新增的小区。权限不会扩展到其他公司。"
       />
       <div style={{ textAlign: 'right', marginBottom: 16 }}>
-        {can('property.admin.create') && c && (
+        {can('platform.system.manage') && c && (
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -777,7 +797,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
                   >
                     查看
                   </Button>
-                  {can('property.admin.update') && (
+                  {can('platform.system.manage') && (
                     <Button
                       type="link"
                       size="small"
@@ -793,7 +813,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
                     </Button>
                   )}
                   {menu([
-                    ...(can('property.admin.reset_password')
+                    ...(can('platform.system.manage')
                       ? [
                           {
                             key: 'reset',
@@ -808,7 +828,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
                           },
                         ]
                       : []),
-                    ...(can('property.admin.update')
+                    ...(can('platform.system.manage')
                       ? [
                           {
                             key: 'status',
@@ -842,7 +862,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
             extra={
               <>
                 {enabledTag(c.enabled)}
-                {can('property.company.update') && (
+                {can('platform.onboarding.manage') && (
                   <Button
                     icon={<EditOutlined />}
                     onClick={() => setEdit({ kind: 'company', item: c })}
@@ -871,7 +891,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
               title="公司当前停用"
               description="可以维护资料、建立小区和开通管理员。至少有一名有效公司管理员后，方可启用物业账号登录。"
               action={
-                can('property.company.update') && (
+                can('platform.onboarding.toggle') && (
                   <Button onClick={() => toggleCompany(c)}>启用公司</Button>
                 )
               }
@@ -888,7 +908,8 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
             />
           </Panel>
           <Panel>
-            {!can('property.community.read') && !can('property.admin.read') ? (
+            {!can('platform.onboarding.read') &&
+            !can('platform.system.read') ? (
               <Alert
                 type="info"
                 showIcon
@@ -899,7 +920,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
                 activeKey={tab}
                 onChange={(next) => update({ tab: next })}
                 items={[
-                  ...(can('property.community.read')
+                  ...(can('platform.onboarding.read')
                     ? [
                         {
                           key: 'communities',
@@ -917,7 +938,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
                                 <Typography.Text type="secondary">
                                   当前公司的全部服务小区
                                 </Typography.Text>
-                                {can('property.community.create') && (
+                                {can('platform.onboarding.manage') && (
                                   <Button
                                     icon={<PlusOutlined />}
                                     onClick={() =>
@@ -954,7 +975,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
                         },
                       ]
                     : []),
-                  ...(can('property.admin.read')
+                  ...(can('platform.system.read')
                     ? [
                         {
                           key: 'admins',
@@ -977,7 +998,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
         title="小区管理"
         description="管理全平台小区档案与物业归属，保留独立的小区启停状态。"
         extra={
-          can('property.community.create') && (
+          can('platform.onboarding.manage') && (
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -999,7 +1020,7 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
           onSearch={search}
           onReset={reset}
         >
-          {can('property.company.read') && (
+          {can('platform.onboarding.read') && (
             <CompanyPicker value={companyChoice} onChange={setCompanyChoice} />
           )}
         </ListFilter>
@@ -1111,10 +1132,61 @@ function PropertyOnboardingPages({ page, params, go }: PlatformPagesProps) {
       ? { login_name: item.login_name, display_name: item.display_name }
       : {};
   }
+  if (
+    (page === 'companies' || page === 'company-detail') &&
+    !can('platform.onboarding.read') &&
+    (can('platform.system.read') || can('platform.payment_config.read'))
+  )
+    return (
+      <>
+        <PageHeader
+          title={companyLocator.data?.items[0]?.name || '公司业务查询'}
+          description="选择公司后，只展示当前岗位获授权的业务区块。"
+          back={page === 'company-detail' ? () => go('companies') : undefined}
+        />
+        <Panel>
+          <CompanyPicker
+            value={companyId}
+            onChange={(value) =>
+              value && go('company-detail', { company: value, tab: 'admins' })
+            }
+          />
+        </Panel>
+        {page === 'company-detail' && (
+          <ReadState
+            error={companyLocator.error}
+            loading={companyLocator.isPending}
+            retry={() => void companyLocator.refetch()}
+          >
+            {companyLocator.data?.items.length ? (
+              <>
+                {can('platform.payment_config.read') && (
+                  <Panel>
+                    <Button
+                      type="primary"
+                      onClick={() =>
+                        go('payment-configuration', { company: companyId })
+                      }
+                    >
+                      查看收款配置
+                    </Button>
+                  </Panel>
+                )}
+                {can('platform.system.read') && (
+                  <Panel title="公司管理员">{adminTable}</Panel>
+                )}
+              </>
+            ) : (
+              <Alert type="info" title="公司不存在或不在授权范围内" />
+            )}
+          </ReadState>
+        )}
+      </>
+    );
   const permission =
     page === 'companies' || page === 'company-detail'
-      ? 'property.company.read'
-      : 'property.community.read';
+      ? 'platform.onboarding.read'
+      : 'platform.onboarding.read';
   if (!can(permission))
     return <ReadState error={new ApiError(403)} retry={() => undefined} />;
   if (page === 'company-detail' && !companyId)

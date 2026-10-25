@@ -42,8 +42,9 @@ import { AuthPage, ProfilePage } from '../auth/Pages';
 import { AdminContext } from '../shared/context';
 import { useQuery } from '@tanstack/react-query';
 import { Loading, NoAccess, NotFound, ReadError } from '../shared/ui';
-import type { Community, Company, Page } from '../shared/types';
+import type { Community, Page } from '../shared/types';
 import {
+  canAccessRoute,
   matchRoute,
   resolveScope,
   routePath,
@@ -378,7 +379,7 @@ function Workspace({
         total: number;
       do {
         const data = await auth.request<Page<Community>>(
-          `/v1/communities?page=${pageNo}&page_size=100`,
+          `/v1/community-options?page=${pageNo}&page_size=100`,
         );
         all.push(...data.items);
         total = data.total;
@@ -388,12 +389,16 @@ function Workspace({
       } while (all.length < total);
       return all;
     },
-    enabled: auth.scope === 'property' && can('property.community.read'),
+    enabled: auth.scope === 'property',
   });
   const company = useQuery({
     queryKey: [auth.scope, session.subjectId, 'context-company'],
-    queryFn: () => auth.request<Company>('/v1/property-companies/current'),
-    enabled: auth.scope === 'property' && can('property.company.read'),
+    queryFn: () =>
+      auth.request<{
+        property_company_id: string;
+        property_company_name: string;
+      }>('/v1/property-workspace/context'),
+    enabled: auth.scope === 'property',
   });
   const options = useMemo(() => communities.data || [], [communities.data]);
   const routeCommunity = params.community_id;
@@ -478,7 +483,7 @@ function Workspace({
         const route = routes[auth.scope].find(
           (route) => route.page === item.page,
         );
-        return !route?.permission || can(route.permission);
+        return canAccessRoute(route, can);
       }),
     }))
     .filter((group) => group.items.length);
@@ -489,10 +494,7 @@ function Workspace({
   const actions =
     auth.scope === 'property'
       ? [
-          ...(can('property.bill.create') &&
-          can('property.bill.read') &&
-          can('property.house.read') &&
-          communityId
+          ...(can('property.bill.manage') && communityId
             ? [
                 {
                   label: '新增物业费账单',
@@ -501,7 +503,7 @@ function Workspace({
                 },
               ]
             : []),
-          ...(can('property.import.create')
+          ...(can('property.housing.manage') || can('property.bill.manage')
             ? [{ label: '新建批量导入', page: 'import-new', params: {} }]
             : []),
         ]
@@ -560,10 +562,10 @@ function Workspace({
   };
   let body: ReactNode;
   if (!match) body = <NotFound back={() => go('home')} />;
-  else if (match.route.permission && !can(match.route.permission))
+  else if (!canAccessRoute(match.route, can))
     body = <NoAccess back={() => go('home')} />;
   else if (page === 'home')
-    body = <Dashboard companyName={company.data?.name} />;
+    body = <Dashboard companyName={company.data?.property_company_name} />;
   else if (page === 'profile') body = <ProfilePage />;
   else if (['imports', 'import-new', 'import-detail'].includes(page)) {
     const Page = auth.scope === 'platform' ? PlatformImports : PropertyImports;
@@ -648,7 +650,7 @@ function Workspace({
       <aside className="sidebar">
         <button
           className="org-block org-button"
-          disabled={auth.scope === 'platform' || !can('property.company.read')}
+          disabled={auth.scope === 'platform'}
           onClick={() => go('company')}
         >
           <div className="org-icon">
@@ -657,7 +659,7 @@ function Workspace({
           <div>
             <strong>
               {auth.scope === 'property'
-                ? company.data?.name || '物业工作空间'
+                ? company.data?.property_company_name || '物业工作空间'
                 : '美好社区运营平台'}
             </strong>
             <small>

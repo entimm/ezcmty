@@ -47,6 +47,7 @@ import {
   time,
 } from './presentation';
 import { BillModal } from './BillModal';
+import { BillingBasisDialog } from './BillingBasis';
 export { BillModal } from './BillModal';
 
 type BillAction = 'edit' | 'receipt' | 'correct' | 'reverse' | 'void';
@@ -263,12 +264,13 @@ export function BillingPage({ detail = false }: { detail?: boolean }) {
   );
   const [editor, setEditor] = useState<BillEditorState>();
   const [create, setCreate] = useState(false);
+  const [basisOpen, setBasisOpen] = useState(false);
   useEffect(() => {
     if (
       !detail &&
       params.action === 'new-bill' &&
       c &&
-      can('property.bill.create')
+      can('property.bill.manage')
     )
       setCreate(true);
   }, [params.action, c, detail, can]);
@@ -318,7 +320,7 @@ export function BillingPage({ detail = false }: { detail?: boolean }) {
                   <Status>{billStatus(bill)}</Status>
                   {bill.lifecycle_status === 'active' && (
                     <>
-                      {can('property.bill.update') && (
+                      {can('property.bill.manage') && (
                         <Button
                           onClick={() => setEditor({ action: 'edit', bill })}
                         >
@@ -373,7 +375,7 @@ export function BillingPage({ detail = false }: { detail?: boolean }) {
                     </>
                   )}
                   {bill.lifecycle_status === 'voided' &&
-                    can('property.bill.create') && (
+                    can('property.bill.manage') && (
                       <Button
                         type="primary"
                         disabled={!bill.house_effective_enabled}
@@ -397,7 +399,10 @@ export function BillingPage({ detail = false }: { detail?: boolean }) {
             description="看清每一笔应收与实收，及时处理待缴账单。"
             extra={
               <>
-                {can('property.import.create') && (
+                <Button onClick={() => setBasisOpen(true)}>
+                  计费依据与试算
+                </Button>
+                {can('property.bill.manage') && (
                   <Button
                     icon={<DownloadOutlined />}
                     onClick={() => go('import-new', { import_type: 'bills' })}
@@ -405,7 +410,7 @@ export function BillingPage({ detail = false }: { detail?: boolean }) {
                     批量导入
                   </Button>
                 )}
-                {can('property.bill.create') && (
+                {can('property.bill.manage') && (
                   <Button
                     type="primary"
                     icon={<PlusOutlined />}
@@ -575,6 +580,7 @@ export function BillingPage({ detail = false }: { detail?: boolean }) {
       {editor && (
         <BillModal editor={editor} close={() => setEditor(undefined)} />
       )}
+      {basisOpen && <BillingBasisDialog onClose={() => setBasisOpen(false)} />}
       {create && (
         <BillModal original={detail ? bill : undefined} close={closeCreate} />
       )}
@@ -694,7 +700,7 @@ function BillDetail({
           <Panel
             title="账单资料"
             extra={
-              can('property.house.read') && (
+              can('property.housing.read') && (
                 <Button
                   type="link"
                   size="small"

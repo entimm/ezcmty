@@ -45,7 +45,7 @@ class PropertyHouseClaimService:
         return actor, identity
 
     def claims(self, ctx: AdminContext, **filters: Any) -> schema.PropertyHouseClaimPage:
-        company_id, _ = self._scope(ctx, "property.house_claim.read")
+        company_id, _ = self._scope(ctx, "property.resident_access.read")
         items, total = self.repo.records(HouseClaim, company_id=company_id, **filters)
         return schema.PropertyHouseClaimPage(
             items=[property_claim_view(i) for i in items],
@@ -55,7 +55,7 @@ class PropertyHouseClaimService:
         )
 
     def get_claim(self, ctx: AdminContext, claim_id: str) -> schema.PropertyHouseClaim:
-        company_id, _ = self._scope(ctx, "property.house_claim.read")
+        company_id, _ = self._scope(ctx, "property.resident_access.read")
         return property_claim_view(self.repo.claim(claim_id, company_id=company_id))
 
     def review(
@@ -63,7 +63,7 @@ class PropertyHouseClaimService:
     ) -> schema.PropertyHouseClaim:
         try:
             actor, identity = self._protect(
-                ctx, "property.house_claim.read", "property.house_claim.review"
+                ctx, "property.resident_access.read", "property.resident_access.review"
             )
             claim = self.repo.claim(claim_id, company_id=ctx.property_company_id)
             self.repo.user(claim.user_id, require_enabled=data.decision == "approved")
@@ -136,7 +136,7 @@ class PropertyHouseClaimService:
         return property_binding_view(item, claim, effective)
 
     def bindings(self, ctx: AdminContext, **filters: Any) -> schema.PropertyHouseBindingPage:
-        company_id, _ = self._scope(ctx, "property.resident_house_binding.read")
+        company_id, _ = self._scope(ctx, "property.resident_access.read")
         items, total = self.repo.records(ResidentHouseBinding, company_id=company_id, **filters)
         return schema.PropertyHouseBindingPage(
             items=[self._binding_view(i) for i in items],
@@ -146,7 +146,7 @@ class PropertyHouseClaimService:
         )
 
     def get_binding(self, ctx: AdminContext, binding_id: str) -> schema.PropertyHouseBinding:
-        company_id, _ = self._scope(ctx, "property.resident_house_binding.read")
+        company_id, _ = self._scope(ctx, "property.resident_access.read")
         return self._binding_view(self.repo.binding(binding_id, company_id=company_id))
 
     def revoke(
@@ -155,8 +155,8 @@ class PropertyHouseClaimService:
         try:
             actor, identity = self._protect(
                 ctx,
-                "property.resident_house_binding.read",
-                "property.resident_house_binding.revoke",
+                "property.resident_access.read",
+                "property.resident_access.revoke",
             )
             item = self.repo.binding(binding_id, company_id=ctx.property_company_id)
             self.repo.user(item.user_id)

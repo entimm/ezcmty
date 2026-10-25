@@ -25,14 +25,12 @@ export function PlatformPaymentsPage(props: FlowPageProps) {
         communityId: '',
         can: (permission) => admin.can(`platform.${permission}`),
         setDirty: admin.setDirty,
-        companies: admin.can('property.company.read')
-          ? () =>
-              allOptions((page) =>
-                admin.request<Page<Choice>>(
-                  `/v1/property-companies?page=${page}&page_size=100&sort=created_at`,
-                ),
-              )
-          : undefined,
+        companies: () =>
+          allOptions((page) =>
+            admin.request<Page<Choice>>(
+              `/v1/property-company-options?page=${page}&page_size=100`,
+            ),
+          ),
       }}
     />
   );

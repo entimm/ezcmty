@@ -83,12 +83,12 @@ export function ClaimsPage({ detail = false }: { detail?: boolean }) {
         page,
         page_size: size,
       }),
-    enabled: !detail && can('property.house_claim.read'),
+    enabled: !detail && can('property.resident_access.read'),
   });
   const claimQuery = useQuery({
     queryKey: ['property', 'claim', id],
     queryFn: () => api.claim(id),
-    enabled: detail && !!id && can('property.house_claim.read'),
+    enabled: detail && !!id && can('property.resident_access.read'),
   });
   const counts = useQuery({
     queryKey: ['property', 'claim-counts', c],
@@ -121,7 +121,7 @@ export function ClaimsPage({ detail = false }: { detail?: boolean }) {
         unmatched: unmatched.total,
       };
     },
-    enabled: !detail && can('property.house_claim.read'),
+    enabled: !detail && can('property.resident_access.read'),
   });
   const claim = claimQuery.data;
   const visible = (list.data?.items ?? []).filter(
@@ -158,7 +158,7 @@ export function ClaimsPage({ detail = false }: { detail?: boolean }) {
               claim && (
                 <>
                   <Status>{claimLabels[claim.status]}</Status>
-                  {can('property.house_claim.review') &&
+                  {can('property.resident_access.review') &&
                     claim.status === 'pending' && (
                       <>
                         <Button
@@ -367,7 +367,7 @@ export function ClaimsPage({ detail = false }: { detail?: boolean }) {
                         详情
                       </Button>
                       {row.status === 'pending' &&
-                        can('property.house_claim.review') && (
+                        can('property.resident_access.review') && (
                           <Button
                             type="link"
                             size="small"
@@ -417,7 +417,7 @@ function ClaimDetail({ claim }: { claim: Claim }) {
         page: ownerPage,
         page_size: 20,
       }),
-    enabled: can('property.house_owner.read'),
+    enabled: can('property.housing.read'),
   });
   return (
     <>
@@ -469,11 +469,11 @@ function ClaimDetail({ claim }: { claim: Claim }) {
             />
           </Panel>
           <div style={{ height: 20 }} />
-          {can('property.house_owner.read') && (
+          {can('property.housing.read') && (
             <Panel
               title="现有业主档案"
               extra={
-                can('property.house.read') && (
+                can('property.housing.read') && (
                   <Button
                     type="link"
                     size="small"
@@ -566,12 +566,12 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
         page,
         page_size: size,
       }),
-    enabled: !detail && can('property.resident_house_binding.read'),
+    enabled: !detail && can('property.resident_access.read'),
   });
   const bindingQuery = useQuery({
     queryKey: ['property', 'binding', id],
     queryFn: () => api.binding(id),
-    enabled: detail && !!id && can('property.resident_house_binding.read'),
+    enabled: detail && !!id && can('property.resident_access.read'),
   });
   const counts = useQuery({
     queryKey: ['property', 'binding-counts', c],
@@ -598,7 +598,7 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
       ]);
       return { active: active.total, ended: released.total + revoked.total };
     },
-    enabled: !detail && can('property.resident_house_binding.read'),
+    enabled: !detail && can('property.resident_access.read'),
   });
   const binding = bindingQuery.data;
   const visible = (list.data?.items ?? []).filter(
@@ -635,7 +635,7 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
               binding && (
                 <>
                   <Status>{bindingLabels[binding.status]}</Status>
-                  {can('property.resident_house_binding.revoke') &&
+                  {can('property.resident_access.revoke') &&
                     binding.status === 'active' && (
                       <Button danger onClick={() => setRevoking(binding)}>
                         解除房屋绑定
@@ -672,7 +672,7 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
                     ['结束原因', binding.end_reason || '—'],
                     [
                       '来源',
-                      can('property.house_claim.read') ? (
+                      can('property.resident_access.read') ? (
                         <a
                           key="claim"
                           onClick={() =>
@@ -692,7 +692,7 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
                 />
                 <Divider />
                 <Space>
-                  {can('property.house.read') && (
+                  {can('property.housing.read') && (
                     <Button
                       onClick={() =>
                         go('house-detail', {
@@ -881,7 +881,7 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
                       >
                         详情
                       </Button>
-                      {can('property.resident_house_binding.revoke') &&
+                      {can('property.resident_access.revoke') &&
                         row.status === 'active' && (
                           <Button
                             type="link"
@@ -944,7 +944,7 @@ function ResidentEditor({
   const submit = async (values: Record<string, unknown>) => {
     try {
       if (review) {
-        if (!can('property.house_claim.review'))
+        if (!can('property.resident_access.review'))
           throw new Error('没有审核权限');
         await api.reviewClaim(review.claim.id, {
           expected_row_version: review.claim.row_version,
@@ -954,7 +954,7 @@ function ResidentEditor({
             : {}),
         });
       } else if (binding) {
-        if (!can('property.resident_house_binding.revoke'))
+        if (!can('property.resident_access.revoke'))
           throw new Error('没有解除权限');
         await api.revokeBinding(binding.id, {
           expected_row_version: binding.row_version,

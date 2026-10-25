@@ -17,7 +17,12 @@ export function PropertyPaymentsPage(props: FlowPageProps) {
         api,
         communityId: admin.communityId,
         community: admin.community,
-        can: (permission) => admin.can(`property.${permission}`),
+        can: (permission) =>
+          [
+            'payment.read',
+            'payment_reconciliation.read',
+            'payment_config.read',
+          ].includes(permission) && admin.can('property.payment.read'),
         setDirty: admin.setDirty,
       }}
     />

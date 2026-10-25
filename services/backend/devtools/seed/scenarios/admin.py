@@ -1,4 +1,4 @@
-from backend_app.domain.admin.permissions import permission_catalog
+from backend_app.domain.admin.permissions import normalize_permissions, permission_catalog
 from devtools.seed.runtime import Actor, Executor
 
 
@@ -9,7 +9,11 @@ def populate(executor: Executor, actor: Actor, parameters: dict[str, int]) -> No
     for index in range(parameters["roles"]):
         key = f"admin/role/{index}"
         code = f"{prefix}_r{index}"
-        values = {"code": code, "name": f"填充角色 {index + 1}"}
+        assigned = normalize_permissions(
+            "platform_admin",
+            permissions[index % len(permissions) :: parameters["roles"]] or permissions[:1],
+        )
+        values = {"code": code, "name": f"填充角色 {index + 1}", "permissions": assigned}
         role = executor.step(
             key,
             actor,
@@ -17,17 +21,13 @@ def populate(executor: Executor, actor: Actor, parameters: dict[str, int]) -> No
             "role",
             values,
             unique={"property_company_id": None, "code": code},
-            expected={**values, "enabled": True, "is_system": False},
-        )
-        assigned = permissions[index % len(permissions) :: parameters["roles"]] or permissions[:1]
-        executor.step(
-            key + "/permissions",
-            actor,
-            "role.assign_permissions",
-            "role",
-            {"permissions": assigned},
-            identifier=role,
-            expected={"$permissions": assigned},
+            expected={
+                "code": code,
+                "name": values["name"],
+                "enabled": True,
+                "is_system": False,
+                "$permissions": assigned,
+            },
         )
         roles.append(role)
     for index in range(parameters["accounts"]):

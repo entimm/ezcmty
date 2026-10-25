@@ -40,7 +40,7 @@ def create_property_house_claim_router(
     )
     def claims(
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.house_claim.read")],
+        ctx: Annotated[AdminContext, permission("property.resident_access.read")],
         status: schema.ClaimStatus | None = None,
         match_status: schema.MatchStatus | None = None,
         community_id: Identifier | None = None,
@@ -73,7 +73,7 @@ def create_property_house_claim_router(
     def claim(
         claim_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.house_claim.read")],
+        ctx: Annotated[AdminContext, permission("property.resident_access.read")],
     ) -> schema.PropertyHouseClaim:
         return svc.get_claim(ctx, claim_id)
 
@@ -89,7 +89,7 @@ def create_property_house_claim_router(
         data: schema.ClaimReview,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.house_claim.review")],
+        ctx: Annotated[AdminContext, permission("property.resident_access.review")],
     ) -> schema.PropertyHouseClaim:
         return svc.review(ctx, claim_id, data, request.state.request_id)
 
@@ -101,7 +101,7 @@ def create_property_house_claim_router(
     )
     def bindings(
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.resident_house_binding.read")],
+        ctx: Annotated[AdminContext, permission("property.resident_access.read")],
         status: schema.BindingStatus | None = None,
         community_id: Identifier | None = None,
         house_id: Identifier | None = None,
@@ -132,7 +132,7 @@ def create_property_house_claim_router(
     def binding(
         binding_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.resident_house_binding.read")],
+        ctx: Annotated[AdminContext, permission("property.resident_access.read")],
     ) -> schema.PropertyHouseBinding:
         return svc.get_binding(ctx, binding_id)
 
@@ -148,7 +148,7 @@ def create_property_house_claim_router(
         data: schema.HouseRevocation,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.resident_house_binding.revoke")],
+        ctx: Annotated[AdminContext, permission("property.resident_access.revoke")],
     ) -> schema.PropertyHouseBinding:
         return svc.revoke(ctx, binding_id, data, request.state.request_id)
 

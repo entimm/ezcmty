@@ -3,10 +3,10 @@ from __future__ import annotations
 from collections.abc import Generator
 from dataclasses import replace
 from datetime import UTC, datetime
-from typing import Annotated, Any, Literal
+from typing import Any
 
 import pytest
-from fastapi import Depends, FastAPI, Query, Request
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 from sqlalchemy import select
@@ -16,15 +16,12 @@ from tests.support.audit import audit_filters, provision_company
 
 from backend_app.api.admin import get_admin_session_store
 from backend_app.app_factory import create_app
-from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.errors import AppError
 from backend_app.core.identifiers import new_id
 from backend_app.db.session import get_database_session
-from backend_app.domain.admin.permissions import PermissionDefinition, permission_catalog
 from backend_app.models.admin import AdminAccount, AdminAuditLog
 from backend_app.models.property import PropertyCompany
 from backend_app.schemas import admin as schema
-from backend_app.schemas.mappers import admin as views
 from backend_app.services.property_admin.admin import PropertyAdminService
 
 
@@ -59,50 +56,7 @@ def test_property_audit_http_isolates_companies_before_count_and_pagination(
             )
         db.commit()
 
-    def catalog(scope: schema.AdminScope) -> list[PermissionDefinition]:
-        if scope == "platform_admin":
-            return permission_catalog(scope)
-        return [
-            PermissionDefinition(
-                code="admin.audit.read", name="查看审计日志", group="审计", assignable=True
-            )
-        ]
-
-    # Exercise the shared audit capability through a test-only HTTP adapter.
-    # The property runtime itself does not expose an audit management route.
-    monkeypatch.setattr("backend_app.domain.admin.identity.permission_catalog", catalog)
     app = create_app("property-admin-api")
-
-    @app.get("/v1/admin-audit-logs", response_model=schema.AuditPage)
-    def list_audit(
-        request: Request,
-        db: Annotated[Session, Depends(get_database_session)],
-        store: Annotated[AdminSessionStore, Depends(get_admin_session_store)],
-        page: Annotated[int, Query(ge=1)] = 1,
-        page_size: Annotated[int, Query(ge=1, le=100)] = 20,
-        from_time: datetime | None = None,
-        to_time: datetime | None = None,
-        action: str | None = None,
-        result: Literal["success", "failure"] | None = None,
-        request_id: str | None = None,
-        sort: Literal["created_at", "-created_at"] = "-created_at",
-    ) -> schema.AuditPage:
-        service = PropertyAdminService(db)
-        context = service.authenticate(store, request.cookies.get("admin_session"))
-        items, total = service.identity.audit.list_logs(
-            context,
-            **audit_filters(
-                page=page,
-                page_size=page_size,
-                from_time=from_time.astimezone(UTC) if from_time else None,
-                to_time=to_time.astimezone(UTC) if to_time else None,
-                action=action,
-                result=result,
-                request_id=request_id,
-                sort=sort,
-            ),
-        )
-        return views.audit_page(items, total, page=page, page_size=page_size)
 
     def database() -> Generator[Session]:
         with harness.factory() as db:
@@ -268,9 +222,9 @@ def test_audit_domain_rejects_missing_or_mismatched_authorization_context(
             "read-login",
         )
         authenticated = service.authenticate(harness.store, token)
-        allowed = replace(authenticated, permissions=["admin.audit.read"])
+        allowed = replace(authenticated, permissions=["property.audit.read"])
         for context in (
-            authenticated,
+            replace(authenticated, permissions=[]),
             replace(allowed, property_company_id=None),
             replace(allowed, property_company_id=new_id()),
             replace(allowed, scope="platform_admin"),

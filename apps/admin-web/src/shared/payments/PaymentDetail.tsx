@@ -35,7 +35,7 @@ export function PaymentDetail({
     ['payments', 'sharing', id, sharingPage],
     () =>
       r.api.sharing({ payment_order_id: id, page: sharingPage, page_size: 20 }),
-    !!id && r.can('payment_funds.read'),
+    !!id && r.can('payment.read'),
     scheduled ? 2500 : undefined,
   );
   const unfreezing = useResource(
@@ -46,13 +46,13 @@ export function PaymentDetail({
         page: unfreezePage,
         page_size: 20,
       }),
-    !!id && r.can('payment_funds.read'),
+    !!id && r.can('payment.read'),
     scheduled ? 2500 : undefined,
   );
   const refresh = async () => {
     await Promise.all([
       order.refetch(),
-      ...(r.can('payment_funds.read')
+      ...(r.can('payment.read')
         ? [sharing.refetch(), unfreezing.refetch()]
         : []),
     ]);
@@ -143,7 +143,7 @@ export function PaymentDetail({
               刷新
             </Button>
             {r.writes &&
-              r.can('payment_funds.recover') &&
+              r.can('payment.recover') &&
               (o.status === 'unknown' ||
                 o.confirmation_status === 'awaiting_posting' ||
                 fundAttention ||
@@ -221,7 +221,7 @@ export function PaymentDetail({
             },
             {
               title: '服务费分账',
-              content: !r.can('payment_funds.read')
+              content: !r.can('payment.read')
                 ? '无读取权限'
                 : shared
                   ? '应分已足额确认'
@@ -232,7 +232,7 @@ export function PaymentDetail({
             },
             {
               title: '剩余资金解冻',
-              content: !r.can('payment_funds.read')
+              content: !r.can('payment.read')
                 ? '无读取权限'
                 : unfrozen
                   ? '渠道已确认'
@@ -323,7 +323,7 @@ export function PaymentDetail({
           error={sharing.error}
           retry={() => void sharing.refetch()}
         />
-        {!r.can('payment_funds.read') ? (
+        {!r.can('payment.read') ? (
           <Alert type="info" title="当前账号没有读取资金执行记录的权限" />
         ) : (
           <>
@@ -401,7 +401,7 @@ export function PaymentDetail({
           error={unfreezing.error}
           retry={() => void unfreezing.refetch()}
         />
-        {r.can('payment_funds.read') && (
+        {r.can('payment.read') && (
           <Table
             rowKey="id"
             loading={unfreezing.isLoading}

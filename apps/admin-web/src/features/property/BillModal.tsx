@@ -42,7 +42,7 @@ interface PendingWrite {
   submission: BillSubmission;
 }
 const permissions = {
-  edit: 'property.bill.update',
+  edit: 'property.bill.manage',
   receipt: 'property.bill_receipt.create',
   correct: 'property.bill_receipt.correct',
   reverse: 'property.bill_receipt.correct',
@@ -102,23 +102,29 @@ export function BillModal({
   const initialHouseId = house?.id || original?.house_id;
   const selectedHouse = useQuery({
     queryKey: ['property', 'bill-selected-house', c, houseId || initialHouseId],
-    queryFn: () => api.house(c, (houseId || initialHouseId)!),
+    queryFn: async () =>
+      (
+        await api.houseOptions(c, {
+          house_id: houseId || initialHouseId,
+          page: 1,
+          page_size: 1,
+        })
+      ).items[0],
     enabled:
       !editor &&
       !!c &&
       !!(houseId || initialHouseId) &&
-      can('property.house.read'),
+      can('property.bill.read'),
   });
   const houseOptions = useQuery({
     queryKey: ['property', 'bill-house-options', c, search, optionsPage],
     queryFn: () =>
-      api.houses(c, {
+      api.houseOptions(c, {
         page: optionsPage,
         page_size: 50,
         room_no: search || undefined,
-        enabled: true,
       }),
-    enabled: !editor && !!c && can('property.house.read'),
+    enabled: !editor && !!c && can('property.bill.read'),
   });
   const calculation = useQuery({
     queryKey: [
@@ -132,7 +138,7 @@ export function BillModal({
       api.calculate(c, (houseId || initialHouseId)!, month!.format('YYYY-MM')),
     enabled:
       !editor &&
-      can('property.fee_basis.read') &&
+      can('property.bill.read') &&
       source === 'basis' &&
       !!(houseId || initialHouseId) &&
       !!month &&
@@ -164,7 +170,7 @@ export function BillModal({
         due: original?.due_date
           ? dayjs(original.due_date)
           : dayjs().add(1, 'month').endOf('month'),
-        source: can('property.fee_basis.read') ? 'basis' : 'manual',
+        source: can('property.bill.read') ? 'basis' : 'manual',
         paid: 0,
       };
   const maximum = bill
@@ -296,7 +302,7 @@ export function BillModal({
         }
       }
     } else {
-      if (!can('property.bill.create')) throw new Error('没有建账权限');
+      if (!can('property.bill.manage')) throw new Error('没有建账权限');
       const chosenId = String(values.house_id || initialHouseId || '');
       if (!chosenId || !selectedHouse.data?.effective_enabled)
         throw new Error('请选择当前可用房屋');
@@ -443,7 +449,7 @@ export function BillModal({
                 ),
               ].map((h) => ({
                 value: h.id,
-                label: h.display_address,
+                label: h.label,
                 disabled: !h.effective_enabled,
               }))}
               popupRender={(menu) => (
@@ -496,7 +502,7 @@ export function BillModal({
                 {
                   value: 'basis',
                   label: '计费依据自动计算',
-                  disabled: !can('property.fee_basis.read'),
+                  disabled: !can('property.bill.read'),
                 },
                 { value: 'manual', label: '手动填写金额' },
               ]}

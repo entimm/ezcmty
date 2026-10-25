@@ -50,7 +50,7 @@ def create_property_payment_configuration_router(
     )
     def bindings(
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.payment_config.read")],
+        ctx: Annotated[AdminContext, permission("property.payment.read")],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         sort: Literal["created_at,id", "-created_at,-id"] = "-created_at,-id",
@@ -65,7 +65,7 @@ def create_property_payment_configuration_router(
         responses=ok,
     )
     def configuration(
-        svc: Service, ctx: Annotated[AdminContext, permission("property.payment_config.read")]
+        svc: Service, ctx: Annotated[AdminContext, permission("property.payment.read")]
     ) -> schema.PaymentConfiguration:
         return svc.get(ctx)
 
@@ -77,7 +77,7 @@ def create_property_payment_configuration_router(
     )
     def rules(
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.payment_config.read")],
+        ctx: Annotated[AdminContext, permission("property.payment.read")],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         sort: Literal["version_no,id", "-version_no,-id"] = "-version_no,-id",
@@ -93,7 +93,7 @@ def create_property_payment_configuration_router(
     def rule(
         version_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.payment_config.read")],
+        ctx: Annotated[AdminContext, permission("property.payment.read")],
     ) -> schema.ProfitSharingRuleVersion:
         return svc.rule(ctx, version_id)
 

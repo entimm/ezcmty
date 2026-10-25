@@ -11,7 +11,7 @@ const platformSession: SessionResponse = {
   subject_id: '00000000-0000-4000-8000-000000000001',
   login_name: 'admin',
   display_name: '平台管理员',
-  permissions: ['admin.account.read', 'property.company.read'],
+  permissions: ['platform.system.read', 'property.company.read'],
   must_change_password: false,
   csrf_token: 'csrf-platform',
 };

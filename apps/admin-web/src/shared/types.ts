@@ -28,7 +28,7 @@ export interface Community {
   id: string;
   property_company_id: string;
   property_company_name?: string;
-  code: string;
+  code?: string;
   name: string;
   address?: string;
   enabled: boolean;

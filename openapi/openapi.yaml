@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Community Property Platform API
-  version: 0.15.0
+  version: 0.16.0
   description: 社区物业消费返利与物业费抵扣平台 API 契约。
 servers:
   - url: '/'
@@ -26,6 +26,16 @@ tags:
   - name: imports
     description: 管理后台通用批量导入
 paths:
+  '/v1/admin-role-templates':
+    '$ref': './modules/admin.yaml#/roleTemplates'
+  '/v1/property-workspace/context':
+    '$ref': './modules/property.yaml#/workspaceContext'
+  '/v1/property-company-options':
+    '$ref': './modules/property.yaml#/companyOptions'
+  '/v1/community-options':
+    '$ref': './modules/property.yaml#/communityOptions'
+  '/v1/communities/{community_id}/house-options':
+    '$ref': './modules/housing.yaml#/houseOptions'
   '/healthz':
     '$ref': './modules/system.yaml#/health'
   '/readyz':

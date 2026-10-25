@@ -121,8 +121,8 @@ assert {item.key: item.config_hash for item in production.list()} == json.loads(
 owners = production.get("house_owners", 1)
 assert owners.allowed_actor_scopes == ("property_admin",)
 assert owners.allowed_scope_types == ("community",)
-assert owners.required_permissions == ("property.house_owner.create",)
-assert owners.read_permissions == ("property.house_owner.read",)
+assert owners.required_permissions == ("property.housing.manage",)
+assert owners.read_permissions == ("property.housing.read",)
 assert production.get_adapter(owners.adapter_key).__class__.__name__ == "HouseOwnerImportAdapter"
 assert files("backend_app.import_definitions").joinpath("house_owners/v1.json").is_file()
 housing = production.get("houses", 1)

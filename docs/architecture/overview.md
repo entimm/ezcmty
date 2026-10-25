@@ -28,7 +28,7 @@
 
 居民账单支付、商户绑定、分账、解冻及后台恢复的业务规则、权限与交互见 [居民账单支付与资金处理](../design/payment/bill-payments.md)，数据与事务设计见 [账单支付与分账数据设计](../design/payment/bill-payments-and-profit-sharing.md)。
 
-后台认证、管理员、角色权限和审计的共用规则见 [管理后台基础框架设计](../design/admin/foundation.md)。
+后台认证、管理员、角色数据及审计事务的共用规则见 [管理后台基础框架设计](../design/admin/foundation.md)；业务授权单元、岗位模板和物业端管理入口见 [业务权限与岗位模板设计](../design/admin/authorization.md)。
 
 ## 后端分层
 

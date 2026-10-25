@@ -6,6 +6,11 @@ export interface Page<T> {
   page: number;
   page_size: number;
 }
+export interface CompanyOption {
+  id: string;
+  name: string;
+  enabled: boolean;
+}
 export interface Company {
   id: string;
   code: string;
@@ -27,46 +32,15 @@ export interface Community {
   created_at: string;
   updated_at: string;
 }
-export interface RoleSummary {
-  id: string;
-  code: string;
-  name: string;
-  enabled: boolean;
-  is_system: boolean;
-}
-export interface Role extends RoleSummary {
-  permissions: string[];
-}
-export interface Account {
-  id: string;
-  scope: 'platform_admin' | 'property_admin';
-  login_name: string;
-  display_name: string;
-  enabled: boolean;
-  must_change_password: boolean;
-  created_at: string;
-  roles: RoleSummary[];
-  property_company_id?: string;
-}
-export interface Permission {
-  code: string;
-  name: string;
-  group: string;
-  assignable: boolean;
-}
-export interface Audit {
-  id: string;
-  property_company_id: string | null;
-  actor_id: string | null;
-  actor_name: string | null;
-  action: string;
-  target_type: string;
-  target_id: string | null;
-  result: 'success' | 'failure';
-  request_id: string;
-  created_at: string;
-  metadata: Record<string, unknown>;
-}
+export type {
+  RoleSummary,
+  Role,
+  Account,
+  Permission,
+  Audit,
+} from '../../shared/system/api';
+import type { Account } from '../../shared/system/api';
+import { createSystemApi } from '../../shared/system/api';
 export interface CompanyInput {
   code: string;
   name: string;
@@ -106,6 +80,10 @@ export function createPlatformApi(request: AdminRequest) {
       body: JSON.stringify(data),
     });
   return {
+    companyOptions: (filters: Filters) =>
+      request<Page<CompanyOption>>(
+        `/v1/property-company-options?${queryString(filters)}`,
+      ),
     companies: (filters: Filters) =>
       request<Page<Company>>(`/v1/property-companies?${queryString(filters)}`),
     company: (id: string) => request<Company>(companyPath(id)),
@@ -153,50 +131,7 @@ export function createPlatformApi(request: AdminRequest) {
       write<void>(`${adminPath(company, id)}/password-resets`, 'POST', {
         password,
       }),
-    accounts: (filters: Filters) =>
-      request<Page<Account>>(`/v1/admin-accounts?${queryString(filters)}`),
-    account: (id: string) =>
-      request<Account>(`/v1/admin-accounts/${encodeURIComponent(id)}`),
-    createAccount: (data: AccountInput) =>
-      write<Account>('/v1/admin-accounts', 'POST', data),
-    updateAccount: (
-      id: string,
-      data: { display_name?: string; enabled?: boolean },
-    ) =>
-      write<Account>(
-        `/v1/admin-accounts/${encodeURIComponent(id)}`,
-        'PATCH',
-        data,
-      ),
-    assignRoles: (id: string, role_ids: string[]) =>
-      write<Account>(
-        `/v1/admin-accounts/${encodeURIComponent(id)}/roles`,
-        'PUT',
-        { role_ids },
-      ),
-    resetPassword: (id: string, password: string) =>
-      write<void>(
-        `/v1/admin-accounts/${encodeURIComponent(id)}/password-resets`,
-        'POST',
-        { password },
-      ),
-    roles: (filters: Filters) =>
-      request<Page<Role>>(`/v1/admin-roles?${queryString(filters)}`),
-    role: (id: string) =>
-      request<Role>(`/v1/admin-roles/${encodeURIComponent(id)}`),
-    createRole: (data: { code: string; name: string }) =>
-      write<Role>('/v1/admin-roles', 'POST', data),
-    updateRole: (id: string, data: { name?: string; enabled?: boolean }) =>
-      write<Role>(`/v1/admin-roles/${encodeURIComponent(id)}`, 'PATCH', data),
-    assignPermissions: (id: string, permissions: string[]) =>
-      write<Role>(
-        `/v1/admin-roles/${encodeURIComponent(id)}/permissions`,
-        'PUT',
-        { permissions },
-      ),
-    permissions: () => request<Permission[]>('/v1/admin-permissions'),
-    audit: (filters: Filters) =>
-      request<Page<Audit>>(`/v1/admin-audit-logs?${queryString(filters)}`),
+    ...createSystemApi(request),
   };
 }
 export type PlatformApi = ReturnType<typeof createPlatformApi>;

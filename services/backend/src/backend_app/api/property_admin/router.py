@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from backend_app.api.admin import create_admin_auth_router
+from backend_app.api.admin_management import create_admin_management_router
 from backend_app.api.imports import create_import_router
 from backend_app.api.payment_management import create_payment_management_router
 from backend_app.api.property_admin.billing import create_property_billing_router
@@ -17,6 +18,9 @@ def create_property_admin_router() -> APIRouter:
     auth = create_admin_auth_router("property_admin", PropertyAdminService)
     router = APIRouter()
     router.include_router(auth.router)
+    router.include_router(
+        create_admin_management_router("property_admin", auth.permission, auth.check_write)
+    )
     router.include_router(create_property_workspace_router(auth.permission))
     router.include_router(create_property_housing_router(auth.permission, auth.check_write))
     router.include_router(create_property_billing_router(auth.permission, auth.check_write))

@@ -215,8 +215,11 @@ class HousingRepository:
         external_code: str | None = None,
         floor_no: int | None = None,
         enabled: bool | None = None,
+        house_id: str | None = None,
     ) -> tuple[list[House], int]:
         query = self._houses(community_id)
+        if house_id is not None:
+            query = query.where(House.id == house_id)
         if space_node_id is not None:
             descendants = self.descendant_ids(community_id, space_node_id)
             query = query.where(House.space_node_id.in_(select(descendants.c.id)))

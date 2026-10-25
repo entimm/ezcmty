@@ -38,7 +38,7 @@ def create_property_billing_router(
         community_id: Identifier,
         house_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.fee_basis.read")],
+        ctx: Annotated[AdminContext, permission("property.bill.read")],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
     ) -> schema.FeeBasisPage:
@@ -58,7 +58,7 @@ def create_property_billing_router(
         data: schema.FeeBasisCreate,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.fee_basis.create")],
+        ctx: Annotated[AdminContext, permission("property.fee_basis.manage")],
     ) -> schema.FeeBasisVersion:
         return svc.create_basis(ctx, community_id, house_id, data, request.state.request_id)
 
@@ -73,7 +73,7 @@ def create_property_billing_router(
         house_id: Identifier,
         version_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.fee_basis.read")],
+        ctx: Annotated[AdminContext, permission("property.bill.read")],
     ) -> schema.FeeBasisVersion:
         return svc.get_basis(ctx, community_id, house_id, version_id)
 
@@ -89,7 +89,7 @@ def create_property_billing_router(
         house_id: Identifier,
         data: schema.FeeCalculationRequest,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.fee_basis.read")],
+        ctx: Annotated[AdminContext, permission("property.bill.read")],
     ) -> schema.FeeCalculation:
         return svc.calculate(ctx, community_id, house_id, data)
 
@@ -176,7 +176,7 @@ def create_property_billing_router(
         request: Request,
         key: Key,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.bill.create")],
+        ctx: Annotated[AdminContext, permission("property.bill.manage")],
     ) -> schema.BillWriteResult:
         return svc.write(ctx, community_id, "create", data, key, request.state.request_id)
 
@@ -194,7 +194,7 @@ def create_property_billing_router(
         request: Request,
         key: Key,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.bill.update")],
+        ctx: Annotated[AdminContext, permission("property.bill.manage")],
     ) -> schema.BillWriteResult:
         return svc.write(
             ctx, community_id, "update", data, key, request.state.request_id, bill_id=bill_id

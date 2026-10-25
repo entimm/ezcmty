@@ -46,7 +46,7 @@ def create_payment_recovery_router(
         data: schema.PaymentRecoveryRequest,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("platform.payment_funds.recover")],
+        ctx: Annotated[AdminContext, permission("platform.payment.recover")],
     ) -> schema.PaymentRecoveryAccepted:
         return svc.payment(ctx, payment_order_id, data, request.state.request_id)
 
@@ -62,7 +62,7 @@ def create_payment_recovery_router(
         data: schema.PaymentRecoveryRequest,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("platform.payment_reconciliation.recheck")],
+        ctx: Annotated[AdminContext, permission("platform.payment_reconciliation.manage")],
     ) -> schema.PaymentRecoveryAccepted:
         return svc.run(ctx, reconciliation_run_id, data, request.state.request_id)
 
@@ -78,7 +78,7 @@ def create_payment_recovery_router(
         data: schema.PaymentRecoveryRequest,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("platform.payment_funds.recover")],
+        ctx: Annotated[AdminContext, permission("platform.payment.recover")],
     ) -> schema.PaymentRecoveryAccepted:
         return svc.discrepancy(ctx, discrepancy_id, data, request.state.request_id)
 
@@ -94,7 +94,7 @@ def create_payment_recovery_router(
         data: schema.ReconciliationExternalResolutionRequest,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("platform.payment_funds.recover")],
+        ctx: Annotated[AdminContext, permission("platform.payment.recover")],
     ) -> schema.ManagedReconciliationDiscrepancy:
         return svc.external_resolution(ctx, discrepancy_id, data, request.state.request_id)
 

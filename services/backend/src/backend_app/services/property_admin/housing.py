@@ -171,7 +171,7 @@ class PropertyHousingService:
         page: int,
         page_size: int,
     ) -> schema.SpaceNodePage:
-        repo, community = self._read(context, "property.space.read", community_id)
+        repo, community = self._read(context, "property.housing.read", community_id)
         if parent_id is not None:
             self._path(repo, community_id, parent_id)
         items, total = repo.nodes(community_id, parent_id=parent_id, page=page, page_size=page_size)
@@ -187,7 +187,7 @@ class PropertyHousingService:
         )
 
     def get_node(self, context: AdminContext, community_id: str, node_id: str) -> schema.SpaceNode:
-        repo, community = self._read(context, "property.space.read", community_id)
+        repo, community = self._read(context, "property.housing.read", community_id)
         path = self._path(repo, community_id, node_id)
         return space_view(
             path[-1], community, path, has_children=repo.has_children(community_id, node_id)
@@ -201,7 +201,7 @@ class PropertyHousingService:
         request_id: str,
     ) -> schema.SpaceNode:
         repo, identity, actor, community = self._write(
-            context, "property.space.create", community_id
+            context, "property.housing.manage", community_id
         )
         path = self._path(repo, community_id, data.parent_id, lock=True) if data.parent_id else []
         if not is_valid_space_parent(data.node_type, path[-1].node_type if path else None):
@@ -238,7 +238,7 @@ class PropertyHousingService:
         request_id: str,
     ) -> schema.SpaceNode:
         repo, identity, actor, community = self._write(
-            context, "property.space.update", community_id
+            context, "property.housing.manage", community_id
         )
         path = self._path(repo, community_id, node_id, lock=True)
         node = path[-1]
@@ -254,7 +254,7 @@ class PropertyHousingService:
     def list_houses(
         self, context: AdminContext, community_id: str, **filters: Any
     ) -> schema.HousePage:
-        repo, community = self._read(context, "property.house.read", community_id)
+        repo, community = self._read(context, "property.housing.read", community_id)
         if filters.get("space_node_id") is not None:
             self._path(repo, community_id, filters["space_node_id"])
         items, total = repo.houses(community_id, **filters)
@@ -267,15 +267,42 @@ class PropertyHousingService:
         )
 
     def get_house(self, context: AdminContext, community_id: str, house_id: str) -> schema.House:
-        repo, community = self._read(context, "property.house.read", community_id)
+        repo, community = self._read(context, "property.housing.read", community_id)
         house, path = self._house(repo, community_id, house_id)
         return house_view(house, community, path)
+
+    def house_options(
+        self, context: AdminContext, community_id: str, **filters: Any
+    ) -> schema.HouseOptionPage:
+        allowed = {"property.bill.read", "property.resident_access.read", "property.housing.read"}
+        permission = next((code for code in context.permissions if code in allowed), None)
+        if permission is None:
+            raise AppError("auth.forbidden")
+        repo, community = self._read(context, permission, community_id)
+        items, total = repo.houses(community_id, sort="-created_at", **filters)
+        paths = repo.paths(community_id, [house.space_node_id for house in items])
+        values = [house_view(house, community, paths[house.space_node_id]) for house in items]
+        return schema.HouseOptionPage(
+            items=[
+                schema.HouseOption(
+                    id=item.id,
+                    community_id=item.community_id,
+                    label=item.display_address,
+                    enabled=item.enabled,
+                    effective_enabled=item.effective_enabled,
+                )
+                for item in values
+            ],
+            total=total,
+            page=filters["page"],
+            page_size=filters["page_size"],
+        )
 
     def create_house(
         self, context: AdminContext, community_id: str, data: schema.HouseCreate, request_id: str
     ) -> schema.House:
         repo, identity, actor, community = self._write(
-            context, "property.house.create", community_id
+            context, "property.housing.manage", community_id
         )
         if not house_creation_permissions(has_owners=bool(data.owners)) <= set(
             identity.effective_permissions(actor.id)
@@ -313,7 +340,7 @@ class PropertyHousingService:
         request_id: str,
     ) -> schema.House:
         repo, identity, actor, community = self._write(
-            context, "property.house.update", community_id
+            context, "property.housing.manage", community_id
         )
         house, path = self._house(repo, community_id, house_id, lock=True)
         fields = self._update(house, data)
@@ -324,7 +351,7 @@ class PropertyHousingService:
     def list_owners(
         self, context: AdminContext, community_id: str, house_id: str, **filters: Any
     ) -> schema.HouseOwnerPage:
-        repo, community = self._read(context, "property.house_owner.read", community_id)
+        repo, community = self._read(context, "property.housing.read", community_id)
         house, path = self._house(repo, community_id, house_id)
         items, total = repo.owners(community_id, house_id, **filters)
         enabled = self._effective_enabled(community, path, house)
@@ -338,7 +365,7 @@ class PropertyHousingService:
     def get_owner(
         self, context: AdminContext, community_id: str, house_id: str, owner_id: str
     ) -> schema.HouseOwner:
-        repo, community = self._read(context, "property.house_owner.read", community_id)
+        repo, community = self._read(context, "property.housing.read", community_id)
         house, path = self._house(repo, community_id, house_id)
         owner = repo.owner(community_id, house_id, owner_id)
         if owner is None:
@@ -353,7 +380,7 @@ class PropertyHousingService:
         data: schema.HouseOwnerCreate,
         request_id: str,
     ) -> schema.HouseOwner:
-        repo, _, actor, _ = self._write(context, "property.house_owner.create", community_id)
+        repo, _, actor, _ = self._write(context, "property.housing.manage", community_id)
         try:
             result = create_house_owner(
                 self.db,
@@ -383,7 +410,7 @@ class PropertyHousingService:
         request_id: str,
     ) -> schema.HouseOwner:
         repo, identity, actor, community = self._write(
-            context, "property.house_owner.update", community_id
+            context, "property.housing.manage", community_id
         )
         house, path = self._house(repo, community_id, house_id, lock=True)
         owner = repo.owner(community_id, house_id, owner_id, lock=True)

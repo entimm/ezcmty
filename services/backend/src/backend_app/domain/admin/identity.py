@@ -1,7 +1,7 @@
 from backend_app.core.admin_security import dummy_password_hash, hash_password, verify_password
 from backend_app.core.errors import AppError
 from backend_app.domain.admin.audit import AdminAudit
-from backend_app.domain.admin.permissions import permission_catalog
+from backend_app.domain.admin.permissions import normalize_permissions, permission_catalog
 from backend_app.domain.admin.types import AdminAuthorization
 from backend_app.models.admin import AdminAccount, AdminRole
 from backend_app.repositories.admin import AdminRepository
@@ -84,13 +84,16 @@ class AdminIdentity:
         if any(role.is_system and role.code == "super_admin" for role in roles):
             return sorted(item.code for item in catalog)
         allowed = {item.code for item in catalog if item.assignable}
-        return sorted({code for role in roles for code in self.repo.permissions(role.id)} & allowed)
+        return normalize_permissions(
+            self.scope,
+            {code for role in roles for code in self.repo.permissions(role.id)} & allowed,
+        )
 
     def role_permissions(self, role: AdminRole) -> list[str]:
         return (
             sorted(item.code for item in permission_catalog(self.scope))
             if role.is_system
-            else self.repo.permissions(role.id)
+            else normalize_permissions(self.scope, self.repo.permissions(role.id))
         )
 
     def account(self, account_id: str, *, lock: bool = False) -> AdminAccount:

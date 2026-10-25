@@ -61,6 +61,9 @@ class RoleSet(AdminSchema):
 class RoleCreate(AdminSchema):
     code: Annotated[str, Field(min_length=1, max_length=64, pattern=r"^[a-z][a-z0-9_]*$")]
     name: Name
+    permissions: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(
+        default_factory=list
+    )
 
 
 class RoleUpdate(AdminSchema):
@@ -106,6 +109,7 @@ class AdminAccount(AdminSchema):
     must_change_password: bool
     created_at: datetime
     roles: list[RoleSummary]
+    effective_permissions: list[str]
 
     @field_validator("created_at")
     @classmethod
@@ -117,6 +121,7 @@ class AdminAccount(AdminSchema):
 
 class AdminRole(RoleSummary):
     permissions: list[str]
+    affected_account_count: int = Field(ge=0)
 
 
 class AdminPermission(AdminSchema):
@@ -124,6 +129,14 @@ class AdminPermission(AdminSchema):
     name: str
     group: str
     assignable: bool
+    level: str
+    requires: list[str]
+
+
+class AdminRoleTemplate(AdminSchema):
+    code: str
+    name: str
+    permissions: list[str]
 
 
 class AuditEntry(AdminSchema):

@@ -71,6 +71,8 @@ def batches(
     db: Session, actor_scope: str, company_id: str | None, filters: dict[str, Any]
 ) -> tuple[list[ImportBatch], int]:
     stmt = select(ImportBatch).where(ImportBatch.created_by_scope == actor_scope)
+    if "_template_keys" in filters:
+        stmt = stmt.where(ImportBatch.template_key.in_(filters["_template_keys"]))
     if company_id:
         stmt = stmt.where(ImportBatch.property_company_id == company_id)
     columns = {

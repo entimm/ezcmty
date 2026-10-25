@@ -21,7 +21,7 @@ def community_view(community: Community, company_name: str) -> schema.Community:
 
 
 def property_admin_view(
-    account: AdminAccount, roles: Sequence[AdminRole]
+    account: AdminAccount, roles: Sequence[AdminRole], effective_permissions: list[str]
 ) -> schema.PropertyAdminAccount:
     assert account.property_company_id is not None
     return schema.PropertyAdminAccount(
@@ -34,4 +34,5 @@ def property_admin_view(
         must_change_password=account.must_change_password,
         created_at=account.created_at,
         roles=[admin_schema.RoleSummary.model_validate(role) for role in roles],
+        effective_permissions=effective_permissions,
     )

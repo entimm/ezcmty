@@ -211,9 +211,9 @@ profitSharingOrders:
       - AdminSession: []
     x-permissions-by-runtime:
       platform_admin_api:
-        - platform.payment_funds.read
+        - platform.payment.read
       property_admin_api:
-        - property.payment_funds.read
+        - property.payment.read
     parameters:
       - name: page
         in: query
@@ -334,9 +334,9 @@ profitSharingOrder:
       - AdminSession: []
     x-permissions-by-runtime:
       platform_admin_api:
-        - platform.payment_funds.read
+        - platform.payment.read
       property_admin_api:
-        - property.payment_funds.read
+        - property.payment.read
     parameters:
       - name: profit_sharing_order_id
         in: path
@@ -388,9 +388,9 @@ unfreezeOrders:
       - AdminSession: []
     x-permissions-by-runtime:
       platform_admin_api:
-        - platform.payment_funds.read
+        - platform.payment.read
       property_admin_api:
-        - property.payment_funds.read
+        - property.payment.read
     parameters:
       - name: page
         in: query
@@ -512,9 +512,9 @@ unfreezeOrder:
       - AdminSession: []
     x-permissions-by-runtime:
       platform_admin_api:
-        - platform.payment_funds.read
+        - platform.payment.read
       property_admin_api:
-        - property.payment_funds.read
+        - property.payment.read
     parameters:
       - name: unfreeze_order_id
         in: path
@@ -568,7 +568,7 @@ reconciliationRuns:
       platform_admin_api:
         - platform.payment_reconciliation.read
       property_admin_api:
-        - property.payment_reconciliation.read
+        - property.payment.read
     parameters:
       - name: page
         in: query
@@ -681,7 +681,7 @@ reconciliationRun:
       platform_admin_api:
         - platform.payment_reconciliation.read
       property_admin_api:
-        - property.payment_reconciliation.read
+        - property.payment.read
     parameters:
       - name: reconciliation_run_id
         in: path
@@ -735,7 +735,7 @@ reconciliationDiscrepancies:
       platform_admin_api:
         - platform.payment_reconciliation.read
       property_admin_api:
-        - property.payment_reconciliation.read
+        - property.payment.read
     parameters:
       - name: page
         in: query
@@ -868,7 +868,7 @@ reconciliationDiscrepancy:
       platform_admin_api:
         - platform.payment_reconciliation.read
       property_admin_api:
-        - property.payment_reconciliation.read
+        - property.payment.read
     parameters:
       - name: discrepancy_id
         in: path
@@ -919,7 +919,7 @@ paymentOrderRecoveries:
     security:
       - AdminSession: []
     x-permissions:
-      - platform.payment_funds.recover
+      - platform.payment.recover
     parameters:
       - name: payment_order_id
         in: path
@@ -990,7 +990,7 @@ reconciliationRunRechecks:
     security:
       - AdminSession: []
     x-permissions:
-      - platform.payment_reconciliation.recheck
+      - platform.payment_reconciliation.manage
     parameters:
       - name: reconciliation_run_id
         in: path
@@ -1061,7 +1061,7 @@ reconciliationDiscrepancyRecoveries:
     security:
       - AdminSession: []
     x-permissions:
-      - platform.payment_funds.recover
+      - platform.payment.recover
     parameters:
       - name: discrepancy_id
         in: path
@@ -1137,7 +1137,7 @@ reconciliationDiscrepancyExternalResolutions:
       - AdminSession: []
     x-permissions:
       - platform.payment_reconciliation.read
-      - platform.payment_funds.recover
+      - platform.payment.recover
     parameters:
       - name: discrepancy_id
         in: path

@@ -32,7 +32,7 @@ def create_property_workspace_router(permission: Callable[[str], DependsParamete
         responses=responses,
     )
     def get_summary(
-        svc: Service, ctx: Annotated[AdminContext, permission("property.company.read")]
+        svc: Service, ctx: Annotated[AdminContext, permission("")]
     ) -> schema.PropertyWorkspaceSummary:
         return svc.get_summary(ctx)
 
@@ -43,7 +43,7 @@ def create_property_workspace_router(permission: Callable[[str], DependsParamete
         responses=responses,
     )
     def get_current_company(
-        svc: Service, ctx: Annotated[AdminContext, permission("property.company.read")]
+        svc: Service, ctx: Annotated[AdminContext, permission("")]
     ) -> schema.PropertyCompany:
         return svc.get_current_company(ctx)
 
@@ -55,7 +55,7 @@ def create_property_workspace_router(permission: Callable[[str], DependsParamete
     )
     def list_communities(
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.community.read")],
+        ctx: Annotated[AdminContext, permission("")],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         name: Annotated[str | None, Query(max_length=160)] = None,
@@ -84,8 +84,37 @@ def create_property_workspace_router(permission: Callable[[str], DependsParamete
     def get_community(
         community_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.community.read")],
+        ctx: Annotated[AdminContext, permission("")],
     ) -> schema.Community:
         return svc.get_community(ctx, community_id)
+
+    @router.get(
+        "/v1/property-workspace/context",
+        response_model=schema.PropertyWorkspaceContext,
+        operation_id="getPropertyWorkspaceContext",
+        responses=responses,
+    )
+    def get_context(
+        svc: Service, ctx: Annotated[AdminContext, permission("")]
+    ) -> schema.PropertyWorkspaceContext:
+        return svc.get_context(ctx)
+
+    @router.get(
+        "/v1/community-options",
+        response_model=schema.CommunityOptionPage,
+        operation_id="listCommunityOptions",
+        responses=responses,
+    )
+    def community_options(
+        svc: Service,
+        ctx: Annotated[AdminContext, permission("")],
+        page: Annotated[int, Query(ge=1)] = 1,
+        page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+        name: Annotated[str | None, Query(max_length=160)] = None,
+        property_company_id: Identifier | None = None,
+    ) -> schema.CommunityOptionPage:
+        return svc.community_options(
+            ctx, page=page, page_size=page_size, name=name, property_company_id=property_company_id
+        )
 
     return router

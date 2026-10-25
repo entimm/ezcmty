@@ -160,6 +160,21 @@ class HousePage(AdminSchema):
     page_size: int
 
 
+class HouseOption(AdminSchema):
+    id: Identifier
+    community_id: Identifier
+    label: str
+    enabled: bool
+    effective_enabled: bool
+
+
+class HouseOptionPage(AdminSchema):
+    items: list[HouseOption]
+    total: int
+    page: int
+    page_size: int
+
+
 class HouseOwnerPage(AdminSchema):
     items: list[HouseOwner]
     total: int

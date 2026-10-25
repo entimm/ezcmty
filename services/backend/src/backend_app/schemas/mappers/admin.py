@@ -26,7 +26,11 @@ def profile_view(account: AdminAccount) -> schema.AdminProfile:
 
 
 def account_view(
-    account: AdminAccount, *, scope: AdminScope, roles: Sequence[AdminRole]
+    account: AdminAccount,
+    *,
+    scope: AdminScope,
+    roles: Sequence[AdminRole],
+    effective_permissions: list[str],
 ) -> schema.AdminAccount:
     return schema.AdminAccount(
         id=account.id,
@@ -37,10 +41,13 @@ def account_view(
         must_change_password=account.must_change_password,
         created_at=account.created_at,
         roles=[schema.RoleSummary.model_validate(role) for role in roles],
+        effective_permissions=effective_permissions,
     )
 
 
-def role_view(role: AdminRole, permissions: list[str]) -> schema.AdminRole:
+def role_view(
+    role: AdminRole, permissions: list[str], affected_account_count: int
+) -> schema.AdminRole:
     return schema.AdminRole(
         id=role.id,
         code=role.code,
@@ -48,6 +55,7 @@ def role_view(role: AdminRole, permissions: list[str]) -> schema.AdminRole:
         enabled=role.enabled,
         is_system=role.is_system,
         permissions=permissions,
+        affected_account_count=affected_account_count,
     )
 
 

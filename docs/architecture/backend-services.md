@@ -4,7 +4,7 @@
 
 各运行端显式组装自己的 API 和应用 Service。应用 Service 按后台及业务用例组织，负责操作权限、数据范围、状态流转、调用顺序和事务提交；同一资源在不同后台的业务流程分别维护。
 
-公共业务规则按领域放入 `domain/`，当前管理员领域负责授权上下文、账号状态、会话版本、密码变更、RBAC 和审计归属规则。领域能力接收普通数据类型，通过 Repository 访问业务数据；不依赖 API Schema、应用 Service 或 Redis 会话存储，也不自行提交调用方的数据库事务。Repository、Model 和 Integration 按业务资源共用。
+公共业务规则按领域放入 `domain/`，当前管理员领域负责授权上下文、账号状态、会话版本、密码变更、RBAC 和审计归属规则。业务权限、固定依赖和岗位模板遵循 [业务权限与岗位模板设计](../design/admin/authorization.md)。领域能力接收普通数据类型，通过 Repository 访问业务数据；不依赖 API Schema、应用 Service 或 Redis 会话存储，也不自行提交调用方的数据库事务。Repository、Model 和 Integration 按业务资源共用。
 
 各端应用 Service 编排 Redis 会话读取、创建与续期，执行所属后台的公司校验、锁定顺序及事务提交。共用认证接口和携带会话数据的应用上下文放入 `services/contracts/`。`schemas/` 定义请求和响应模型，其 `mappers/` 接收已读取的记录、角色及权限，只做响应转换，不查询数据库或执行授权。配置、密码哈希、会话存储和运行就绪检查属于 `core/` 的技术机制。
 
@@ -21,31 +21,33 @@
 | Integration           | 封装外部协议、签名验签、解密、结构校验与普通事实转换；不决定入账、业务重试或资金状态。                                                             |
 | 任务 Runner / Handler | Runner 负责领取、租约和生命周期；Handler 按任务类型及目标调用 Worker Service，不复制业务状态机。                                                   |
 
-| 模块                          | 职责                                                                                                  |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `api/platform_admin/`         | 组装平台认证、管理员管理、物业接入、支付配置及资金管理接口。                                          |
-| `api/property_admin/`         | 组装物业认证、本人操作、工作台、房屋业主资料、账单及本公司支付只读接口。                              |
-| `api/resident/`               | 组装居民身份、房屋认领、账单及本人支付接口，公共 HTTP 依赖独立于业务路由。                            |
-| `api/webhook/`                | 按渠道协议接收原始通知，调用通知接收 Service 并返回渠道 ACK。                                         |
-| `api/admin.py`                | 公共认证与本人接口的 HTTP 处理、权限依赖、Origin、CSRF 和 Cookie 机制，绑定调用方提供的应用 Service。 |
-| `services/platform_admin/`    | 平台认证与本人操作、管理员与角色、物业接入、支付配置和授权范围内的资金管理。                          |
-| `services/property_admin/`    | 物业认证与本人操作、本公司资料、房屋维护、账单线下操作及本公司支付资金只读。                          |
-| `services/resident/`          | 居民身份、房屋授权、账单读取、本人订单及支付创建、参数签发和任务安排。                                |
-| `services/webhook/`           | 已验签通知的持久去重、隔离和处理任务创建，不同步入账。                                                |
-| `services/worker/payments/`   | 渠道下单、查单、关单、统一收款确认、分账、解冻及资金核对的应用编排。                                  |
-| `services/contracts/admin.py` | 共用认证应用接口和携带 Redis 会话数据的应用上下文。                                                   |
-| `domain/admin/types.py`       | 后台作用域和普通数据类型的授权上下文。                                                                |
-| `domain/admin/identity.py`    | 账号状态、会话版本、密码变更和 RBAC 规则。                                                            |
-| `domain/admin/permissions.py` | 按后台定义的权限目录。                                                                                |
-| `domain/admin/audit.py`       | 审计写入归属、读取权限与数据范围，返回业务记录。                                                      |
-| `domain/housing.py`           | 空间层级及路径、房屋位置定位与复核、共享建房规则和写入、基础资料比较及业主手机号规范化。              |
-| `domain/billing/`             | 维护金额、期间、建账校验、原始创建事实比对和参与调用方事务的共享账务写入。                            |
-| `domain/payments/`            | 配置适用性、规则计算、支付事实与状态、占用、应分履行、解冻及差异判定规则。                            |
-| `schemas/mappers/admin.py`    | 会话、管理员、角色、权限和审计的纯响应转换。                                                          |
-| `schemas/mappers/property.py` | 小区和公司管理员的纯响应转换。                                                                        |
-| `schemas/mappers/housing.py`  | 空间、房屋及业主资料的纯响应转换。                                                                    |
-| `schemas/mappers/billing.py`  | 计费依据、账单、收款流水及操作结果的纯响应转换。                                                      |
-| `core/readiness.py`           | 各运行端共用的数据库和 Redis 就绪检查。                                                               |
+| 模块                           | 职责                                                                                                  |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `api/platform_admin/`          | 组装平台认证、管理员管理、物业接入、支付配置及资金管理接口。                                          |
+| `api/property_admin/`          | 组装物业认证、本人操作、工作台、房产资料、账单、本公司账号角色与审计及支付只读接口。                  |
+| `api/resident/`                | 组装居民身份、房屋认领、账单及本人支付接口，公共 HTTP 依赖独立于业务路由。                            |
+| `api/webhook/`                 | 按渠道协议接收原始通知，调用通知接收 Service 并返回渠道 ACK。                                         |
+| `api/admin.py`                 | 公共认证与本人接口的 HTTP 处理、权限依赖、Origin、CSRF 和 Cookie 机制，绑定调用方提供的应用 Service。 |
+| `api/admin_management.py`      | 账号、角色、模板与审计的共用 HTTP 组装，创建时固定后台并由各端显式注册。                              |
+| `services/admin_management.py` | 共用账号角色管理、授权规范化与预览、超级管理员保护及审计事务；物业管理同时限定并锁定本公司。          |
+| `services/platform_admin/`     | 平台认证与本人操作、管理员与角色、物业接入、支付配置和授权范围内的资金管理。                          |
+| `services/property_admin/`     | 物业认证与本人操作、本公司账号角色及审计、本公司资料、房产维护、账单线下操作及本公司支付资金只读。    |
+| `services/resident/`           | 居民身份、房屋授权、账单读取、本人订单及支付创建、参数签发和任务安排。                                |
+| `services/webhook/`            | 已验签通知的持久去重、隔离和处理任务创建，不同步入账。                                                |
+| `services/worker/payments/`    | 渠道下单、查单、关单、统一收款确认、分账、解冻及资金核对的应用编排。                                  |
+| `services/contracts/admin.py`  | 共用认证应用接口和携带 Redis 会话数据的应用上下文。                                                   |
+| `domain/admin/types.py`        | 后台作用域和普通数据类型的授权上下文。                                                                |
+| `domain/admin/identity.py`     | 账号状态、会话版本、密码变更和 RBAC 规则。                                                            |
+| `domain/admin/permissions.py`  | 按后台定义的业务权限目录、固定包含关系及岗位模板。                                                    |
+| `domain/admin/audit.py`        | 审计写入归属、读取权限与数据范围，返回业务记录。                                                      |
+| `domain/housing.py`            | 空间层级及路径、房屋位置定位与复核、共享建房规则和写入、基础资料比较及业主手机号规范化。              |
+| `domain/billing/`              | 维护金额、期间、建账校验、原始创建事实比对和参与调用方事务的共享账务写入。                            |
+| `domain/payments/`             | 配置适用性、规则计算、支付事实与状态、占用、应分履行、解冻及差异判定规则。                            |
+| `schemas/mappers/admin.py`     | 会话、管理员、角色、权限和审计的纯响应转换。                                                          |
+| `schemas/mappers/property.py`  | 小区和公司管理员的纯响应转换。                                                                        |
+| `schemas/mappers/housing.py`   | 空间、房屋及业主资料的纯响应转换。                                                                    |
+| `schemas/mappers/billing.py`   | 计费依据、账单、收款流水及操作结果的纯响应转换。                                                      |
+| `core/readiness.py`            | 各运行端共用的数据库和 Redis 就绪检查。                                                               |
 
 各端路由工厂和应用 Service 固定所属后台，不接受切换后台或启用其他后台管理能力的开关。公共 HTTP 处理通过统一的认证与本人操作接口调用各端 Service；接口相同不表示业务编排相同。
 
@@ -54,6 +56,8 @@
 平台认证和应用 Service 只接受平台身份。物业认证从服务端账号解析公司，校验公司存在且启用；公司归属不来自客户端输入。物业应用 Service 只接受物业身份和明确的公司上下文。
 
 读操作在各端 Service 校验后台、权限及数据范围后调用公共 Repository；公司过滤必须同时应用到记录、总数及分页。拥有相同权限码不能改变后台和公司边界。
+
+物业账号、角色、角色选项和审计查询使用当前账号所属公司；系统管理写入校验本公司超级管理员资格。基础上下文与最小业务选项按 [依赖与最小查询](../design/admin/authorization.md#依赖与最小查询) 提供，不能以必要查询为由授予完整资料读取。导入授权跟随目标业务，公共导入控制面及 Worker 继续复核当前权限和范围。
 
 物业登录、本人资料修改和改密由物业 Service 按公司、账号顺序锁定，并重新校验公司启停、账号状态和会话版本。平台接入管理继续按对应业务流程锁定公司及目标账号，遵循 [物业工作台设计](../design/property/workbench.md#登录密码与事务) 和 [物业接入设计](../design/property/onboarding.md)。公共身份能力处理密码、版本和审计记录，各端应用 Service 提交完整用例事务。
 
@@ -75,7 +79,7 @@
 
 居民创建支付由居民 Service 校验当前身份和房屋授权，同事务提交订单、明细、占用及恢复任务。本人原订单读取和安全恢复与当前房屋授权分别判断；普通 GET 只读本地事实。调起参数由专门写操作签发，Service 可调用 Integration 本地签名，不重新下单。
 
-平台 Service 负责商户与规则维护、并发配置令牌、恢复权限及审计。`services/platform_admin/payments.py` 还负责已核实外部处置的差异结论与审计，不改写资金事实；具体行为见 [批次与差异生命周期](../design/payment/bill-payments.md#批次与差异生命周期)。渠道能力核验在数据库事务外，提交前重新取得公司协调锁并验证配置条件。物业 Service 只读取本公司支付配置和资金结果，已有线下账单写入在账单锁内检查占用。
+平台 Service 负责商户与规则维护、并发配置令牌、资金异常处理授权及审计。`services/platform_admin/payments.py` 还负责已核实外部处置的差异结论与审计，不改写资金事实；具体行为见 [批次与差异生命周期](../design/payment/bill-payments.md#批次与差异生命周期)。渠道能力核验在数据库事务外，提交前重新取得公司协调锁并验证配置条件。物业 Service 只读取本公司支付配置和资金结果，已有线下账单写入在账单锁内检查占用。
 
 Webhook 读取原始字节，通过 Integration 验签、解密和结构校验，再由通知接收 Service 持久保存通知及任务后应答。不能重建 JSON 后验签，也不能在 ACK 前同步调用收款入账。非法通知和保存失败遵循渠道协议，不套内部 Problem Details；可信但无法关联或身份、金额不符的通知持久隔离。
 

@@ -247,6 +247,10 @@ PropertyAdminAccount:
       type: array
       items:
         $ref: ./admin-schemas.yaml#/RoleSummary
+    effective_permissions:
+      type: array
+      items:
+        type: string
     property_company_id: *id001
   required:
     - id
@@ -257,6 +261,7 @@ PropertyAdminAccount:
     - must_change_password
     - created_at
     - roles
+    - effective_permissions
     - property_company_id
 CompanyPage:
   type: object
@@ -304,6 +309,87 @@ PropertyAdminPage:
       type: array
       items:
         $ref: '#/PropertyAdminAccount'
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+
+PropertyWorkspaceContext:
+  type: object
+  additionalProperties: false
+  properties:
+    property_company_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    property_company_name:
+      type: string
+  required:
+    - property_company_id
+    - property_company_name
+CompanyOption:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    name:
+      type: string
+    enabled:
+      type: boolean
+  required:
+    - id
+    - name
+    - enabled
+CompanyOptionPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./property-schemas.yaml#/CompanyOption
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+CommunityOption:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+    name:
+      type: string
+    enabled:
+      type: boolean
+    property_company_id:
+      $ref: ./schemas.yaml#/UUIDIdentifier
+  required:
+    - id
+    - name
+    - enabled
+    - property_company_id
+CommunityOptionPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        $ref: ./property-schemas.yaml#/CommunityOption
     total:
       type: integer
     page:

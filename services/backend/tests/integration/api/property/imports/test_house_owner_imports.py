@@ -398,18 +398,14 @@ def test_successful_operation_cannot_rebind_to_replacement_registration(
         )
 
 
-def test_owner_creation_permission_is_sufficient_without_house_creation(
+def test_grouped_housing_maintenance_completes_owner_import(
     owner_imports: OwnerImports,
 ) -> None:
     h = owner_imports
     existing_house(h)
     set_permissions(
         h.workspace,
-        {
-            f"property.import.{action}"
-            for action in ("read", "create", "upload", "precheck", "execute")
-        }
-        | {"property.house_owner.create", "property.house_owner.read"},
+        {"property.housing.manage"},
     )
     batch_id = h.upload([owner_row()])
     assert h.execute(batch_id)["statistics"]["execution"]["created_rows"] == 1
@@ -427,7 +423,7 @@ def test_revoked_owner_creation_permission_blocks_all_execution(
     h.confirm(batch_id)
     set_permissions(
         h.workspace,
-        {"property.import.read", "property.import.execute", "property.house_owner.read"},
+        {"property.housing.read"},
     )
     drain_worker(h.workspace.platform.factory, h.worker)
     result = h.get(batch_id)
@@ -439,16 +435,20 @@ def test_revoked_owner_creation_permission_blocks_all_execution(
     "suffix",
     ["", "/rows", "/issues", "/events", "/artifacts/error-file/download?generation=1"],
 )
-def test_house_read_permission_does_not_expose_owner_import_data(
+def test_bill_reference_permission_does_not_expose_owner_import_data(
     owner_imports: OwnerImports, suffix: str
 ) -> None:
     h = owner_imports
-    existing_house(h)
+    house = existing_house(h)
     batch_id = h.upload([owner_row()])
     set_permissions(
         h.workspace,
-        {"property.import.read", "property.import.download", "property.house.read"},
+        {"property.bill.read"},
     )
+    options = h.workspace.client.get(
+        housing_path(h.workspace, "/house-options"), params={"house_id": house["id"]}
+    )
+    assert options.status_code == 200 and options.json()["total"] == 1
     response = h.workspace.client.get(f"{PREFIX}/import-batches/{batch_id}{suffix}")
     assert response.status_code == 403, response.text
     assert "张三" not in response.text and "13800000000" not in response.text

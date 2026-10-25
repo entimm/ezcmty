@@ -19,7 +19,7 @@ from backend_app.services.property_admin.admin import PropertyAdminService
 from backend_app.services.property_admin.workspace import PropertyWorkspaceService
 
 
-def test_property_runtime_keeps_management_routes_absent_with_platform_permissions(
+def test_property_management_rejects_platform_permissions_and_platform_routes(
     workspace: WorkspaceHarness, monkeypatch: MonkeyPatch
 ) -> None:
     w = workspace
@@ -30,8 +30,8 @@ def test_property_runtime_keeps_management_routes_absent_with_platform_permissio
     )
     current = w.client.get(f"{PREFIX}/admin-sessions/current")
     assert current.status_code == 200
-    assert "admin.account.create" in current.json()["permissions"]
-    assert "property.admin.create" in current.json()["permissions"]
+    assert "platform.system.manage" in current.json()["permissions"]
+    assert "property.system.manage" not in current.json()["permissions"]
     headers = w.headers()
     account = f"/admin-accounts/{w.account_id}"
     role = f"/admin-roles/{w.account_id}"
@@ -51,6 +51,10 @@ def test_property_runtime_keeps_management_routes_absent_with_platform_permissio
         ("PUT", role + "/permissions"),
         ("GET", "/admin-permissions"),
         ("GET", "/admin-audit-logs"),
+    ):
+        response = w.client.request(method, PREFIX + path, headers=headers, json={})
+        assert response.status_code == 403, (method, path, response.text)
+    for method, path in (
         ("GET", "/property-companies"),
         ("POST", "/property-companies"),
         ("GET", company),
@@ -69,8 +73,12 @@ def test_property_runtime_keeps_management_routes_absent_with_platform_permissio
     ):
         response = w.client.request(method, PREFIX + path, headers=headers, json={})
         assert response.status_code == 405, (method, path, response.text)
-    assert w.client.get(f"{PREFIX}/property-companies/current").status_code == 200
-    assert w.client.get(f"{PREFIX}/communities").json()["total"] == 1
+    assert w.client.get(f"{PREFIX}/property-companies/current").status_code == 403
+    assert w.client.get(f"{PREFIX}/communities").status_code == 403
+    context = w.client.get(f"{PREFIX}/property-workspace/context")
+    assert context.status_code == 200 and context.json()["property_company_id"] == w.company_id
+    options = w.client.get(f"{PREFIX}/community-options")
+    assert options.status_code == 200 and options.json()["total"] == 1
 
 
 def test_application_services_reject_other_backend_identity_with_matching_permissions(

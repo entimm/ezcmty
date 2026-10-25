@@ -162,7 +162,7 @@ export function ImportDetail({
     setError(undefined);
   }, [id]);
   const allowed = (name: NextAction) =>
-    !!b?.next_actions.includes(name) && r.can(permissions[name]);
+    !!b?.next_actions.includes(name) && r.can(permissions[name], b.import_type);
   const refresh = async () => {
     await client.invalidateQueries({
       predicate: (query) => query.queryKey.includes('imports'),
@@ -781,7 +781,12 @@ export function ImportDetail({
                 normalized: row.normalized_values?.[key],
               }))}
               columns={[
-                { title: '字段', dataIndex: 'key' },
+                {
+                  title: '字段',
+                  render: (_, item) =>
+                    b.template_fields?.find((field) => field.key === item.key)
+                      ?.label || item.key,
+                },
                 { title: '原始值', dataIndex: 'raw', render: scalar },
                 { title: '规范化值', dataIndex: 'normalized', render: scalar },
               ]}

@@ -57,12 +57,14 @@ def _guard(
     account = identity.repo.identity(event.actor_id)
     if account is None or not account.enabled or account.must_change_password:
         raise ValueError("auth.forbidden")
+    if account.scope not in definition.allowed_actor_scopes or (
+        account.scope == "property_admin"
+        and account.property_company_id != batch.property_company_id
+    ):
+        raise ValueError("auth.forbidden")
     identity.bind_account(account)
     permissions = identity.effective_permissions(account.id)
-    prefix = "platform" if batch.created_by_scope == "platform_admin" else "property"
-    if f"{prefix}.import.generate_error_file" not in permissions or not set(
-        definition.read_permissions
-    ) <= set(permissions):
+    if not set(definition.read_permissions) <= set(permissions):
         raise ValueError("auth.forbidden")
     company = PropertyRepository(db).company(batch.property_company_id)
     community = (

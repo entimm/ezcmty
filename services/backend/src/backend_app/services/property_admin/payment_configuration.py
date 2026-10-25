@@ -24,7 +24,7 @@ class PropertyPaymentConfigurationService:
         identity = AdminIdentity(
             AdminRepository(self.db, "property_admin", ctx.property_company_id)
         )
-        identity.require_permission(ctx, "property.payment_config.read")
+        identity.require_permission(ctx, "property.payment.read")
         company = self.repo.company(ctx.property_company_id)
         if not company.enabled:
             raise AppError("auth.unauthenticated")

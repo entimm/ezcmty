@@ -482,7 +482,7 @@ export function Reconciliation({
         onClose={() => setRunId(undefined)}
         footer={
           r.writes &&
-          r.can('payment_reconciliation.recheck') &&
+          r.can('payment_reconciliation.manage') &&
           run.data && (
             <Button
               type="primary"
@@ -549,7 +549,7 @@ export function Reconciliation({
         onClose={() => setDifferenceId(undefined)}
         footer={
           r.writes &&
-          r.can('payment_funds.recover') &&
+          r.can('payment.recover') &&
           difference.data &&
           difference.data.status !== 'resolved' ? (
             <Space>

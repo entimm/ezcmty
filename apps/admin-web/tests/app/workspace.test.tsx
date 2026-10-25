@@ -145,14 +145,7 @@ afterEach(async () => {
     Object.defineProperty(HTMLElement.prototype, 'scrollTo', priorScroll);
   else Reflect.deleteProperty(HTMLElement.prototype, 'scrollTo');
 });
-function show(
-  path: string,
-  permissions = [
-    'property.company.read',
-    'property.community.read',
-    'property.house.read',
-  ],
-) {
+function show(path: string, permissions = ['property.housing.read']) {
   localStorage.clear();
   const session: SessionResponse = {
     scope: path.startsWith('/platform') ? 'platform_admin' : 'property_admin',
@@ -172,13 +165,19 @@ function show(
           headers: { 'Content-Type': 'application/json' },
         }),
       );
-    if (path.endsWith('/v1/property-companies/current'))
+    if (path.endsWith('/v1/property-workspace/context'))
       return Promise.resolve(
-        new Response(JSON.stringify(company), {
-          headers: { 'Content-Type': 'application/json' },
-        }),
+        new Response(
+          JSON.stringify({
+            property_company_id: company.id,
+            property_company_name: company.name,
+          }),
+          {
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
       );
-    if (path.endsWith('/v1/communities')) {
+    if (path.endsWith('/v1/community-options')) {
       const page = Number(url.searchParams.get('page')) || 1;
       const items = communities.slice((page - 1) * 100, page * 100);
       return Promise.resolve(
@@ -253,7 +252,7 @@ describe('工作空间完整组装', () => {
     expect(urls[0].pathname).toBe('/api/property/v1/admin-sessions/current');
     expect(
       urls
-        .filter((url) => url.pathname.endsWith('/v1/communities'))
+        .filter((url) => url.pathname.endsWith('/v1/community-options'))
         .map((url) => url.searchParams.get('page')),
     ).toEqual(['1', '2']);
     expect(urls.every((url) => url.pathname.startsWith('/api/property/'))).toBe(
@@ -307,10 +306,8 @@ describe('工作空间完整组装', () => {
   });
   it('拥有读取权限时，关闭页面仍从菜单与命令搜索移除，小区上下文继续可用', async () => {
     show('/property/houses', [
-      'property.company.read',
-      'property.community.read',
-      'property.house.read',
-      'property.payment_config.read',
+      'property.housing.read',
+      'property.payment.read',
     ]);
     await ready('houses');
     const nav = screen.getByRole('navigation', { name: '主导航' });
@@ -336,11 +333,7 @@ describe('工作空间完整组装', () => {
   it.each(['communities', 'payment-configuration'])(
     '物业直达关闭页面%s显示404，不挂载页面或执行其业务查询',
     async (page) => {
-      const fetch = show('/property/' + page, [
-        'property.company.read',
-        'property.community.read',
-        'property.payment_config.read',
-      ]);
+      const fetch = show('/property/' + page, ['property.payment.read']);
       expect(await screen.findByText('页面或记录不存在')).toBeInTheDocument();
       expect(screen.queryByTestId('business-page')).not.toBeInTheDocument();
       expect(
@@ -353,11 +346,7 @@ describe('工作空间完整组装', () => {
     ['payment-configuration', '收款信息'],
   ])('恢复%s开关后重新开放页面与菜单，另一页继续关闭', async (page, label) => {
     propertyPageAvailability[page] = true;
-    show('/property/' + page, [
-      'property.company.read',
-      'property.community.read',
-      'property.payment_config.read',
-    ]);
+    show('/property/' + page, ['property.payment.read']);
     await ready(page);
     const nav = screen.getByRole('navigation', { name: '主导航' });
     expect(
@@ -373,7 +362,7 @@ describe('工作空间完整组装', () => {
     [
       '/platform/communities',
       'platform-communities',
-      'property.community.read',
+      'platform.onboarding.read',
     ],
     [
       '/platform/companies/' + company.id + '/payment-configuration',
@@ -388,12 +377,7 @@ describe('工作空间完整组装', () => {
     expect(screen.queryByText('页面或记录不存在')).not.toBeInTheDocument();
   });
   it('只读物业命令面板仅列出本端授权菜单，不暴露跨端或写操作', async () => {
-    show('/property/houses', [
-      'property.company.read',
-      'property.community.read',
-      'property.house.read',
-      'property.bill.read',
-    ]);
+    show('/property/houses', ['property.housing.read', 'property.bill.read']);
     await ready('houses');
     fireEvent.click(screen.getByRole('button', { name: /搜索功能或操作/ }));
     const dialog = await screen.findByRole('dialog');
@@ -423,12 +407,7 @@ describe('工作空间完整组装', () => {
   ])(
     '原名称%s可搜索到%s，并跳转到原业务页面',
     async (oldName, newName, page) => {
-      show('/property/houses', [
-        'property.company.read',
-        'property.community.read',
-        'property.house.read',
-        'property.bill.read',
-      ]);
+      show('/property/houses', ['property.housing.read', 'property.bill.read']);
       await ready('houses');
       fireEvent.click(screen.getByRole('button', { name: /搜索功能或操作/ }));
       const dialog = await screen.findByRole('dialog');

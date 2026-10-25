@@ -49,9 +49,7 @@ class ImportAccess:
     ) -> str | None:
         raise NotImplementedError
 
-    def authorize(
-        self, ctx: AdminContext, permission: str
-    ) -> tuple[AdminIdentity, AdminAccount, frozenset[str]]:
+    def authorize(self, ctx: AdminContext) -> tuple[AdminIdentity, AdminAccount, frozenset[str]]:
         if ctx.scope != self.scope:
             raise AppError("auth.forbidden")
         repo = AdminRepository(self.db, self.scope)
@@ -60,9 +58,9 @@ class ImportAccess:
         identity.bind_account(actor)
         identity.require_full_session(identity.authorization(actor))
         permissions = frozenset(identity.effective_permissions(actor.id))
-        if f"{self.prefix}.import.{permission}" not in permissions:
-            raise AppError("auth.forbidden")
         if self.scope == "property_admin":
+            if actor.property_company_id != ctx.property_company_id:
+                raise AppError("auth.forbidden")
             company = self.repo.company(actor.property_company_id or "")
             if company is None or not company.enabled:
                 raise AppError("auth.unauthenticated")
@@ -107,7 +105,16 @@ class ImportAccess:
         )
         if batch is None:
             raise AppError("resource.not_found")
+        if batch.template_key not in self.readable_type_keys(frozenset(ctx.permissions)):
+            raise AppError("auth.forbidden")
         return batch
+
+    def readable_type_keys(self, permissions: frozenset[str]) -> set[str]:
+        return {
+            item.key
+            for item in self.registry.list()
+            if self.scope in item.allowed_actor_scopes and set(item.read_permissions) <= permissions
+        }
 
     def check_scope(self, batch: ImportBatch, *, writing: bool = True) -> None:
         company = self.repo.company(batch.property_company_id)

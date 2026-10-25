@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from backend_app.core.identifiers import normalize_login_name
@@ -163,6 +163,20 @@ class AdminRepository:
             .execution_options(populate_existing=True)
         )
         return list(self.db.scalars(query))
+
+    def role_account_count(self, role_id: str) -> int:
+        return int(
+            self.db.scalar(
+                select(func.count())
+                .select_from(AdminAccountRole)
+                .where(
+                    AdminAccountRole.scope == self.scope,
+                    AdminAccountRole.role_id == role_id,
+                    AdminAccountRole.property_company_id == self.property_company_id,
+                )
+            )
+            or 0
+        )
 
     def invalidate_role_accounts(self, role_id: str) -> None:
         ids = select(AdminAccountRole.account_id).where(

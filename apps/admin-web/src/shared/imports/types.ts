@@ -99,6 +99,7 @@ export interface Batch {
   import_type_name: string;
   property_company_id: string;
   template: { key: string; version_no: number; config_hash: string };
+  template_fields: Template['fields'];
   scope: { type: 'company' | 'community'; id: string; name: string };
   mode: 'create';
   status: BatchStatus;

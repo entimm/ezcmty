@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from datetime import timedelta
 from typing import Any, cast
 
@@ -63,21 +64,19 @@ class ImportQueries:
         if not write_allowed:
             retryable = 0
 
-        def allow(action: str, permission: str, condition: bool) -> None:
-            if condition and f"{self.access.prefix}.import.{permission}" in permissions:
+        def allow(action: str, condition: bool) -> None:
+            if condition:
                 actions.append(action)
 
         alive = now < batch.retention_until
         allow(
             "upload_source_file",
-            "upload",
             write_allowed
             and alive
             and (batch.status == "draft")
             and (now < batch.created_at + timedelta(hours=24)),
         )
         allow(
-            "precheck",
             "precheck",
             write_allowed
             and alive
@@ -89,7 +88,6 @@ class ImportQueries:
         )
         allow(
             "confirm",
-            "execute",
             write_allowed
             and alive
             and (batch.status == "preview_ready")
@@ -99,24 +97,21 @@ class ImportQueries:
         )
         allow(
             "cancel",
-            "cancel",
-            alive
+            write_allowed
+            and alive
             and batch.status not in view.TERMINAL
             and batch.status != "cancel_requested"
             and (not batch.uncertain_rows),
         )
         allow(
             "retry_failed",
-            "retry",
             write_allowed and retryable > 0 and batch.status in view.TERMINAL,
         )
         allow(
             "recover",
-            "recover",
             write_allowed and (batch.status == "blocked" or paused) and (not active),
         )
         allow(
-            "generate_error_file",
             "generate_error_file",
             bool(definition)
             and alive
@@ -134,11 +129,11 @@ class ImportQueries:
             artifact_task,
             artifact,
             now,
-            f"{self.access.prefix}.import.download" in permissions,
+            definition is not None,
         )
-        allow("download_error_file", "download", ef["downloadable"])
+        allow("download_error_file", ef["downloadable"])
         creator = AdminRepository(self.access.db, self.access.scope).identity(batch.created_by_id)
-        return view.batch_view(
+        result = view.batch_view(
             batch,
             tasks,
             source,
@@ -158,9 +153,18 @@ class ImportQueries:
             and not view.unpublished_input(tasks)
             else None,
         )
+        result["template_fields"] = (
+            [
+                {key: value for key, value in asdict(field).items() if key != "sensitive"}
+                for field in definition.fields
+            ]
+            if definition
+            else []
+        )
+        return result
 
     def batches(self, ctx: AdminContext, **filters: Any) -> dict[str, Any]:
-        _, _, permissions = self.access.authorize(ctx, "read")
+        _, _, permissions = self.access.authorize(ctx)
         self.access.company_id(ctx, filters.get("property_company_id"))
         if filters.get("scope_id") and (not filters.get("scope_type")):
             raise AppError("VALIDATION_ERROR")
@@ -170,6 +174,7 @@ class ImportQueries:
             and (filters["created_before"] <= filters["created_from"])
         ):
             raise AppError("VALIDATION_ERROR")
+        filters["_template_keys"] = self.access.readable_type_keys(permissions)
         items, total = queries.batches(
             self.access.db, self.access.scope, self.access.company_id(ctx, None), filters
         )
@@ -181,12 +186,12 @@ class ImportQueries:
         )
 
     def batch(self, ctx: AdminContext, batch_id: str) -> dict[str, Any]:
-        _, _, permissions = self.access.authorize(ctx, "read")
+        _, _, permissions = self.access.authorize(ctx)
         batch = self.access.target(ctx, batch_id)
         return self._batch_view(ctx, batch, permissions)
 
     def _read_rows(self, ctx: AdminContext, batch_id: str) -> tuple[ImportBatch, frozenset[str]]:
-        _, _, permissions = self.access.authorize(ctx, "read")
+        _, _, permissions = self.access.authorize(ctx)
         batch = self.access.target(ctx, batch_id)
         self.access.alive(batch, utc_now())
         if batch.status in {"prechecking", "uploading"} or view.unpublished_input(
@@ -250,7 +255,7 @@ class ImportQueries:
         )
 
     def events(self, ctx: AdminContext, batch_id: str, **filters: Any) -> dict[str, Any]:
-        _, _, permissions = self.access.authorize(ctx, "read")
+        _, _, permissions = self.access.authorize(ctx)
         batch = self.access.target(ctx, batch_id)
         self._batch_definition(batch, permissions)
         items, total = queries.events(self.access.db, batch.id, filters)
@@ -280,9 +285,9 @@ class ImportQueries:
         )
 
     def error_file(self, ctx: AdminContext, batch_id: str) -> dict[str, Any]:
-        _, _, permissions = self.access.authorize(ctx, "read")
+        _, _, permissions = self.access.authorize(ctx)
         batch = self.access.target(ctx, batch_id)
-        self._batch_definition(batch, permissions)
+        definition = self._batch_definition(batch, permissions)
         task = next(
             (t for t in queries.tasks(self.access.db, batch.id) if t.phase == "artifact"), None
         )
@@ -291,13 +296,13 @@ class ImportQueries:
             task,
             queries.error_artifact(self.access.db, batch.id),
             utc_now(),
-            f"{self.access.prefix}.import.download" in permissions,
+            definition is not None,
         )
 
     def download_error_file(
         self, ctx: AdminContext, batch_id: str, generation: int, request_id: str
     ) -> FileDownload:
-        identity, actor, permissions = self.access.authorize(ctx, "download")
+        identity, actor, permissions = self.access.authorize(ctx)
         batch = self.access.target(ctx, batch_id)
         self.access.definition(
             batch.template_key,

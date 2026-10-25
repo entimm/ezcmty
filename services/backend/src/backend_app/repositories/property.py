@@ -38,8 +38,11 @@ class PropertyRepository:
         code: str | None,
         enabled: bool | None,
         sort: str,
+        company_id: str | None = None,
     ) -> tuple[list[PropertyCompany], int]:
         query = select(PropertyCompany)
+        if company_id is not None:
+            query = query.where(PropertyCompany.id == company_id)
         if name:
             query = query.where(PropertyCompany.name.icontains(name, autoescape=True))
         if code:

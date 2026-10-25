@@ -460,19 +460,7 @@ def test_invalid_duplicate_still_rejects_both_house_month_rows(
 
 
 def import_permissions() -> set[str]:
-    return {
-        f"property.import.{action}"
-        for action in (
-            "read",
-            "create",
-            "upload",
-            "precheck",
-            "execute",
-            "retry",
-            "recover",
-            "cancel",
-        )
-    } | {"property.bill.create", "property.bill.read", "property.bill_receipt.create"}
+    return {"property.bill.manage", "property.bill_receipt.create"}
 
 
 def test_positive_paid_on_an_invalid_row_blocks_entire_batch_without_receipt_permission(

@@ -36,7 +36,7 @@ def create_property_router(
     )
     def list_companies(
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.company.read")],
+        ctx: Annotated[AdminContext, permission("platform.onboarding.read")],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         name: Annotated[str | None, Query(max_length=160)] = None,
@@ -60,7 +60,7 @@ def create_property_router(
         data: schema.CompanyCreate,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.company.create")],
+        ctx: Annotated[AdminContext, permission("platform.onboarding.manage")],
     ) -> schema.PropertyCompany:
         return svc.create_company(ctx, data, request.state.request_id)
 
@@ -73,7 +73,7 @@ def create_property_router(
     def get_company(
         company_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.company.read")],
+        ctx: Annotated[AdminContext, permission("platform.onboarding.read")],
     ) -> schema.PropertyCompany:
         return svc.get_company(ctx, company_id)
 
@@ -89,7 +89,7 @@ def create_property_router(
         data: schema.CompanyUpdate,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.company.update")],
+        ctx: Annotated[AdminContext, permission("")],
     ) -> schema.PropertyCompany:
         return svc.update_company(ctx, company_id, data, request.state.request_id)
 
@@ -101,7 +101,7 @@ def create_property_router(
     )
     def list_communities(
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.community.read")],
+        ctx: Annotated[AdminContext, permission("platform.onboarding.read")],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         name: Annotated[str | None, Query(max_length=160)] = None,
@@ -133,7 +133,7 @@ def create_property_router(
         data: schema.CommunityCreate,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.community.create")],
+        ctx: Annotated[AdminContext, permission("platform.onboarding.manage")],
     ) -> schema.Community:
         return svc.create_community(ctx, data, request.state.request_id)
 
@@ -146,7 +146,7 @@ def create_property_router(
     def get_community(
         community_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.community.read")],
+        ctx: Annotated[AdminContext, permission("platform.onboarding.read")],
     ) -> schema.Community:
         return svc.get_community(ctx, community_id)
 
@@ -162,7 +162,7 @@ def create_property_router(
         data: schema.CommunityUpdate,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.community.update")],
+        ctx: Annotated[AdminContext, permission("platform.onboarding.manage")],
     ) -> schema.Community:
         return svc.update_community(ctx, community_id, data, request.state.request_id)
 
@@ -175,7 +175,7 @@ def create_property_router(
     def list_admins(
         company_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.admin.read")],
+        ctx: Annotated[AdminContext, permission("platform.system.read")],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         login_name: Annotated[str | None, Query(max_length=64)] = None,
@@ -205,7 +205,7 @@ def create_property_router(
         data: schema.PropertyAdminCreate,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.admin.create")],
+        ctx: Annotated[AdminContext, permission("platform.system.manage")],
     ) -> schema.PropertyAdminAccount:
         return svc.create_admin(ctx, company_id, data, request.state.request_id)
 
@@ -219,7 +219,7 @@ def create_property_router(
         company_id: Identifier,
         account_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.admin.read")],
+        ctx: Annotated[AdminContext, permission("platform.system.read")],
     ) -> schema.PropertyAdminAccount:
         return svc.get_admin(ctx, company_id, account_id)
 
@@ -236,7 +236,7 @@ def create_property_router(
         data: admin_schema.AccountUpdate,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.admin.update")],
+        ctx: Annotated[AdminContext, permission("platform.system.manage")],
     ) -> schema.PropertyAdminAccount:
         return svc.update_admin(ctx, company_id, account_id, data, request.state.request_id)
 
@@ -253,8 +253,52 @@ def create_property_router(
         data: admin_schema.PasswordReset,
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission("property.admin.reset_password")],
+        ctx: Annotated[AdminContext, permission("platform.system.manage")],
     ) -> None:
         svc.reset_admin_password(ctx, company_id, account_id, data, request.state.request_id)
+
+    @router.get(
+        "/v1/property-company-options",
+        response_model=schema.CompanyOptionPage,
+        operation_id="listPropertyCompanyOptions",
+        responses=ok,
+    )
+    def company_options(
+        svc: Service,
+        ctx: Annotated[AdminContext, permission("")],
+        page: Annotated[int, Query(ge=1)] = 1,
+        page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+        name: Annotated[str | None, Query(max_length=160)] = None,
+        property_company_id: Identifier | None = None,
+    ) -> schema.CompanyOptionPage:
+        return svc.company_options(
+            ctx,
+            page=page,
+            page_size=page_size,
+            name=name,
+            property_company_id=property_company_id,
+        )
+
+    @router.get(
+        "/v1/community-options",
+        response_model=schema.CommunityOptionPage,
+        operation_id="listCommunityOptions",
+        responses=ok,
+    )
+    def community_options(
+        svc: Service,
+        ctx: Annotated[AdminContext, permission("")],
+        page: Annotated[int, Query(ge=1)] = 1,
+        page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+        name: Annotated[str | None, Query(max_length=160)] = None,
+        property_company_id: Identifier | None = None,
+    ) -> schema.CommunityOptionPage:
+        return svc.community_options(
+            ctx,
+            page=page,
+            page_size=page_size,
+            name=name,
+            property_company_id=property_company_id,
+        )
 
     return router

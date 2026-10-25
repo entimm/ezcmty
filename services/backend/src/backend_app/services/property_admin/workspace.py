@@ -14,24 +14,32 @@ class PropertyWorkspaceService:
     def __init__(self, db: Session):
         self.repo = PropertyRepository(db)
 
-    def _company_id(self, context: AdminContext, permission: str) -> str:
+    def _company_id(self, context: AdminContext, *, business: bool = False) -> str:
         if context.scope != "property_admin" or context.property_company_id is None:
             raise AppError("auth.forbidden")
         if context.must_change_password:
             raise AppError("auth.password_change_required")
-        if permission not in context.permissions:
+        if business and not set(context.permissions).intersection(
+            {
+                "property.housing.read",
+                "property.bill.read",
+                "property.resident_access.read",
+                "property.payment.read",
+                "property.system.read",
+            }
+        ):
             raise AppError("auth.forbidden")
         return context.property_company_id
 
     def get_current_company(self, context: AdminContext) -> schema.PropertyCompany:
-        company_id = self._company_id(context, "property.company.read")
+        company_id = self._company_id(context, business=True)
         company = self.repo.company(company_id)
         if company is None or not company.enabled:
             raise AppError("auth.unauthenticated")
         return schema.PropertyCompany.model_validate(company)
 
     def get_summary(self, context: AdminContext) -> schema.PropertyWorkspaceSummary:
-        company_id = self._company_id(context, "property.company.read")
+        company_id = self._company_id(context)
         company = self.repo.company(company_id)
         if company is None or not company.enabled:
             raise AppError("auth.unauthenticated")
@@ -41,7 +49,7 @@ class PropertyWorkspaceService:
             billing_month=billing_month.strftime("%Y-%m"),
             pending_house_claims=(
                 values["pending_house_claims"]
-                if "property.house_claim.read" in context.permissions
+                if "property.resident_access.read" in context.permissions
                 else None
             ),
             monthly_receivable_cents=(
@@ -56,13 +64,13 @@ class PropertyWorkspaceService:
             ),
             pending_reconciliation_count=(
                 values["pending_reconciliation_count"]
-                if "property.payment_reconciliation.read" in context.permissions
+                if "property.payment.read" in context.permissions
                 else None
             ),
         )
 
     def list_communities(self, context: AdminContext, **filters: Any) -> schema.CommunityPage:
-        company_id = self._company_id(context, "property.community.read")
+        company_id = self._company_id(context, business=True)
         items, total = self.repo.communities(company_scope_id=company_id, **filters)
         return schema.CommunityPage(
             items=[community_view(item, company_name) for item, company_name in items],
@@ -72,7 +80,7 @@ class PropertyWorkspaceService:
         )
 
     def get_community(self, context: AdminContext, community_id: str) -> schema.Community:
-        company_id = self._company_id(context, "property.community.read")
+        company_id = self._company_id(context, business=True)
         community = self.repo.community(community_id, company_scope_id=company_id)
         if community is None:
             raise AppError("resource.not_found")
@@ -80,3 +88,39 @@ class PropertyWorkspaceService:
         if company is None or not company.enabled:
             raise AppError("auth.unauthenticated")
         return community_view(community, company.name)
+
+    def get_context(self, context: AdminContext) -> schema.PropertyWorkspaceContext:
+        company_id = self._company_id(context)
+        company = self.repo.company(company_id)
+        if company is None or not company.enabled:
+            raise AppError("auth.unauthenticated")
+        return schema.PropertyWorkspaceContext(
+            property_company_id=company.id, property_company_name=company.name
+        )
+
+    def community_options(
+        self,
+        context: AdminContext,
+        *,
+        page: int,
+        page_size: int,
+        name: str | None,
+        property_company_id: str | None,
+    ) -> schema.CommunityOptionPage:
+        company_id = self._company_id(context)
+        items, total = self.repo.communities(
+            company_scope_id=company_id,
+            page=page,
+            page_size=page_size,
+            name=name,
+            property_company_id=property_company_id,
+            code=None,
+            enabled=None,
+            sort="-created_at",
+        )
+        return schema.CommunityOptionPage(
+            items=[schema.CommunityOption.model_validate(item) for item, _ in items],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )

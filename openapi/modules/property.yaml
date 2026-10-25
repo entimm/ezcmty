@@ -7,9 +7,8 @@ workspaceSummary:
       - property
     summary: 读取物业工作台运营指标
     description: >-
-      要求物业完整会话及公司读取权限。billing_month 按 Asia/Shanghai 当前业务月份计算；应收和已收金额统计当前月有效物业费账单，待核对数量统计当前公司尚未解决的收款核对差异。无对应业务读取权限的指标返回 null。读取可安全重试。
-    x-permissions:
-      - property.company.read
+      要求物业完整会话，按当前业务权限投影指标。billing_month 按 Asia/Shanghai 当前业务月份计算；应收和已收金额统计当前月有效物业费账单，待核对数量统计当前公司尚未解决的收款核对差异。无对应业务读取权限的指标返回 null。读取可安全重试。
+    x-permissions: []
     security:
       - AdminSession: []
     responses:
@@ -46,7 +45,7 @@ companies:
     summary: 查询物业公司
     description: 所有操作要求平台完整会话及声明的权限；越界资源返回 404。写请求校验 Origin 与 CSRF，不自动重试。
     x-permissions:
-      - property.company.read
+      - platform.onboarding.read
     security:
       - AdminSession: []
     responses:
@@ -140,7 +139,7 @@ companies:
       新公司默认停用，公司编码全平台唯一且固定；重复编码返回 property.duplicate_company_code。所有操作要求平台完整会话及声明的权限；越界资源返回
       404。写请求校验 Origin 与 CSRF，不自动重试。
     x-permissions:
-      - property.company.create
+      - platform.onboarding.manage
     security:
       - AdminSession: []
     responses:
@@ -198,9 +197,15 @@ currentCompany:
     tags:
       - property
     summary: 读取当前物业公司
-    description: 要求物业完整会话及公司读取权限。公司由服务端认证上下文确定，不接受客户端指定公司。公司或账号停用、会话版本失效时返回 401；受限会话返回需要改密的 403。读取可安全重试。
-    x-permissions:
-      - property.company.read
+    description: 要求物业完整会话，按当前业务权限投影指标。公司由服务端认证上下文确定，不接受客户端指定公司。公司或账号停用、会话版本失效时返回 401；受限会话返回需要改密的 403。读取可安全重试。
+    x-permissions-any:
+      [
+        property.housing.read,
+        property.bill.read,
+        property.resident_access.read,
+        property.payment.read,
+        property.system.read,
+      ]
     security:
       - AdminSession: []
     responses:
@@ -237,7 +242,7 @@ company:
     summary: 查看物业公司
     description: 所有操作要求平台完整会话及声明的权限；越界资源返回 404。写请求校验 Origin 与 CSRF，不自动重试。
     x-permissions:
-      - property.company.read
+      - platform.onboarding.read
     security:
       - AdminSession: []
     responses:
@@ -281,8 +286,10 @@ company:
     description:
       启用需要至少一名账号及公司系统角色均启用的超级管理员，否则返回 property.company_admin_required。停用在同一事务递增该公司所有物业账号会话版本；保留账号和小区自身状态。contact_name/contact_phone
       显式 null 表示清空，其余 null 表示不修改。所有操作要求平台完整会话及声明的权限；越界资源返回 404。写请求校验 Origin 与 CSRF，不自动重试。
-    x-permissions:
-      - property.company.update
+    x-permissions: []
+    x-conditional-permissions:
+      profile_fields: [platform.onboarding.manage]
+      enabled: [platform.onboarding.toggle]
     security:
       - AdminSession: []
     responses:
@@ -329,8 +336,17 @@ communities:
       - property
     summary: 查询小区
     description: 要求所属后台完整会话及小区读取权限。物业端的数据和总数始终限定认证上下文中的公司，筛选条件不能扩大范围；筛选其他公司时返回空列表和零总数。停用小区仍可读取。读取可安全重试。
-    x-permissions:
-      - property.community.read
+    x-permissions-by-runtime:
+      platform_admin_api: [platform.onboarding.read]
+      property_admin_api:
+        [
+          property.housing.read,
+          property.bill.read,
+          property.resident_access.read,
+          property.payment.read,
+          property.system.read,
+        ]
+    x-permissions-match: any
     security:
       - AdminSession: []
     responses:
@@ -382,7 +398,7 @@ communities:
       小区默认启用；允许在公司停用期间创建，编码全平台唯一且固定，重复编码返回 property.duplicate_community_code。所属公司固定。所有操作要求平台完整会话及声明的权限；越界资源返回
       404。写请求校验 Origin 与 CSRF，不自动重试。
     x-permissions:
-      - property.community.create
+      - platform.onboarding.manage
     security:
       - AdminSession: []
     responses:
@@ -428,8 +444,17 @@ community:
       - property
     summary: 查看小区
     description: 要求所属后台完整会话及小区读取权限。物业端同时按当前公司和小区 ID 解析资源，越界资源返回 404。停用小区仍可读取。读取可安全重试。
-    x-permissions:
-      - property.community.read
+    x-permissions-by-runtime:
+      platform_admin_api: [platform.onboarding.read]
+      property_admin_api:
+        [
+          property.housing.read,
+          property.bill.read,
+          property.resident_access.read,
+          property.payment.read,
+          property.system.read,
+        ]
+    x-permissions-match: any
     security:
       - AdminSession: []
     responses:
@@ -474,7 +499,7 @@ community:
       停用小区保留历史读取，阻止该小区新增业务；不影响其他小区。null 表示不修改。所有操作要求平台完整会话及声明的权限；越界资源返回
       404。写请求校验 Origin 与 CSRF，不自动重试。
     x-permissions:
-      - property.community.update
+      - platform.onboarding.manage
     security:
       - AdminSession: []
     responses:
@@ -521,7 +546,7 @@ companyAdmins:
     summary: 查询公司管理员
     description: 所有操作要求平台完整会话及声明的权限；越界资源返回 404。写请求校验 Origin 与 CSRF，不自动重试。
     x-permissions:
-      - property.admin.read
+      - platform.system.read
     security:
       - AdminSession: []
     responses:
@@ -574,7 +599,7 @@ companyAdmins:
       仅平台超级管理员可写入。服务端固定 property_admin 后台、路径公司和该公司的 super_admin 角色，不接受角色或小区参数；初始密码强制改密。公司角色、账号、关联与平台审计原子提交；登录名在整个物业后台唯一。公司停用期间仍可开通。所有操作要求平台完整会话及声明的权限；越界资源返回
       404。写请求校验 Origin 与 CSRF，不自动重试。
     x-permissions:
-      - property.admin.create
+      - platform.system.manage
     security:
       - AdminSession: []
     responses:
@@ -621,7 +646,7 @@ companyAdmin:
     summary: 查看公司管理员
     description: 所有操作要求平台完整会话及声明的权限；越界资源返回 404。写请求校验 Origin 与 CSRF，不自动重试。
     x-permissions:
-      - property.admin.read
+      - platform.system.read
     security:
       - AdminSession: []
     responses:
@@ -667,7 +692,7 @@ companyAdmin:
       仅平台超级管理员可写入。登录名和公司固定；账号启停递增会话版本；同公司最后一名有效超级管理员不能停用，返回 admin.last_super_admin，公司停用期间仍执行保护。所有操作要求平台完整会话及声明的权限；越界资源返回
       404。写请求校验 Origin 与 CSRF，不自动重试。
     x-permissions:
-      - property.admin.update
+      - platform.system.manage
     security:
       - AdminSession: []
     responses:
@@ -717,7 +742,7 @@ companyAdminPasswordReset:
       仅平台超级管理员可写入。重置密码递增会话版本并要求首次登录改密，密码不进入审计。所有操作要求平台完整会话及声明的权限；越界资源返回
       404。写请求校验 Origin 与 CSRF，不自动重试。
     x-permissions:
-      - property.admin.reset_password
+      - platform.system.manage
     security:
       - AdminSession: []
     responses:
@@ -751,3 +776,183 @@ companyAdminPasswordReset:
         application/json:
           schema:
             $ref: ../components/admin-schemas.yaml#/PasswordReset
+
+workspaceContext:
+  get:
+    operationId: getPropertyWorkspaceContext
+    x-runtimes:
+      - property_admin_api
+    tags:
+      - property
+    summary: 读取本公司最小工作上下文
+    description: 要求所属后台完整会话；只返回当前授权范围内的最小选项，不授予完整资料读取。越界按既有不存在语义处理。
+    security:
+      - AdminSession: []
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/PropertyWorkspaceContext
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions: []
+companyOptions:
+  get:
+    operationId: listPropertyCompanyOptions
+    x-runtimes:
+      - platform_admin_api
+    tags:
+      - property
+    summary: 查询公司最小选项
+    description: 要求所属后台完整会话；只返回当前授权范围内的最小选项，不授予完整资料读取。越界按既有不存在语义处理。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: name
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 160
+            - type: 'null'
+      - name: property_company_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - $ref: ../components/schemas.yaml#/UUIDIdentifier
+            - type: 'null'
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/CompanyOptionPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions-any: &id001
+      - platform.onboarding.read
+      - platform.payment.read
+      - platform.payment_reconciliation.read
+      - platform.payment_config.read
+      - platform.system.read
+communityOptions:
+  get:
+    operationId: listCommunityOptions
+    x-runtimes:
+      - platform_admin_api
+      - property_admin_api
+    tags:
+      - property
+    summary: 查询小区最小选项
+    description: 要求所属后台完整会话；只返回当前授权范围内的最小选项，不授予完整资料读取。越界按既有不存在语义处理。
+    security:
+      - AdminSession: []
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: name
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - type: string
+              maxLength: 160
+            - type: 'null'
+      - name: property_company_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+            - $ref: ../components/schemas.yaml#/UUIDIdentifier
+            - type: 'null'
+    responses:
+      '200':
+        description: 操作成功
+        headers:
+          X-Request-ID:
+            $ref: ../components/headers.yaml#/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/property-schemas.yaml#/CommunityOptionPage
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
+    x-permissions-by-runtime:
+      platform_admin_api: *id001
+      property_admin_api: []
+    x-permissions-match: any

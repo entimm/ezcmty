@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
+import { canImport } from '../../../shared/imports/authorization';
 import { useAdmin } from '../../../shared/context';
 import { ImportsPage } from '../../../shared/imports/ImportsPage';
 import { createImportsApi } from '../../../shared/imports/api';
-import type { Choice, FlowPageProps } from '../../../shared/imports/runtime';
+import type { FlowPageProps } from '../../../shared/imports/runtime';
 export function PropertyImportsPage(props: FlowPageProps) {
   const admin = useAdmin();
   const api = useMemo(() => createImportsApi(admin.request), [admin.request]);
@@ -14,9 +15,18 @@ export function PropertyImportsPage(props: FlowPageProps) {
         api,
         community: admin.community,
         communityId: admin.communityId,
-        can: (action) => admin.can(`property.import.${action}`),
+        can: (action, type) => canImport('property', admin.can, action, type),
         setDirty: admin.setDirty,
-        company: () => admin.request<Choice>('/v1/property-companies/current'),
+        company: async () => {
+          const value = await admin.request<{
+            property_company_id: string;
+            property_company_name: string;
+          }>('/v1/property-workspace/context');
+          return {
+            id: value.property_company_id,
+            name: value.property_company_name,
+          };
+        },
       }}
     />
   );

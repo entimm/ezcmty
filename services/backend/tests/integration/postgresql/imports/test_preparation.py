@@ -55,7 +55,7 @@ class PreparedAdapter(TestRecordAdapter):
         self, normalized_input: Mapping[str, Any], prepared: Mapping[str, Any] | None = None
     ) -> frozenset[str]:
         return (
-            frozenset({"platform.import.recover"})
+            frozenset({"platform.payment.recover"})
             if normalized_input.get("name") == "RESTRICTED"
             else frozenset()
         )
@@ -195,7 +195,7 @@ def test_condition_permissions_block_even_when_other_input_is_invalid(
         lambda self, account_id: [
             permission
             for permission in original(self, account_id)
-            if permission != "platform.import.recover"
+            if permission != "platform.payment.recover"
         ],
     )
     worker = _worker(import_setup, tmp_path, PreparedAdapter())

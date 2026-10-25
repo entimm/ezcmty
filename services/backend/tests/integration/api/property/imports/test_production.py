@@ -24,28 +24,37 @@ def test_property_production_catalogue_does_not_expose_test_types(
     assert rejected.json()["code"] == "import.template_unavailable"
 
 
-def test_read_permission_does_not_grant_type_creation_or_file_download(
+def test_empty_role_lists_empty_types_but_cannot_create_or_read_target_batches(
     workspace: WorkspaceHarness,
 ) -> None:
     workspace.complete_login()
-    set_permissions(workspace, {"property.import.read"})
+    body = {
+        "import_type": "houses",
+        "template_version_no": 1,
+        "scope": {"type": "community", "id": workspace.community_id},
+        "mode": "create",
+    }
+    created = workspace.client.post(
+        f"{PREFIX}/import-batches",
+        json=body,
+        headers={**workspace.headers(), "Idempotency-Key": "before-revocation"},
+    )
+    assert created.status_code == 201, created.text
+    batch_id = created.json()["batch_id"]
+    set_permissions(workspace, set())
     listing = workspace.client.get(f"{PREFIX}/import-batches")
     assert listing.status_code == 200, listing.text
     assert listing.json()["total"] == 0
-    assert workspace.client.get(f"{PREFIX}/import-types").status_code == 403
+    catalogue = workspace.client.get(f"{PREFIX}/import-types")
+    assert catalogue.status_code == 200 and catalogue.json() == {"items": []}
     rejected = workspace.client.post(
         f"{PREFIX}/import-batches",
-        json={
-            "import_type": "unknown_type",
-            "template_version_no": 1,
-            "scope": {"type": "company", "id": workspace.company_id},
-            "mode": "create",
-        },
+        json=body,
         headers={**workspace.headers(), "Idempotency-Key": "reader-create"},
     )
     assert rejected.status_code == 403, rejected.text
     download = workspace.client.get(
-        f"{PREFIX}/import-batches/00000000-0000-4000-8000-000000000001/artifacts/error-file/download",
+        f"{PREFIX}/import-batches/{batch_id}/artifacts/error-file/download",
         params={"generation": 1},
     )
     assert download.status_code == 403, download.text

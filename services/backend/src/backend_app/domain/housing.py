@@ -328,7 +328,7 @@ class HouseOwnerCreationCommand:
 
 
 def house_owner_creation_permissions() -> frozenset[str]:
-    return frozenset({"property.house_owner.create"})
+    return frozenset({"property.housing.manage"})
 
 
 def inspect_house_owner_creation(
@@ -442,7 +442,7 @@ class HouseCreationCommand:
 
 def house_creation_permissions(*, has_owners: bool = False) -> frozenset[str]:
     return frozenset(
-        {"property.house.create", *({"property.house_owner.create"} if has_owners else set())}
+        {"property.housing.manage", *({"property.housing.manage"} if has_owners else set())}
     )
 
 

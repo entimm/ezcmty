@@ -7,7 +7,7 @@ export interface Choice {
 export interface ImportsRuntime {
   scope: 'platform' | 'property';
   api: ImportsApi;
-  can: (action: string) => boolean;
+  can: (action: string, type?: string) => boolean;
   community?: Choice;
   communityId: string;
   company?: () => Promise<Choice>;

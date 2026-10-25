@@ -67,6 +67,13 @@ export interface House extends HousingRecord {
   external_code: string | null;
   display_address: string;
 }
+export interface HouseOption {
+  id: string;
+  community_id: string;
+  label: string;
+  enabled: boolean;
+  effective_enabled: boolean;
+}
 export interface Owner extends HousingRecord {
   house_id: string;
   name: string;
@@ -245,6 +252,8 @@ export function createPropertyApi(request: AdminRequest) {
         id ? 'PATCH' : 'POST',
         body,
       ),
+    houseOptions: (c: string, filters: Filters) =>
+      read<HouseOption>(`${communityRoot(c)}/house-options`, filters),
     houses: (c: string, filters: Filters) => read<House>(houseRoot(c), filters),
     house: (c: string, id: string) => request<House>(houseRoot(c, id)),
     saveHouse: (c: string, id: string | undefined, body: unknown) =>

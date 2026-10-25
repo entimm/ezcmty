@@ -277,10 +277,10 @@ def test_normally_recoverable_difference_rejects_external_resolution(
     "permissions",
     [
         {"platform.payment_reconciliation.read"},
-        {"platform.payment_funds.recover"},
+        {"platform.payment.read"},
     ],
 )
-def test_external_resolution_requires_both_independent_permissions(
+def test_external_resolution_requires_funds_exception_processing(
     payment_house: PaymentHouse, permissions: set[str]
 ) -> None:
     house = payment_house

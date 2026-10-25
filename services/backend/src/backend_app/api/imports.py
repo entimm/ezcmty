@@ -28,7 +28,6 @@ def create_import_router(
     check_write: Callable[..., None],
 ) -> APIRouter:
     router = APIRouter(tags=["imports"], dependencies=[Depends(no_store)])
-    prefix = "platform" if scope == "platform_admin" else "property"
 
     def service(
         db: Annotated[Session, Depends(get_database_session)],
@@ -46,7 +45,7 @@ def create_import_router(
     )
     def listImportTypes(
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.create")],
+        ctx: Annotated[AdminContext, permission("")],
         scope_type: Annotated[
             Literal["company", "community"] | None,
             Query(),
@@ -63,7 +62,7 @@ def create_import_router(
     )
     def getImportTemplate(
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.create")],
+        ctx: Annotated[AdminContext, permission("")],
         type_key: Annotated[str, Path(min_length=1, max_length=64, pattern="^[a-z][a-z0-9_]*$")],
         version_no: Annotated[int, Path(ge=1)],
     ) -> schema.ImportTemplate:
@@ -79,7 +78,7 @@ def create_import_router(
     )
     def downloadImportTemplate(
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.create")],
+        ctx: Annotated[AdminContext, permission("")],
         type_key: Annotated[str, Path(min_length=1, max_length=64, pattern="^[a-z][a-z0-9_]*$")],
         version_no: Annotated[int, Path(ge=1)],
         file_format: Annotated[
@@ -106,7 +105,7 @@ def create_import_router(
         request: Request,
         data: schema.ImportBatchCreate,
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.create")],
+        ctx: Annotated[AdminContext, permission("")],
         key: Annotated[
             str,
             Header(
@@ -126,7 +125,7 @@ def create_import_router(
     )
     def listImportBatches(
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.read")],
+        ctx: Annotated[AdminContext, permission("")],
         page: Annotated[
             int | None, Query(ge=1), WithJsonSchema({"type": "integer", "minimum": 1, "default": 1})
         ] = 1,
@@ -304,7 +303,7 @@ def create_import_router(
     )
     def getImportBatch(
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.read")],
+        ctx: Annotated[AdminContext, permission("")],
         batch_id: Annotated[
             Identifier,
             Path(
@@ -350,7 +349,7 @@ def create_import_router(
             WithJsonSchema({"type": "string", "format": "binary", "maxLength": 10485760}),
         ],
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.upload")],
+        ctx: Annotated[AdminContext, permission("")],
         batch_id: Annotated[
             Identifier,
             Path(
@@ -390,7 +389,7 @@ def create_import_router(
     )
     def listImportRows(
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.read")],
+        ctx: Annotated[AdminContext, permission("")],
         batch_id: Annotated[
             Identifier,
             Path(
@@ -470,7 +469,7 @@ def create_import_router(
     )
     def listImportIssues(
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.read")],
+        ctx: Annotated[AdminContext, permission("")],
         batch_id: Annotated[
             Identifier,
             Path(
@@ -538,7 +537,7 @@ def create_import_router(
     )
     def listImportEvents(
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.read")],
+        ctx: Annotated[AdminContext, permission("")],
         batch_id: Annotated[
             Identifier,
             Path(
@@ -584,7 +583,7 @@ def create_import_router(
         request: Request,
         data: schema.ImportPrecheck,
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.precheck")],
+        ctx: Annotated[AdminContext, permission("")],
         batch_id: Annotated[
             Identifier,
             Path(
@@ -624,7 +623,7 @@ def create_import_router(
         request: Request,
         data: schema.ImportConfirm,
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.execute")],
+        ctx: Annotated[AdminContext, permission("")],
         batch_id: Annotated[
             Identifier,
             Path(
@@ -663,7 +662,7 @@ def create_import_router(
     def cancelImportBatch(
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.cancel")],
+        ctx: Annotated[AdminContext, permission("")],
         batch_id: Annotated[
             Identifier,
             Path(
@@ -696,7 +695,7 @@ def create_import_router(
         request: Request,
         data: schema.ImportRetry,
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.retry")],
+        ctx: Annotated[AdminContext, permission("")],
         batch_id: Annotated[
             Identifier,
             Path(
@@ -736,7 +735,7 @@ def create_import_router(
         request: Request,
         data: schema.ImportRecover,
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.recover")],
+        ctx: Annotated[AdminContext, permission("")],
         batch_id: Annotated[
             Identifier,
             Path(
@@ -776,7 +775,7 @@ def create_import_router(
         request: Request,
         data: schema.ImportErrorFileCreate,
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.generate_error_file")],
+        ctx: Annotated[AdminContext, permission("")],
         batch_id: Annotated[
             Identifier,
             Path(
@@ -812,7 +811,7 @@ def create_import_router(
     )
     def getImportErrorFile(
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.read")],
+        ctx: Annotated[AdminContext, permission("")],
         batch_id: Annotated[
             Identifier,
             Path(
@@ -834,7 +833,7 @@ def create_import_router(
     def downloadImportErrorFile(
         request: Request,
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".import.download")],
+        ctx: Annotated[AdminContext, permission("")],
         batch_id: Annotated[
             Identifier,
             Path(

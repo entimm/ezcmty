@@ -488,7 +488,7 @@ currentMerchantBindings:
     security:
       - AdminSession: []
     x-permissions:
-      - property.payment_config.read
+      - property.payment.read
     parameters:
       - name: page
         in: query
@@ -562,7 +562,7 @@ currentPaymentConfiguration:
     security:
       - AdminSession: []
     x-permissions:
-      - property.payment_config.read
+      - property.payment.read
     parameters: []
     responses:
       '200':
@@ -605,7 +605,7 @@ currentProfitSharingRuleVersions:
     security:
       - AdminSession: []
     x-permissions:
-      - property.payment_config.read
+      - property.payment.read
     parameters:
       - name: page
         in: query
@@ -672,7 +672,7 @@ currentProfitSharingRuleVersion:
     security:
       - AdminSession: []
     x-permissions:
-      - property.payment_config.read
+      - property.payment.read
     parameters:
       - name: version_id
         in: path

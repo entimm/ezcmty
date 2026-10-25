@@ -11,7 +11,9 @@ import {
 import type { AdminRequest } from '../../../src/shared/request';
 
 function show(page: string, permissions: string[], data: unknown) {
-  const request = vi.fn().mockResolvedValue(data);
+  const request = vi.fn((path: string) =>
+    Promise.resolve(path === '/v1/admin-permissions' ? [] : data),
+  );
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -59,7 +61,7 @@ describe('平台管理权限与保护边界', () => {
     expect(request).not.toHaveBeenCalled();
   });
   it('只读管理员可以查看账号，不显示创建、编辑和角色分配', async () => {
-    show('accounts', ['admin.account.read'], {
+    show('accounts', ['platform.system.read'], {
       items: [
         {
           id: 'other',
@@ -85,7 +87,11 @@ describe('平台管理权限与保护边界', () => {
   it('即使有写权限，系统角色仍不能编辑、启停或配置权限', async () => {
     show(
       'roles',
-      ['admin.role.read', 'admin.role.update', 'admin.role.assign_permissions'],
+      [
+        'platform.system.read',
+        'platform.system.manage',
+        'platform.system.manage',
+      ],
       {
         items: [
           {
@@ -94,7 +100,7 @@ describe('平台管理权限与保护边界', () => {
             name: '系统超级管理员',
             enabled: true,
             is_system: true,
-            permissions: ['admin.account.read'],
+            permissions: ['platform.system.read'],
           },
         ],
         total: 1,

@@ -19,10 +19,7 @@ def test_plain_creation_normalizes_house_and_initial_owners_without_http_models(
     assert (command.room_no, command.external_code) == ("0001A", "00a")
     assert (command.owners[0].name, command.owners[0].phone) == ("张甲", "13800000000")
     assert HouseCreationCommand.from_input(command.to_dict()) == command
-    assert house_creation_permissions(has_owners=True) == {
-        "property.house.create",
-        "property.house_owner.create",
-    }
+    assert house_creation_permissions(has_owners=True) == {"property.housing.manage"}
 
 
 @pytest.mark.parametrize(

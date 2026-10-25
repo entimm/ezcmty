@@ -243,7 +243,7 @@ def test_effective_basis_preview_conflict_and_historical_proof(workspace: Worksp
     assert pinned["basis"]["id"] == first["id"] and pinned["receivable_cents"] == 0
     set_permissions(workspace, {"property.bill.read"})
     assert workspace.client.get(root + "/" + bill["id"]).status_code == 200
-    assert workspace.client.get(base + "/property-fee-basis-versions").status_code == 403
+    assert workspace.client.get(base + "/property-fee-basis-versions").status_code == 200
     assert workspace.client.get(f"{PREFIX}/bill-operation-results/zero").status_code == 403
 
 
@@ -261,13 +261,13 @@ def test_creation_with_initial_payment_is_atomic_and_permission_checked(
         "manual_amount_reason": "历史全额已缴",
         "initial_receipt": {"amount_cents": 10000},
     }
-    set_permissions(workspace, {"property.bill.create", "property.bill.read"})
+    set_permissions(workspace, {"property.bill.manage", "property.bill.read"})
     response = workspace.client.post(
         root, json=body, headers={**workspace.headers(), "Idempotency-Key": "full"}
     )
     assert response.status_code == 403
     set_permissions(
-        workspace, {"property.bill.create", "property.bill.read", "property.bill_receipt.create"}
+        workspace, {"property.bill.manage", "property.bill_receipt.create", "property.bill.read"}
     )
 
     def fail_audit(*args: Any, **kwargs: Any) -> None:
@@ -288,7 +288,7 @@ def test_creation_with_initial_payment_is_atomic_and_permission_checked(
     )
     assert created.status_code == 201, created.text
     assert created.json()["bill"]["settlement_status"] == "settled"
-    set_permissions(workspace, {"property.bill.create", "property.bill.read"})
+    set_permissions(workspace, {"property.bill.manage", "property.bill.read"})
     assert (
         workspace.client.post(
             root, json=body, headers={**workspace.headers(), "Idempotency-Key": "full"}

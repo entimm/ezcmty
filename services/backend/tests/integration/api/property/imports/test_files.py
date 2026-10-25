@@ -21,7 +21,13 @@ def test_sensitive_rows_and_private_file_generation_are_projected_and_authorized
     tmp_path: Path,
 ) -> None:
     workspace.complete_login()
-    _, storage = install_http_registry(monkeypatch, tmp_path, sensitive=True)
+    _, storage = install_http_registry(
+        monkeypatch,
+        tmp_path,
+        sensitive=True,
+        required_permissions=("property.housing.manage",),
+        read_permissions=("property.housing.read",),
+    )
     created = workspace.client.post(
         f"{PREFIX}/import-batches",
         json=create_body(workspace.company_id),
@@ -92,7 +98,7 @@ def test_sensitive_rows_and_private_file_generation_are_projected_and_authorized
         ).status_code
         == 409
     )
-    set_permissions(workspace, {"property.import.read"})
+    set_permissions(workspace, set())
     assert (
         workspace.client.get(
             path + "/artifacts/error-file/download", params={"generation": 1}
@@ -170,8 +176,17 @@ def test_schema_and_authorization_errors_are_never_cached(workspace: WorkspaceHa
     )
     assert missing_body.status_code == 422, missing_body.text
     assert missing_body.headers["cache-control"] == "no-store"
-    set_permissions(workspace, {"property.import.read"})
-    forbidden = workspace.client.get(f"{PREFIX}/import-types")
+    set_permissions(workspace, set())
+    forbidden = workspace.client.post(
+        f"{PREFIX}/import-batches",
+        json={
+            "import_type": "houses",
+            "template_version_no": 1,
+            "scope": {"type": "community", "id": workspace.community_id},
+            "mode": "create",
+        },
+        headers={**workspace.headers(), "Idempotency-Key": "forbidden-target-type"},
+    )
     assert forbidden.status_code == 403, forbidden.text
     assert forbidden.headers["cache-control"] == "no-store"
 

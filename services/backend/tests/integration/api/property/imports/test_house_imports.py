@@ -338,8 +338,7 @@ def test_revoked_create_permission_blocks_execution(house_imports: HouseImports)
     h.confirm(batch_id)
     set_permissions(
         h.workspace,
-        {f"property.import.{action}" for action in ("read", "execute", "recover")}
-        | {"property.house.read"},
+        {"property.housing.read"},
     )
     drain_worker(h.workspace.platform.factory, h.worker)
     result = h.get(batch_id)
@@ -494,15 +493,12 @@ def test_reimport_reuses_success_without_duplicate_audit_and_compares_current_da
     assert h.counts() == (1, 0, 1)
 
 
-def test_house_import_does_not_require_space_or_owner_create_permissions(
+def test_grouped_housing_maintenance_runs_house_only_import_without_creating_owners(
     house_imports: HouseImports,
 ) -> None:
     h = house_imports
     create_node(h.workspace, "01栋")
-    permissions = {
-        f"property.import.{action}"
-        for action in ("read", "create", "upload", "precheck", "execute")
-    } | {"property.house.read", "property.house.create"}
+    permissions = {"property.housing.manage"}
     set_permissions(h.workspace, permissions)
     batch_id = h.upload([house_row(floor_no="", external_code=" ")])
     assert h.execute(batch_id)["statistics"]["execution"]["created_rows"] == 1
@@ -539,12 +535,12 @@ def test_overlapping_batches_share_business_identity_and_commit_once(
         )
 
 
-def test_manual_owner_permission_is_checked_before_aggregate_validation(
+def test_grouped_housing_maintenance_preserves_owner_aggregate_validation(
     house_imports: HouseImports,
 ) -> None:
     h = house_imports
     node = create_node(h.workspace, "01栋")
-    set_permissions(h.workspace, {"property.house.create"})
+    set_permissions(h.workspace, {"property.housing.manage"})
     response = h.workspace.client.post(
         housing_path(h.workspace, "/houses"),
         json={
@@ -557,5 +553,7 @@ def test_manual_owner_permission_is_checked_before_aggregate_validation(
         },
         headers=h.workspace.headers(),
     )
-    assert response.status_code == 403 and response.json()["code"] == "auth.forbidden"
+    assert (
+        response.status_code == 409 and response.json()["code"] == "property.duplicate_house_owner"
+    )
     assert h.counts() == (0, 0, 1)

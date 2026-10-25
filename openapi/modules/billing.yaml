@@ -4,7 +4,7 @@ basisVersions:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.fee_basis.read
+      - property.bill.read
     tags:
       - billing
     summary: 查询房屋计费依据历史
@@ -66,7 +66,7 @@ basisVersions:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.fee_basis.create
+      - property.fee_basis.manage
     tags:
       - billing
     summary: 新增计费依据版本
@@ -136,7 +136,7 @@ basisVersion:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.fee_basis.read
+      - property.bill.read
     tags:
       - billing
     summary: 读取确切计费依据版本
@@ -189,7 +189,7 @@ calculation:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.fee_basis.read
+      - property.bill.read
     tags:
       - billing
     summary: 按月份试算物业费
@@ -420,12 +420,12 @@ bills:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.bill.create
+      - property.bill.manage
     tags:
       - billing
     summary: 手动建立月度物业费账单
     description:
-      需要 Idempotency-Key。同公司相同键和规范化输入重放首次成功结果，同键不同输入返回 409。自动计算或附参考依据额外要求 property.fee_basis.read；初始收款额外要求
+      需要 Idempotency-Key。同公司相同键和规范化输入重放首次成功结果，同键不同输入返回 409。自动计算或附参考依据额外要求 property.bill.read；初始收款额外要求
       property.bill_receipt.create。自动模式必须核对依据 ID、规则版本和预期金额；预览已变化返回 409。手填金额允许不绑定依据，原因必填。应收可为 0，此时直接结清且不创建收款。可同时登记部分或全额初始已缴，建账、明细、操作和审计原子提交。一房一月只允许一张有效账单，作废后可新建。
     security:
       - AdminSession: []
@@ -540,7 +540,7 @@ bill:
     x-runtimes:
       - property_admin_api
     x-permissions:
-      - property.bill.update
+      - property.bill.manage
     tags:
       - billing
     summary: 修改账单资料

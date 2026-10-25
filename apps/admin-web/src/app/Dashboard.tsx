@@ -41,7 +41,7 @@ export function Dashboard({ companyName }: { companyName?: string }) {
   const summary = useResource(
     ['workspace-summary'],
     () => request<Summary>('/v1/property-workspace/summary'),
-    property && can('property.company.read'),
+    property,
   );
   const platform = useResource(
     ['platform-workspace'],
@@ -52,17 +52,20 @@ export function Dashboard({ companyName }: { companyName?: string }) {
         [
           count(
             '/v1/property-companies?page=1&page_size=1',
-            'property.company.read',
+            'platform.onboarding.read',
           ),
           count(
             '/v1/communities?page=1&page_size=1',
-            'property.community.read',
+            'platform.onboarding.read',
           ),
           count(
             '/v1/payment-reconciliation-discrepancies?page=1&page_size=1&status=open',
             'platform.payment_reconciliation.read',
           ),
-          count('/v1/admin-accounts?page=1&page_size=1', 'admin.account.read'),
+          count(
+            '/v1/admin-accounts?page=1&page_size=1',
+            'platform.system.read',
+          ),
         ],
       );
       return { companies, communities, differences, accounts };
@@ -146,7 +149,7 @@ export function Dashboard({ companyName }: { companyName?: string }) {
           title: '房屋认领申请',
           note: '核实申请人与业主档案后处理',
           page: 'claims',
-          permission: 'property.house_claim.read',
+          permission: 'property.resident_access.read',
           icon: CheckSquareOutlined,
         },
         {
@@ -160,7 +163,7 @@ export function Dashboard({ companyName }: { companyName?: string }) {
           title: '线上收款核对',
           note: '查看本公司对账结果，资金处理由平台执行',
           page: 'reconciliation',
-          permission: 'property.payment_reconciliation.read',
+          permission: 'property.payment.read',
           icon: FileSearchOutlined,
         },
       ]
@@ -176,14 +179,14 @@ export function Dashboard({ companyName }: { companyName?: string }) {
           title: '物业公司接入',
           note: '完善公司资料、开通管理员并配置收款',
           page: 'companies',
-          permission: 'property.company.read',
+          permission: 'platform.onboarding.read',
           icon: BankOutlined,
         },
         {
           title: '权限与操作审计',
           note: '按操作者、结果和业务时间查询',
           page: 'audit',
-          permission: 'admin.audit.read',
+          permission: 'platform.audit.read',
           icon: AuditOutlined,
         },
       ];
@@ -198,19 +201,21 @@ export function Dashboard({ companyName }: { companyName?: string }) {
         {
           title: '维护房屋',
           page: 'houses',
-          permission: 'property.house.read',
+          permission: 'property.housing.read',
           icon: HomeOutlined,
         },
         {
           title: '审核认领',
           page: 'claims',
-          permission: 'property.house_claim.read',
+          permission: 'property.resident_access.read',
           icon: CheckSquareOutlined,
         },
         {
           title: '批量导入',
           page: 'import-new',
-          permission: 'property.import.create',
+          permission: can('property.housing.manage')
+            ? 'property.housing.manage'
+            : 'property.bill.manage',
           icon: ImportOutlined,
         },
       ]
@@ -218,7 +223,7 @@ export function Dashboard({ companyName }: { companyName?: string }) {
         {
           title: '物业接入',
           page: 'companies',
-          permission: 'property.company.read',
+          permission: 'platform.onboarding.read',
           icon: BankOutlined,
         },
         {
@@ -236,7 +241,7 @@ export function Dashboard({ companyName }: { companyName?: string }) {
         {
           title: '账号管理',
           page: 'accounts',
-          permission: 'admin.account.read',
+          permission: 'platform.system.read',
           icon: UserOutlined,
         },
       ];
@@ -468,7 +473,7 @@ export function Dashboard({ companyName }: { companyName?: string }) {
                 <p>
                   公司资料、管理员与收款配置在公司详情衔接；支付记录和资金对账保留独立处理入口。
                 </p>
-                {can('property.company.read') && (
+                {can('platform.onboarding.read') && (
                   <Button type="link" onClick={() => go('companies')}>
                     管理物业公司 <ArrowRightOutlined />
                   </Button>
@@ -495,7 +500,7 @@ export function Dashboard({ companyName }: { companyName?: string }) {
               </p>
               {can(
                 property
-                  ? 'property.payment_reconciliation.read'
+                  ? 'property.payment.read'
                   : 'platform.payment_reconciliation.read',
               ) && (
                 <Button type="link" onClick={() => go('reconciliation')}>

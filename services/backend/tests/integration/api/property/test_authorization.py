@@ -77,13 +77,13 @@ def test_operator_business_permissions_do_not_grant_company_admin_writes(harness
         "/v1/admin-roles", json={"code": "operator", "name": "运营"}, headers=headers
     ).json()
     permissions = [
-        "property.company.read",
-        "property.company.create",
-        "property.company.update",
-        "property.community.read",
-        "property.community.create",
-        "property.community.update",
-        "property.admin.read",
+        "platform.onboarding.read",
+        "platform.onboarding.manage",
+        "platform.onboarding.manage",
+        "platform.onboarding.read",
+        "platform.onboarding.manage",
+        "platform.onboarding.manage",
+        "platform.system.read",
     ]
     assert (
         harness.client.put(
@@ -95,7 +95,7 @@ def test_operator_business_permissions_do_not_grant_company_admin_writes(harness
     )
     rejected = harness.client.put(
         f"/v1/admin-roles/{role['id']}/permissions",
-        json={"permissions": ["property.admin.create"]},
+        json={"permissions": ["platform.system.manage"]},
         headers=headers,
     )
     assert rejected.status_code == 409 and rejected.json()["code"] == "admin.invalid_permission"

@@ -12,20 +12,14 @@ from backend_app.models.admin import AdminAuditLog, utc_now
 from backend_app.models.payments import PaymentChannelRequest, PropertyMerchantBinding
 
 PLATFORM_PERMISSIONS = {
-    "platform.payment_config.read",
     "platform.payment_config.manage",
+    "platform.payment_reconciliation.manage",
     "platform.payment.read",
-    "platform.payment_funds.read",
-    "platform.payment_funds.recover",
+    "platform.payment_config.read",
     "platform.payment_reconciliation.read",
-    "platform.payment_reconciliation.recheck",
+    "platform.payment.recover",
 }
-PROPERTY_PERMISSIONS = {
-    "property.payment_config.read",
-    "property.payment.read",
-    "property.payment_funds.read",
-    "property.payment_reconciliation.read",
-}
+PROPERTY_PERMISSIONS = {"property.payment.read"}
 
 
 def test_platform_assignable_payment_permissions_project_into_full_session(
@@ -267,7 +261,7 @@ def test_property_session_exposes_only_read_payment_permissions_and_config_route
         ).status_code
         == 404
     )
-    set_permissions(workspace, {"property.community.read"})
+    set_permissions(workspace, {"platform.onboarding.read"})
     refused = workspace.client.get(f"{PREFIX}/payment-configuration")
     assert refused.status_code == 403 and refused.json()["code"] == "auth.forbidden"
 

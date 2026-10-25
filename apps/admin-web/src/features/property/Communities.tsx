@@ -14,6 +14,7 @@ import {
   Tag,
 } from 'antd';
 import { useAdmin } from '../../shared/context';
+import { canViewPropertyOrganization } from '../../shared/authorization';
 import { DetailGrid, PageHeader, Panel, Status } from '../../shared/ui';
 import { createPropertyApi, type Community } from './api';
 import { PropertyEditor } from './Editor';
@@ -39,7 +40,7 @@ export function CommunitiesPage() {
         enabled:
           params.enabled === undefined ? undefined : params.enabled === 'true',
       }),
-    enabled: can('property.community.read'),
+    enabled: canViewPropertyOrganization(can),
   });
   const counts = useQuery({
     queryKey: ['property', 'community-counts'],
@@ -50,12 +51,12 @@ export function CommunitiesPage() {
       ]);
       return { total: all.total, active: active.total };
     },
-    enabled: can('property.community.read'),
+    enabled: canViewPropertyOrganization(can),
   });
   const company = useQuery({
     queryKey: ['property', 'company'],
     queryFn: api.company,
-    enabled: can('property.company.read'),
+    enabled: canViewPropertyOrganization(can),
   });
   const searchNow = () =>
     go('communities', {

@@ -2,21 +2,19 @@ from sqlalchemy.orm import Session
 
 from backend_app.core.admin_sessions import AdminSessionStore, StoredAdminSession
 from backend_app.core.errors import AppError
-from backend_app.domain.admin.identity import AdminIdentity
 from backend_app.models.admin import AdminAccount
-from backend_app.repositories.admin import AdminRepository
 from backend_app.repositories.property import PropertyRepository
 from backend_app.schemas import admin as schema
 from backend_app.schemas.mappers import admin as views
+from backend_app.services.admin_management import AdminManagementService
 from backend_app.services.contracts.admin import AdminContext
 
 
-class PropertyAdminService:
+class PropertyAdminService(AdminManagementService):
     scope: schema.AdminScope = "property_admin"
 
     def __init__(self, db: Session):
-        self.db = db
-        self.identity = AdminIdentity(AdminRepository(db, self.scope))
+        super().__init__(db, self.scope)
         self.companies = PropertyRepository(db)
 
     def authenticate(self, store: AdminSessionStore, token: str | None) -> AdminContext:

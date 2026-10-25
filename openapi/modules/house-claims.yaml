@@ -511,7 +511,7 @@ claims:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/PropertyHouseClaimPage
     x-permissions:
-      - property.house_claim.read
+      - property.resident_access.read
     parameters:
       - name: status
         in: query
@@ -599,7 +599,7 @@ claim:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/PropertyHouseClaim
     x-permissions:
-      - property.house_claim.read
+      - property.resident_access.read
     parameters:
       - name: claim_id
         in: path
@@ -633,8 +633,8 @@ reviews:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/PropertyHouseClaim
     x-permissions:
-      - property.house_claim.read
-      - property.house_claim.review
+      - property.resident_access.read
+      - property.resident_access.review
     parameters:
       - name: claim_id
         in: path
@@ -688,7 +688,7 @@ bindings:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/PropertyHouseBindingPage
     x-permissions:
-      - property.resident_house_binding.read
+      - property.resident_access.read
     parameters:
       - name: status
         in: query
@@ -735,7 +735,7 @@ binding:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/PropertyHouseBinding
     x-permissions:
-      - property.resident_house_binding.read
+      - property.resident_access.read
     parameters:
       - name: binding_id
         in: path
@@ -769,8 +769,8 @@ revocations:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/PropertyHouseBinding
     x-permissions:
-      - property.resident_house_binding.read
-      - property.resident_house_binding.revoke
+      - property.resident_access.read
+      - property.resident_access.revoke
     parameters:
       - name: binding_id
         in: path

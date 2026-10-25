@@ -170,7 +170,7 @@ def create_payment_management_router(
     )
     def sharings(
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".payment_funds.read")],
+        ctx: Annotated[AdminContext, permission(prefix + ".payment.read")],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         sort: Annotated[Literal["created_at,id", "-created_at,-id"], Query()] = "-created_at,-id",
@@ -261,7 +261,7 @@ def create_payment_management_router(
     def sharing(
         profit_sharing_order_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".payment_funds.read")],
+        ctx: Annotated[AdminContext, permission(prefix + ".payment.read")],
     ) -> schema.ManagedProfitSharingOrder:
         return svc.sharing(ctx, profit_sharing_order_id)
 
@@ -273,7 +273,7 @@ def create_payment_management_router(
     )
     def unfreezes(
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".payment_funds.read")],
+        ctx: Annotated[AdminContext, permission(prefix + ".payment.read")],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         sort: Annotated[Literal["created_at,id", "-created_at,-id"], Query()] = "-created_at,-id",
@@ -372,7 +372,7 @@ def create_payment_management_router(
     def unfreeze(
         unfreeze_order_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".payment_funds.read")],
+        ctx: Annotated[AdminContext, permission(prefix + ".payment.read")],
     ) -> schema.ManagedUnfreezeOrder:
         return svc.unfreeze(ctx, unfreeze_order_id)
 
@@ -384,7 +384,14 @@ def create_payment_management_router(
     )
     def runs(
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".payment_reconciliation.read")],
+        ctx: Annotated[
+            AdminContext,
+            permission(
+                "platform.payment_reconciliation.read"
+                if scope == "platform_admin"
+                else "property.payment.read"
+            ),
+        ],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         sort: Annotated[Literal["created_at,id", "-created_at,-id"], Query()] = "-created_at,-id",
@@ -442,7 +449,14 @@ def create_payment_management_router(
     def run(
         reconciliation_run_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".payment_reconciliation.read")],
+        ctx: Annotated[
+            AdminContext,
+            permission(
+                "platform.payment_reconciliation.read"
+                if scope == "platform_admin"
+                else "property.payment.read"
+            ),
+        ],
     ) -> schema.ManagedReconciliationRun:
         return svc.run(ctx, reconciliation_run_id)
 
@@ -454,7 +468,14 @@ def create_payment_management_router(
     )
     def discrepancies(
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".payment_reconciliation.read")],
+        ctx: Annotated[
+            AdminContext,
+            permission(
+                "platform.payment_reconciliation.read"
+                if scope == "platform_admin"
+                else "property.payment.read"
+            ),
+        ],
         page: Annotated[int, Query(ge=1)] = 1,
         page_size: Annotated[int, Query(ge=1, le=100)] = 20,
         sort: Annotated[Literal["created_at,id", "-created_at,-id"], Query()] = "-created_at,-id",
@@ -562,7 +583,14 @@ def create_payment_management_router(
     def discrepancy(
         discrepancy_id: Identifier,
         svc: Service,
-        ctx: Annotated[AdminContext, permission(prefix + ".payment_reconciliation.read")],
+        ctx: Annotated[
+            AdminContext,
+            permission(
+                "platform.payment_reconciliation.read"
+                if scope == "platform_admin"
+                else "property.payment.read"
+            ),
+        ],
     ) -> schema.ManagedReconciliationDiscrepancy:
         return svc.discrepancy(ctx, discrepancy_id)
 
