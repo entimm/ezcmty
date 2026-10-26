@@ -16,7 +16,7 @@ import {
 } from 'antd';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { useAdmin } from '../context';
-import { hasFormChanges } from '../forms';
+import { hasFormChanges, NewPasswordInput, newPasswordRules } from '../forms';
 import { ApiError } from '../request';
 import { createSystemApi, type Filters, type Page } from './api';
 
@@ -365,17 +365,10 @@ export function SystemFormDialog({
 export function PasswordFields({ form }: { form: FormInstance }) {
   return (
     <>
-      <Form.Item
-        name="password"
-        label="临时密码"
-        rules={[
-          { required: true, message: '请输入临时密码' },
-          { min: 12, max: 128, message: '请输入 12–128 位密码' },
-        ]}
-      >
-        <Input.Password
+      <Form.Item name="password" label="临时密码" rules={newPasswordRules}>
+        <NewPasswordInput
           autoComplete="new-password"
-          placeholder="至少 12 位，建议组合多种字符"
+          placeholder="12–128位，建议组合多种字符，不含换行"
         />
       </Form.Item>
       <Form.Item
@@ -392,7 +385,7 @@ export function PasswordFields({ form }: { form: FormInstance }) {
           },
         ]}
       >
-        <Input.Password autoComplete="new-password" />
+        <NewPasswordInput autoComplete="new-password" />
       </Form.Item>
     </>
   );

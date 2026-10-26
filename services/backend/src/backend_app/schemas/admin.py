@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
@@ -12,7 +13,11 @@ Identifier = Annotated[
     Field(min_length=36, max_length=36, pattern=UUID_PATTERN, json_schema_extra={"format": "uuid"}),
     AfterValidator(normalize_uuid),
 ]
-Password = Annotated[str, Field(min_length=12, max_length=128)]
+# A compiled pattern enables Python lookahead with the same expression as OpenAPI.
+Password = Annotated[
+    str,
+    Field(min_length=12, max_length=128, pattern=re.compile(r"^(?![\s\S]*[\r\n])")),
+]
 LoginName = Annotated[
     str,
     Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.@-]*$"),

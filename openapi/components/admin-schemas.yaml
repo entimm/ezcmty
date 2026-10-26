@@ -10,6 +10,7 @@ AdminLogin:
       pattern: ^[A-Za-z0-9][A-Za-z0-9_.@-]*$
     password:
       type: string
+      description: 校验已有凭据；长度按 Unicode 码点计数，密码原文不做截断或规范化。
       minLength: 1
       maxLength: 128
   required:
@@ -21,12 +22,15 @@ PasswordChange:
   properties:
     current_password:
       type: string
+      description: 校验已有凭据；长度按 Unicode 码点计数，密码原文不做截断或规范化。
       minLength: 1
       maxLength: 128
     new_password:
       type: string
+      description: 长度按 Unicode 码点计数，不强制字符组合；禁止 CR/LF，保留密码原文及首尾空格。
       minLength: 12
       maxLength: 128
+      pattern: '^(?![\s\S]*[\r\n])'
   required:
     - current_password
     - new_password
@@ -36,8 +40,10 @@ PasswordReset:
   properties:
     password:
       type: string
+      description: 长度按 Unicode 码点计数，不强制字符组合；禁止 CR/LF，保留密码原文及首尾空格。
       minLength: 12
       maxLength: 128
+      pattern: '^(?![\s\S]*[\r\n])'
   required:
     - password
 ProfileUpdate:
@@ -66,8 +72,10 @@ AccountCreate:
       maxLength: 80
     password:
       type: string
+      description: 长度按 Unicode 码点计数，不强制字符组合；禁止 CR/LF，保留密码原文及首尾空格。
       minLength: 12
       maxLength: 128
+      pattern: '^(?![\s\S]*[\r\n])'
     role_ids:
       type: array
       items:

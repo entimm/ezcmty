@@ -10,7 +10,12 @@ import { useSession } from './session';
 import { navigate } from '../app/navigation';
 import { routePath } from '../app/routes';
 import { useAdmin } from '../shared/context';
-import { hasFormChanges, passwordRules } from '../shared/forms';
+import {
+  existingPasswordRules,
+  hasFormChanges,
+  NewPasswordInput,
+  newPasswordRules,
+} from '../shared/forms';
 import { useResource } from '../shared/hooks';
 import { PageHeader, Panel, ReadError } from '../shared/ui';
 import { ApiError } from '../shared/request';
@@ -185,17 +190,17 @@ function PasswordFields() {
       <Form.Item
         label="当前密码"
         name="current_password"
-        rules={[{ required: true, message: '请输入当前密码' }]}
+        rules={existingPasswordRules}
       >
-        <Input.Password autoComplete="current-password" maxLength={128} />
+        <Input.Password autoComplete="current-password" />
       </Form.Item>
       <Form.Item
         label="新密码"
         name="new_password"
-        rules={passwordRules}
-        extra="12–128位，包含大小写字母、数字与符号"
+        rules={newPasswordRules}
+        extra="12–128位，建议组合多种字符，不含换行"
       >
-        <Input.Password autoComplete="new-password" maxLength={128} />
+        <NewPasswordInput autoComplete="new-password" />
       </Form.Item>
       <Form.Item
         label="确认新密码"
@@ -211,7 +216,7 @@ function PasswordFields() {
           }),
         ]}
       >
-        <Input.Password autoComplete="new-password" maxLength={128} />
+        <NewPasswordInput autoComplete="new-password" />
       </Form.Item>
     </>
   );
@@ -347,13 +352,12 @@ export function AuthPage({
                 <Form.Item
                   label="密码"
                   name="password"
-                  rules={[{ required: true, message: '请输入密码' }]}
+                  rules={existingPasswordRules}
                 >
                   <Input.Password
                     autoComplete="current-password"
                     placeholder="请输入密码"
                     prefix={<LockOutlined />}
-                    maxLength={128}
                   />
                 </Form.Item>
               </>

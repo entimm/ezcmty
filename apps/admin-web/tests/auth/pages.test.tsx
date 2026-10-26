@@ -96,6 +96,95 @@ beforeEach(() => {
 });
 
 describe('既有账号登录与强制改密', () => {
+  it.each(['platform', 'property'])(
+    '%s 登录完整提交128个emoji密码',
+    async (scope) => {
+      mocks.auth.scope = scope;
+      const password = '😀'.repeat(128);
+      show(<AuthPage forced={false} returnTo="/" />);
+      fireEvent.change(screen.getByRole('textbox', { name: '登录账号' }), {
+        target: { value: 'staff@example.test' },
+      });
+      const input = screen.getByLabelText('密码');
+      fireEvent.change(input, { target: { value: password } });
+      expect(input).not.toHaveAttribute('maxlength');
+      fireEvent.click(screen.getByRole('button', { name: /登\s*录/ }));
+      await waitFor(() =>
+        expect(mocks.auth.login).toHaveBeenCalledWith(
+          'staff@example.test',
+          password,
+        ),
+      );
+    },
+  );
+  it.each(['platform', 'property'])(
+    '%s 登录保留超长输入并阻止请求',
+    async (scope) => {
+      mocks.auth.scope = scope;
+      const password = '😀'.repeat(129);
+      show(<AuthPage forced={false} returnTo="/" />);
+      fireEvent.change(screen.getByRole('textbox', { name: '登录账号' }), {
+        target: { value: 'staff@example.test' },
+      });
+      fireEvent.change(screen.getByLabelText('密码'), {
+        target: { value: password },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /登\s*录/ }));
+      await screen.findByText('密码长度为1–128位');
+      expect(screen.getByLabelText('密码')).toHaveValue(password);
+      expect(mocks.auth.login).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    ['platform', 'a'.repeat(12)],
+    ['property', '😀'.repeat(128)],
+  ])('%s 强制改密接受合法密码原文', async (scope, password) => {
+    mocks.auth.scope = scope;
+    const current = ` ${'😀'.repeat(126)} `;
+    show(<AuthPage forced returnTo="/" />);
+    for (const [label, value] of [
+      ['当前密码', current],
+      ['新密码', password],
+      ['确认新密码', password],
+    ]) {
+      const input = screen.getByLabelText(label);
+      fireEvent.change(input, { target: { value } });
+      expect(input).not.toHaveAttribute('maxlength');
+    }
+    fireEvent.click(screen.getByRole('button', { name: '更新密码并重新登录' }));
+    await waitFor(() =>
+      expect(mocks.auth.changePassword).toHaveBeenCalledWith(current, password),
+    );
+  });
+  it('强制改密保留超长新密码并阻止请求', async () => {
+    show(<AuthPage forced returnTo="/" />);
+    const password = '😀'.repeat(129);
+    fireEvent.change(screen.getByLabelText('当前密码'), {
+      target: { value: 'old-account-value' },
+    });
+    for (const label of ['新密码', '确认新密码']) {
+      fireEvent.change(screen.getByLabelText(label), {
+        target: { value: password },
+      });
+    }
+    fireEvent.click(screen.getByRole('button', { name: '更新密码并重新登录' }));
+    await screen.findByText('密码长度为12–128位');
+    expect(screen.getByLabelText('新密码')).toHaveValue(password);
+    expect(screen.getByLabelText('确认新密码')).toHaveValue(password);
+    expect(mocks.auth.changePassword).not.toHaveBeenCalled();
+  });
+  it('强制改密保留超长当前密码并阻止请求', async () => {
+    show(<AuthPage forced returnTo="/" />);
+    fillPasswordForm();
+    const current = '😀'.repeat(129);
+    fireEvent.change(screen.getByLabelText('当前密码'), {
+      target: { value: current },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '更新密码并重新登录' }));
+    await screen.findByText('密码长度为1–128位');
+    expect(screen.getByLabelText('当前密码')).toHaveValue(current);
+    expect(mocks.auth.changePassword).not.toHaveBeenCalled();
+  });
   it('允许既有登录名包含 @，请求期间阻止重复提交', async () => {
     let finish!: () => void;
     mocks.auth.login.mockImplementation(
@@ -412,7 +501,11 @@ describe('本人资料与密码', () => {
     expect(screen.getByLabelText('当前密码')).toBeInTheDocument();
     expect(mocks.admin.setDirty).toHaveBeenLastCalledWith(false);
   });
-  it('修改本人密码校验后调用认证操作，成功清空输入', async () => {
+  it.each([
+    ['纯字母', 'a'.repeat(12)],
+    ['128个emoji', '😀'.repeat(128)],
+    ['纯空格', ' '.repeat(12)],
+  ])('修改本人密码接受%s，成功清空输入', async (_name, nextPassword) => {
     show(<ProfilePage />);
     await screen.findByRole('textbox', { name: '显示名称' });
     fireEvent.click(screen.getByRole('tab', { name: '修改密码' }));
@@ -420,16 +513,16 @@ describe('本人资料与密码', () => {
       target: { value: 'old-account-value' },
     });
     fireEvent.change(screen.getByLabelText('新密码'), {
-      target: { value: 'NewExample123!AB' },
+      target: { value: nextPassword },
     });
     fireEvent.change(screen.getByLabelText('确认新密码'), {
-      target: { value: 'NewExample123!AB' },
+      target: { value: nextPassword },
     });
     fireEvent.click(screen.getByRole('button', { name: '更新密码' }));
     await waitFor(() =>
       expect(mocks.auth.changePassword).toHaveBeenCalledWith(
         'old-account-value',
-        'NewExample123!AB',
+        nextPassword,
       ),
     );
     await waitFor(() =>

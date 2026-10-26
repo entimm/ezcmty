@@ -1,5 +1,20 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Alert, Button, Form, Modal, Space, type FormInstance } from 'antd';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from 'react';
+import {
+  Alert,
+  App,
+  Button,
+  Form,
+  Input,
+  Modal,
+  Space,
+  type FormInstance,
+} from 'antd';
 import type { FormProps } from 'antd';
 import { useAdmin } from './context';
 function normalize(value: unknown): unknown {
@@ -157,14 +172,37 @@ export function FormDialog<T extends object = Record<string, unknown>>({
     </Modal>
   );
 }
-export const passwordRules = [
+export const existingPasswordRules = [
+  { required: true, message: '请输入密码' },
+  { min: 1, max: 128, message: '密码长度为1–128位' },
+];
+export const newPasswordRules = [
   { required: true, message: '请输入密码' },
   { min: 12, max: 128, message: '密码长度为12–128位' },
   {
-    pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/,
-    message: '需包含大小写字母、数字和符号',
+    pattern: /^(?![\s\S]*[\r\n])/,
+    message: '密码不能包含换行符',
   },
 ];
+export function NewPasswordInput({
+  onPaste,
+  ...props
+}: ComponentProps<typeof Input.Password>) {
+  const { message } = App.useApp();
+  return (
+    <Input.Password
+      {...props}
+      onPaste={(event) => {
+        if (/[\r\n]/.test(event.clipboardData.getData('text/plain'))) {
+          event.preventDefault();
+          void message.warning('密码不能包含换行符，请粘贴不含换行的内容');
+          return;
+        }
+        onPaste?.(event);
+      }}
+    />
+  );
+}
 export const loginNameRules = [
   { required: true, message: '请输入登录账号' },
   {
