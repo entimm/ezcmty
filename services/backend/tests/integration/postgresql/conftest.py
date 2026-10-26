@@ -100,7 +100,7 @@ def real_admin(
 @pytest.fixture
 def billing_setup(real_admin: tuple[sessionmaker[Session], AdminSessionStore]) -> BillingSetup:
     factory, store = real_admin
-    setup = provision_housing(factory, store)
+    setup = provision_housing(factory, store, business_accounts=True)
     with factory() as db:
         house = PropertyHousingService(db).create_house(
             setup.context,
@@ -113,7 +113,7 @@ def billing_setup(real_admin: tuple[sessionmaker[Session], AdminSessionStore]) -
 
 @pytest.fixture
 def claim_setup(real_admin: tuple[sessionmaker[Session], AdminSessionStore]) -> ClaimSetup:
-    return provision_claim(*real_admin)
+    return provision_claim(*real_admin, business_accounts=True)
 
 
 @pytest.fixture

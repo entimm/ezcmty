@@ -128,7 +128,6 @@ class BillImports:
 def bill_imports(
     workspace: WorkspaceHarness, monkeypatch: MonkeyPatch, tmp_path: Path
 ) -> BillImports:
-    workspace.complete_login()
     monkeypatch.setenv("APP_IMPORT_STORAGE_ROOT", str(tmp_path / "private-imports"))
     get_settings.cache_clear()
     # Keep the deployed resource catalogue and adapter binding, including the API's registry.

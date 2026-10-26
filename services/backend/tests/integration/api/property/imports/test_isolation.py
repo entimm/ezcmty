@@ -20,7 +20,6 @@ def test_backend_company_scope_and_pagination_are_applied_before_visibility(
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    workspace.complete_login()
     install_http_registry(monkeypatch, tmp_path)
     headers = {**workspace.headers(), "Idempotency-Key": "own-property"}
     body = create_body(workspace.company_id)
@@ -77,7 +76,6 @@ def test_unrelated_business_permission_does_not_grant_target_import_permission(
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    workspace.complete_login()
     install_http_registry(monkeypatch, tmp_path, required_permissions=("property.housing.manage",))
     set_permissions(workspace, {"property.bill.read"})
     catalogue = workspace.client.get(f"{PREFIX}/import-types")
@@ -95,7 +93,6 @@ def test_confirmation_rejects_missing_policy_stale_preview_and_implicit_error_sk
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    workspace.complete_login()
     install_http_registry(monkeypatch, tmp_path)
     created = workspace.client.post(
         f"{PREFIX}/import-batches",
@@ -134,7 +131,6 @@ def test_history_read_permissions_are_independent_from_creation_permissions(
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    workspace.complete_login()
     definition, storage = install_http_registry(
         monkeypatch,
         tmp_path,
@@ -208,7 +204,6 @@ def test_condition_permissions_cover_invalid_rows_and_successful_request_replay(
                 else frozenset()
             )
 
-    workspace.complete_login()
     install_http_registry(monkeypatch, tmp_path, adapter=ConditionalAdapter())
     created = workspace.client.post(
         f"{PREFIX}/import-batches",

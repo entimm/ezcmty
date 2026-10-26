@@ -23,8 +23,13 @@ class ClaimSetup:
     phone_id: str
 
 
-def provision_claim(factory: sessionmaker[Session], admin_store: AdminSessionStore) -> ClaimSetup:
-    housing = provision_housing(factory, admin_store)
+def provision_claim(
+    factory: sessionmaker[Session],
+    admin_store: AdminSessionStore,
+    *,
+    business_accounts: bool = False,
+) -> ClaimSetup:
+    housing = provision_housing(factory, admin_store, business_accounts=business_accounts)
     store = ResidentSessionStore(admin_store.client, admin_store.settings)
     wechat = FakeWechat()
     wechat.phones["phone"] = "13800138000"

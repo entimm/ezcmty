@@ -6,8 +6,10 @@ from tests.support.workspace import PREFIX, WorkspaceHarness
 
 
 @pytest.fixture
-def payment_house(workspace: WorkspaceHarness, resident: ResidentHarness) -> PaymentHouse:
-    workspace.complete_login()
+def payment_house(
+    business_workspace: WorkspaceHarness, business_resident: ResidentHarness
+) -> PaymentHouse:
+    workspace, resident = business_workspace, business_resident
     house = create_house(
         workspace,
         create_node(workspace)["id"],

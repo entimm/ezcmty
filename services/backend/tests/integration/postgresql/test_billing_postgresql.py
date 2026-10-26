@@ -14,6 +14,7 @@ from tests.support.paths import BACKEND_ROOT
 
 from backend_app.core.errors import AppError
 from backend_app.db.base import Base
+from backend_app.db.session import get_engine
 from backend_app.models.billing import Bill, BillOperation, BillSettlementEntry
 from backend_app.models.housing import House
 from backend_app.repositories.billing import BillingRepository
@@ -156,8 +157,9 @@ def test_database_rejects_history_edits_and_unreconciled_totals(
         assert persisted and persisted.settled_cents == 3000
 
 
-def test_migration_matches_metadata(billing_setup: BillingSetup) -> None:
-    with billing_setup.factory() as db, db.connection() as connection:
+@pytest.mark.usefixtures("real_redis")
+def test_migration_matches_metadata(fresh_migrated_database_url: str) -> None:
+    with get_engine().connect() as connection:
         context = MigrationContext.configure(connection, opts={"compare_type": True})
         assert compare_metadata(context, Base.metadata) == []
 

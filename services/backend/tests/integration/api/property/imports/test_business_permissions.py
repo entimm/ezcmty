@@ -15,7 +15,6 @@ from backend_app.services.worker.imports.pipeline import ImportWorkerService
 def test_import_history_is_filtered_by_target_business_before_pagination(
     workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
     batches = {}
     for import_type in ("houses", "property_fee_bills"):
         result = workspace.client.post(
@@ -49,7 +48,6 @@ def test_import_history_is_filtered_by_target_business_before_pagination(
 def test_target_business_reader_can_generate_and_download_error_file_without_processing(
     workspace: WorkspaceHarness, monkeypatch: MonkeyPatch, tmp_path: Path
 ) -> None:
-    workspace.complete_login()
     definition, storage = install_http_registry(
         monkeypatch,
         tmp_path,

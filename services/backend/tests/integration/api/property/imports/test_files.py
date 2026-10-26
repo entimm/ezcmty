@@ -20,7 +20,6 @@ def test_sensitive_rows_and_private_file_generation_are_projected_and_authorized
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    workspace.complete_login()
     _, storage = install_http_registry(
         monkeypatch,
         tmp_path,
@@ -120,7 +119,6 @@ def test_template_download_format_alias_and_file_response_headers(
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    workspace.complete_login()
     install_http_registry(monkeypatch, tmp_path)
     root = f"{PREFIX}/import-types/test_records/versions/1"
     metadata = workspace.client.get(root)
@@ -153,7 +151,6 @@ def test_template_download_format_alias_and_file_response_headers(
 def test_oversized_multipart_envelope_is_rejected_before_file_spooling(
     workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
     result = workspace.client.post(
         f"{PREFIX}/import-batches/00000000-0000-4000-8000-000000000001/source-file",
         files={"file": ("large.csv", b"x" * (10485760 + 65536), "text/csv")},
@@ -165,7 +162,6 @@ def test_oversized_multipart_envelope_is_rejected_before_file_spooling(
 
 
 def test_schema_and_authorization_errors_are_never_cached(workspace: WorkspaceHarness) -> None:
-    workspace.complete_login()
     schema = workspace.client.get(f"{PREFIX}/import-batches", params={"page_size": 101})
     assert schema.status_code == 422, schema.text
     assert schema.headers["cache-control"] == "no-store"
@@ -198,7 +194,6 @@ def test_source_multipart_accepts_exactly_one_file_field(
     tmp_path: Path,
     duplicate: bool,
 ) -> None:
-    workspace.complete_login()
     install_http_registry(monkeypatch, tmp_path)
     created = workspace.client.post(
         f"{PREFIX}/import-batches",

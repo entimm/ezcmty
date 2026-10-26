@@ -16,9 +16,9 @@ from backend_app.services.house_owner_creation import (
 
 
 def test_manual_owner_creation_normalizes_and_keeps_duplicate_conflict(
-    workspace: WorkspaceHarness,
+    business_workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     building = create_node(workspace)
     house = create_house(workspace, building["id"])
     url = housing_path(workspace, f"/houses/{house['id']}/owners")
@@ -44,9 +44,9 @@ def test_manual_owner_creation_normalizes_and_keeps_duplicate_conflict(
 
 
 def test_shared_registration_and_audit_participate_in_caller_rollback(
-    workspace: WorkspaceHarness,
+    business_workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     house = create_house(workspace, create_node(workspace)["id"])
     command = HouseOwnerCreationCommand(house["id"], " 张甲 ", "+8613800000000")
     with workspace.platform.factory() as db:
@@ -91,9 +91,9 @@ def test_shared_registration_and_audit_participate_in_caller_rollback(
 
 
 def test_existing_disabled_owner_is_skipped_without_reactivation_or_audit(
-    workspace: WorkspaceHarness,
+    business_workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     house = create_house(
         workspace,
         create_node(workspace)["id"],
@@ -142,9 +142,9 @@ def test_existing_disabled_owner_is_skipped_without_reactivation_or_audit(
 
 
 def test_fixed_owner_after_correction_does_not_rebind_to_another_matching_record(
-    workspace: WorkspaceHarness,
+    business_workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     house = create_house(
         workspace,
         create_node(workspace)["id"],
@@ -189,9 +189,9 @@ def test_fixed_owner_after_correction_does_not_rebind_to_another_matching_record
 
 @pytest.mark.parametrize("disabled_resource", ["house", "building"])
 def test_skip_still_requires_enabled_house_path(
-    workspace: WorkspaceHarness, disabled_resource: str
+    business_workspace: WorkspaceHarness, disabled_resource: str
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     building = create_node(workspace)
     house = create_house(
         workspace,

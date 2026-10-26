@@ -4,7 +4,6 @@ from tests.support.admin import Harness, company
 def test_production_catalogue_is_empty_and_unregistered_types_are_rejected(
     harness: Harness,
 ) -> None:
-    harness.login()
     target = company(harness)
     catalogue = harness.client.get("/v1/import-types")
     assert catalogue.status_code == 200, catalogue.text
@@ -27,7 +26,6 @@ def test_production_catalogue_is_empty_and_unregistered_types_are_rejected(
 
 
 def test_import_writes_require_current_origin_csrf_and_idempotency_key(harness: Harness) -> None:
-    harness.login()
     body = {
         "import_type": "unregistered_type",
         "template_version_no": 1,

@@ -405,7 +405,7 @@ make check
 
 `make check-backend` 执行全部单元测试、快速集成测试和契约测试，通过 `postgresql`、`slow` 标记排除专用 PostgreSQL/Redis 并发测试与进程生命周期测试。`make check` 还执行前端测试及其余质量检查。
 
-数据库和管理员接口集成测试使用独立临时 PostgreSQL 实例及每用例独立数据库，验证原生类型、迁移、真实提交、回滚和接口行为；快速集成测试同样需要 `initdb`、`postgres` 和 `pg_ctl` 在 PATH 中。合并前执行完整测试：
+数据库和管理员接口集成测试使用独立临时 PostgreSQL 实例及每用例独立数据库。普通用例从本轮已迁移模板克隆数据库；迁移与结构一致性专项仍从空库执行真实迁移。普通业务的账号准备使用独立账号与真实会话，认证、密码和相关审计专项保留完整初始化流程，具体机制见[后端测试运行准备](../architecture/test-runtime.md)。快速集成测试同样需要 `initdb`、`postgres` 和 `pg_ctl` 在 PATH 中。合并前执行完整测试：
 
 ```bash
 make test-full

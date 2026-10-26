@@ -138,7 +138,6 @@ class OwnerImports:
 
 @pytest.fixture
 def owner_imports(workspace: WorkspaceHarness) -> OwnerImports:
-    workspace.complete_login()
     return OwnerImports(
         workspace,
         ImportWorkerService(workspace.platform.factory, get_settings()),

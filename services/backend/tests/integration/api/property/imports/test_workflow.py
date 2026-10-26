@@ -17,7 +17,6 @@ def test_http_upload_worker_preview_partial_execution_retry_and_original_history
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    workspace.complete_login()
     adapter = TestRecordAdapter()
     definition, storage = install_http_registry(monkeypatch, tmp_path, adapter=adapter)
     registry = JsonImportRegistry((definition,), {"test_records": adapter})

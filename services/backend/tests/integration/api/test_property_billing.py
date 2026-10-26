@@ -13,9 +13,9 @@ from backend_app.models.billing import BillOperation, BillSettlementEntry
 
 
 def test_pre_payment_result_snapshot_replays_and_reads_without_rewriting_history(
-    workspace: WorkspaceHarness,
+    business_workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     house = create_house(workspace, create_node(workspace)["id"])
     root = housing_path(workspace, "/bills")
     body = {
@@ -68,8 +68,10 @@ def test_pre_payment_result_snapshot_replays_and_reads_without_rewriting_history
         assert db.scalar(select(func.count()).select_from(BillSettlementEntry)) == 1
 
 
-def test_bill_receipt_correction_void_recreate_and_idempotency(workspace: WorkspaceHarness) -> None:
-    workspace.complete_login()
+def test_bill_receipt_correction_void_recreate_and_idempotency(
+    business_workspace: WorkspaceHarness,
+) -> None:
+    workspace = business_workspace
     house = create_house(workspace, create_node(workspace)["id"])
     root = housing_path(workspace, "/bills")
     body = {
@@ -190,8 +192,10 @@ def test_bill_receipt_correction_void_recreate_and_idempotency(workspace: Worksp
         assert db.scalar(select(func.count()).select_from(BillSettlementEntry)) == 6
 
 
-def test_effective_basis_preview_conflict_and_historical_proof(workspace: WorkspaceHarness) -> None:
-    workspace.complete_login()
+def test_effective_basis_preview_conflict_and_historical_proof(
+    business_workspace: WorkspaceHarness,
+) -> None:
+    workspace = business_workspace
     house = create_house(workspace, create_node(workspace)["id"])
     base = housing_path(workspace, f"/houses/{house['id']}")
     root = housing_path(workspace, "/bills")
@@ -248,9 +252,9 @@ def test_effective_basis_preview_conflict_and_historical_proof(workspace: Worksp
 
 
 def test_creation_with_initial_payment_is_atomic_and_permission_checked(
-    workspace: WorkspaceHarness, monkeypatch: MonkeyPatch
+    business_workspace: WorkspaceHarness, monkeypatch: MonkeyPatch
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     house = create_house(workspace, create_node(workspace)["id"])
     root = housing_path(workspace, "/bills")
     body = {
@@ -299,9 +303,9 @@ def test_creation_with_initial_payment_is_atomic_and_permission_checked(
 
 
 def test_disabled_house_retains_corrections_but_blocks_new_receipts(
-    workspace: WorkspaceHarness,
+    business_workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     house = create_house(workspace, create_node(workspace)["id"])
     root = housing_path(workspace, "/bills")
     response = workspace.client.post(
@@ -346,9 +350,9 @@ def test_disabled_house_retains_corrections_but_blocks_new_receipts(
 
 
 def test_bill_input_limits_count_unicode_codepoints(
-    workspace: WorkspaceHarness,
+    business_workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     house = create_house(workspace, create_node(workspace)["id"])
     root = housing_path(workspace, "/bills")
     body = {
@@ -368,9 +372,9 @@ def test_bill_input_limits_count_unicode_codepoints(
 
 @pytest.mark.parametrize("month", ["0000-01", "9999-12", "2024-13"])
 def test_invalid_bill_filter_month_returns_validation_error(
-    workspace: WorkspaceHarness, month: str
+    business_workspace: WorkspaceHarness, month: str
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     assert (
         workspace.client.get(
             housing_path(workspace, "/bills"), params={"billing_month_from": month}
@@ -379,9 +383,11 @@ def test_invalid_bill_filter_month_returns_validation_error(
     )
 
 
-def test_bill_data_and_recovery_are_hidden_from_other_company(workspace: WorkspaceHarness) -> None:
+def test_bill_data_and_recovery_are_hidden_from_other_company(
+    business_workspace: WorkspaceHarness,
+) -> None:
+    workspace = business_workspace
     w = workspace
-    w.complete_login()
     house = create_house(w, create_node(w)["id"])
     root = housing_path(w, "/bills")
     body = {
@@ -430,11 +436,11 @@ def test_bill_data_and_recovery_are_hidden_from_other_company(workspace: Workspa
 
 
 def test_overdue_filter_and_response_share_one_business_day(
-    workspace: WorkspaceHarness, monkeypatch: MonkeyPatch
+    business_workspace: WorkspaceHarness, monkeypatch: MonkeyPatch
 ) -> None:
+    workspace = business_workspace
     from datetime import UTC, datetime
 
-    workspace.complete_login()
     house = create_house(workspace, create_node(workspace)["id"])
     root = housing_path(workspace, "/bills")
     response = workspace.client.post(

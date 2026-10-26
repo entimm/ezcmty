@@ -11,6 +11,7 @@ from redis import Redis
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import Session, sessionmaker
 from tests.support.admin import NEW_PASSWORD, TEST_PASSWORD, Harness, admin, company
+from tests.support.admin_data import create_super_admin
 from tests.support.redis import MemoryRedis
 from tests.support.resident import FakeWechat, ResidentHarness
 from tests.support.workspace import WorkspaceHarness, create_community
@@ -22,11 +23,23 @@ from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.config import get_settings
 from backend_app.core.resident_sessions import ResidentSessionStore
 from backend_app.db.session import get_database_session
+from backend_app.models.property import Community, PropertyCompany
 from backend_app.services.platform_admin.admin import PlatformAdminService
 
 
 @pytest.fixture
 def harness(migrated_database_url: str, monkeypatch: MonkeyPatch) -> Iterator[Harness]:
+    yield from _platform_harness(migrated_database_url, monkeypatch, business_accounts=False)
+
+
+@pytest.fixture
+def business_harness(migrated_database_url: str, monkeypatch: MonkeyPatch) -> Iterator[Harness]:
+    yield from _platform_harness(migrated_database_url, monkeypatch, business_accounts=True)
+
+
+def _platform_harness(
+    migrated_database_url: str, monkeypatch: MonkeyPatch, *, business_accounts: bool
+) -> Iterator[Harness]:
     url = migrated_database_url
     monkeypatch.setenv("APP_DATABASE_URL", url)
     monkeypatch.setenv("APP_ADMIN_LOGIN_LIMIT", "10000")
@@ -82,7 +95,19 @@ def harness(migrated_database_url: str, monkeypatch: MonkeyPatch) -> Iterator[Ha
         }
         factory = sessionmaker(bind=engine, autoflush=False)
         with factory() as db:
-            PlatformAdminService(db).initialize_super_admin("root", "平台管理员", TEST_PASSWORD)
+            if business_accounts:
+                account = create_super_admin(
+                    db,
+                    scope="platform_admin",
+                    login_name="root",
+                    display_name="平台管理员",
+                    password=NEW_PASSWORD,
+                    session_version=2,
+                )
+                db.commit()
+                account_id = account.id
+            else:
+                PlatformAdminService(db).initialize_super_admin("root", "平台管理员", TEST_PASSWORD)
         redis = MemoryRedis()
         monkeypatch.setattr("backend_app.core.admin_sessions.time", lambda: redis.now)
         store = AdminSessionStore(cast("Redis[str]", redis), settings)
@@ -103,14 +128,23 @@ def harness(migrated_database_url: str, monkeypatch: MonkeyPatch) -> Iterator[Ha
         outer.mount("/api/platform", app)
         with TestClient(outer, base_url="http://testserver/api/platform") as client:
             value = Harness(client, factory, redis, store)
-            value.login(password=TEST_PASSWORD)
-            headers = value.headers()
-            result = client.post(
-                "/v1/admin-accounts/me/password-changes",
-                json={"current_password": TEST_PASSWORD, "new_password": NEW_PASSWORD},
-                headers=headers,
-            )
-            assert result.status_code == 204, result.text
+            if business_accounts:
+                token, _ = store.create("platform_admin", account_id, 2)
+                client.cookies.set(
+                    "admin_session",
+                    token,
+                    domain="testserver.local",
+                    path=settings.platform_admin_cookie_path,
+                )
+            else:
+                value.login(password=TEST_PASSWORD)
+                headers = value.headers()
+                result = client.post(
+                    "/v1/admin-accounts/me/password-changes",
+                    json={"current_password": TEST_PASSWORD, "new_password": NEW_PASSWORD},
+                    headers=headers,
+                )
+                assert result.status_code == 204, result.text
             yield value
     finally:
         engine.dispose()
@@ -118,16 +152,56 @@ def harness(migrated_database_url: str, monkeypatch: MonkeyPatch) -> Iterator[Ha
 
 @pytest.fixture
 def workspace(harness: Harness) -> Iterator[WorkspaceHarness]:
-    harness.login()
-    company_data = company(harness)
-    community_data = create_community(harness, company_data["id"], "first-community")
-    account_data = admin(harness, company_data["id"])
-    enabled = harness.client.patch(
-        f"/v1/property-companies/{company_data['id']}",
-        json={"enabled": True},
-        headers=harness.headers(),
-    )
-    assert enabled.status_code == 200, enabled.text
+    yield from _property_workspace(harness, business_accounts=False)
+
+
+@pytest.fixture
+def business_workspace(business_harness: Harness) -> Iterator[WorkspaceHarness]:
+    yield from _property_workspace(business_harness, business_accounts=True)
+
+
+def _property_workspace(harness: Harness, *, business_accounts: bool) -> Iterator[WorkspaceHarness]:
+    if business_accounts:
+        with harness.factory() as db:
+            company_row = PropertyCompany(
+                code="COMPANY", name="company", contact_name="联系人", enabled=True
+            )
+            db.add(company_row)
+            db.flush()
+            community_row = Community(
+                property_company_id=company_row.id,
+                code="FIRST-COMMUNITY",
+                name="first-community",
+                address="地址",
+            )
+            db.add(community_row)
+            account = create_super_admin(
+                db,
+                scope="property_admin",
+                property_company_id=company_row.id,
+                login_name="property_root",
+                display_name="property_root",
+                password=NEW_PASSWORD,
+                session_version=2,
+            )
+            db.commit()
+            company_id, community_id, account_id = company_row.id, community_row.id, account.id
+    else:
+        harness.login()
+        company_data = company(harness)
+        community_data = create_community(harness, company_data["id"], "first-community")
+        account_data = admin(harness, company_data["id"])
+        enabled = harness.client.patch(
+            f"/v1/property-companies/{company_data['id']}",
+            json={"enabled": True},
+            headers=harness.headers(),
+        )
+        assert enabled.status_code == 200, enabled.text
+        company_id, community_id, account_id = (
+            company_data["id"],
+            community_data["id"],
+            account_data["id"],
+        )
     property_app = create_app("property-admin-api")
 
     def database() -> Generator[Session]:
@@ -143,17 +217,36 @@ def workspace(harness: Harness) -> Iterator[WorkspaceHarness]:
     outer = FastAPI()
     outer.mount("/api/property", property_app)
     with TestClient(outer, raise_server_exceptions=False) as client:
+        if business_accounts:
+            token, _ = harness.store.create("property_admin", account_id, 2)
+            client.cookies.set(
+                "admin_session",
+                token,
+                domain="testserver.local",
+                path=harness.store.settings.property_admin_cookie_path,
+            )
         yield WorkspaceHarness(
             client=client,
             platform=harness,
-            company_id=company_data["id"],
-            account_id=account_data["id"],
-            community_id=community_data["id"],
+            company_id=company_id,
+            account_id=account_id,
+            community_id=community_id,
         )
 
 
 @pytest.fixture
 def resident(harness: Harness, monkeypatch: MonkeyPatch) -> Iterator[ResidentHarness]:
+    yield from _resident(harness, monkeypatch)
+
+
+@pytest.fixture
+def business_resident(
+    business_harness: Harness, monkeypatch: MonkeyPatch
+) -> Iterator[ResidentHarness]:
+    yield from _resident(business_harness, monkeypatch)
+
+
+def _resident(harness: Harness, monkeypatch: MonkeyPatch) -> Iterator[ResidentHarness]:
     store = ResidentSessionStore(cast("Redis[str]", harness.redis), harness.store.settings)
     monkeypatch.setattr("backend_app.core.resident_sessions.time", lambda: harness.redis.now)
     wechat = FakeWechat()

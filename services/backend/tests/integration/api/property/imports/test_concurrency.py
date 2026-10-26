@@ -24,7 +24,6 @@ def test_simultaneous_http_confirmation_creates_one_execution_task(
     tmp_path: Path,
     same_key: bool,
 ) -> None:
-    workspace.complete_login()
     install_http_registry(monkeypatch, tmp_path)
     created = workspace.client.post(
         f"{PREFIX}/import-batches",

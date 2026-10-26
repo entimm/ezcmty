@@ -37,6 +37,8 @@
 
 ## Fixture 与资源隔离
 
+后端数据库模板与业务账号准备的具体机制见[后端测试运行准备](../architecture/test-runtime.md)。
+
 - 测试文件不得导入其他测试文件中的 fixture、类型、常量或辅助函数。共享 fixture 放入最近的 `conftest.py`，共享替身、数据工厂和 Harness 放入职责明确的辅助模块。
 - 根级 `conftest.py` 只维护全局环境、缓存清理等通用要求；集成测试共享数据库 fixture 放在 `integration/conftest.py`，业务初始化和专用依赖留在所属测试范围。
 - 服务进程等高成本资源可按 session 复用；业务数据、Redis 键空间、客户端会话、环境变量、应用缓存及可变时钟必须按用例隔离。测试不依赖执行顺序，也不共享可变业务状态。

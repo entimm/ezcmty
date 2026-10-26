@@ -135,7 +135,6 @@ class HouseImports:
 def house_imports(
     workspace: WorkspaceHarness, monkeypatch: MonkeyPatch, tmp_path: Path
 ) -> HouseImports:
-    workspace.complete_login()
     monkeypatch.setenv("APP_IMPORT_STORAGE_ROOT", str(tmp_path / "private-imports"))
     get_settings.cache_clear()
     return HouseImports(

@@ -11,8 +11,10 @@ from backend_app.models.admin import AdminAuditLog
 from backend_app.models.housing import House, HouseOwner
 
 
-def test_hierarchy_subtree_filters_paths_and_empty_page_total(workspace: WorkspaceHarness) -> None:
-    workspace.complete_login()
+def test_hierarchy_subtree_filters_paths_and_empty_page_total(
+    business_workspace: WorkspaceHarness,
+) -> None:
+    workspace = business_workspace
     phase = create_node(workspace, "东区", "phase")
     building = create_node(workspace, parent_id=phase["id"])
     unit = create_node(workspace, "一单元", "unit", building["id"])
@@ -59,9 +61,9 @@ def test_hierarchy_subtree_filters_paths_and_empty_page_total(workspace: Workspa
 
 
 def test_house_owners_normalization_atomicity_audit_and_plaintext_storage(
-    workspace: WorkspaceHarness,
+    business_workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     building = create_node(workspace)
     owners = [
         {"name": " 张甲 ", "phone": "+8613800000000"},
@@ -120,9 +122,9 @@ def test_house_owners_normalization_atomicity_audit_and_plaintext_storage(
 
 
 def test_disable_preserves_descendant_state_and_allows_corrections(
-    workspace: WorkspaceHarness,
+    business_workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     building = create_node(workspace)
     unit = create_node(workspace, "一单元", "unit", building["id"])
     house = create_house(workspace, unit["id"], owners=[{"name": "业主", "phone": "13800000000"}])
@@ -183,9 +185,9 @@ def test_disable_preserves_descendant_state_and_allows_corrections(
     [("space-nodes", {"node_type": "unit", "name": "错误根节点"}), ("houses", {"room_no": "101"})],
 )
 def test_invalid_parent_types(
-    workspace: WorkspaceHarness, suffix: str, body: dict[str, Any]
+    business_workspace: WorkspaceHarness, suffix: str, body: dict[str, Any]
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     if suffix == "houses":
         phase = create_node(workspace, "分区", "phase")
         body["space_node_id"] = phase["id"]
@@ -212,9 +214,9 @@ def test_invalid_parent_types(
     ],
 )
 def test_updates_reject_empty_fixed_and_null_fields(
-    workspace: WorkspaceHarness, entity: str, patch: dict[str, Any]
+    business_workspace: WorkspaceHarness, entity: str, patch: dict[str, Any]
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     node = create_node(workspace)
     house = create_house(workspace, node["id"], owners=[{"name": "业主", "phone": "13800000000"}])
     owner = workspace.client.get(housing_path(workspace, f"/houses/{house['id']}/owners")).json()[
@@ -232,9 +234,9 @@ def test_updates_reject_empty_fixed_and_null_fields(
 
 
 def test_duplicate_names_rooms_and_owner_contacts_include_disabled_rows(
-    workspace: WorkspaceHarness,
+    business_workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     node = create_node(workspace)
     house = create_house(workspace, node["id"], owners=[{"name": "业主", "phone": "13800000000"}])
     owner_path = housing_path(workspace, f"/houses/{house['id']}/owners")
@@ -280,8 +282,8 @@ def test_duplicate_names_rooms_and_owner_contacts_include_disabled_rows(
     )
 
 
-def test_company_community_and_house_nested_scope(workspace: WorkspaceHarness) -> None:
-    workspace.complete_login()
+def test_company_community_and_house_nested_scope(business_workspace: WorkspaceHarness) -> None:
+    workspace = business_workspace
     node = create_node(workspace)
     house = create_house(workspace, node["id"], owners=[{"name": "业主", "phone": "13800000000"}])
     owner = workspace.client.get(housing_path(workspace, f"/houses/{house['id']}/owners")).json()[
@@ -320,9 +322,9 @@ def test_company_community_and_house_nested_scope(workspace: WorkspaceHarness) -
 
 
 def test_property_maintenance_covers_house_owner_and_space_operations(
-    workspace: WorkspaceHarness,
+    business_workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     node = create_node(workspace)
     house = create_house(workspace, node["id"], owners=[{"name": "业主", "phone": "13800000000"}])
     set_permissions(workspace, {"property.housing.manage", "property.housing.read"})
@@ -349,9 +351,9 @@ def test_property_maintenance_covers_house_owner_and_space_operations(
 
 
 def test_housing_writes_require_csrf_and_hide_invalid_owner_input(
-    workspace: WorkspaceHarness, caplog: pytest.LogCaptureFixture
+    business_workspace: WorkspaceHarness, caplog: pytest.LogCaptureFixture
 ) -> None:
-    workspace.complete_login()
+    workspace = business_workspace
     node = create_node(workspace)
     body = {"space_node_id": node["id"], "room_no": "101"}
     assert workspace.client.post(housing_path(workspace, "/houses"), json=body).status_code == 403

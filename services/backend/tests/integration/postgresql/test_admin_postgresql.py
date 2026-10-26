@@ -18,6 +18,7 @@ from tests.support.admin_services import PASSWORD
 from backend_app.core.admin_sessions import AdminSessionStore
 from backend_app.core.errors import AppError
 from backend_app.db.base import Base
+from backend_app.db.session import get_session_factory
 from backend_app.models.admin import AdminAccount, AdminAuditLog, AdminRole, AdminRolePermission
 from backend_app.models.housing import House, HouseOwner, SpaceNode
 from backend_app.models.property import Community, PropertyCompany
@@ -114,10 +115,11 @@ def test_real_redis_revocation_and_scope_separation(
     assert caught.value.code == "auth.rate_limited"
 
 
+@pytest.mark.usefixtures("real_redis")
 def test_native_types_and_fresh_migration_schema(
-    real_admin: tuple[sessionmaker[Session], AdminSessionStore],
+    fresh_migrated_database_url: str,
 ) -> None:
-    factory, _ = real_admin
+    factory = get_session_factory()
     legacy_id = str(uuid4())
     with factory() as db:
         service = PlatformAdminService(db)

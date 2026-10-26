@@ -15,7 +15,6 @@ def test_create_upload_and_confirm_replay_first_safe_responses(
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    harness.login()
     install_http_registry(monkeypatch, tmp_path)
     target = company(harness)
     admin(harness, target["id"])
@@ -105,7 +104,6 @@ def test_upload_replay_uses_first_response_after_source_expiry_without_recreatin
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    harness.login()
     _, storage = install_http_registry(monkeypatch, tmp_path)
     target = company(harness)
     admin(harness, target["id"])

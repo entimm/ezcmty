@@ -15,8 +15,8 @@ from backend_app.models.property import PropertyCompany
 
 
 @pytest.fixture
-def claim_house(workspace: WorkspaceHarness) -> dict[str, Any]:
-    workspace.complete_login()
+def claim_house(business_workspace: WorkspaceHarness) -> dict[str, Any]:
+    workspace = business_workspace
     base = f"{PREFIX}/communities/{workspace.community_id}"
     node = workspace.client.post(
         base + "/space-nodes",
@@ -64,11 +64,14 @@ def review(
 
 
 def test_matched_claim_waits_for_property_and_phone_lifecycle_is_independent(
-    resident: ResidentHarness,
-    workspace: WorkspaceHarness,
+    business_resident: ResidentHarness,
+    business_workspace: WorkspaceHarness,
     claim_house: dict[str, Any],
-    harness: Harness,
+    business_harness: Harness,
 ) -> None:
+    resident = business_resident
+    workspace = business_workspace
+    harness = business_harness
     claim = submit(resident, claim_house)
     assert claim["status"] == "pending" and claim["applicant_phone"] == "13800138000"
     assert "match_status" not in claim and "phone_binding_id" not in claim
@@ -111,11 +114,14 @@ def test_matched_claim_waits_for_property_and_phone_lifecycle_is_independent(
 
 
 def test_unmatched_approval_requires_reason_and_never_updates_owner_archive(
-    resident: ResidentHarness,
-    workspace: WorkspaceHarness,
+    business_resident: ResidentHarness,
+    business_workspace: WorkspaceHarness,
     claim_house: dict[str, Any],
-    harness: Harness,
+    business_harness: Harness,
 ) -> None:
+    resident = business_resident
+    workspace = business_workspace
+    harness = business_harness
     claim = submit(resident, claim_house, name="李四")
     assert review(workspace, claim).status_code == 422
     result = review(workspace, claim, reason="已当面核实产权证明，资料后续维护")
@@ -136,10 +142,12 @@ def test_unmatched_approval_requires_reason_and_never_updates_owner_archive(
 
 
 def test_cancel_then_reapply_release_and_reapply_preserve_history(
-    resident: ResidentHarness,
-    workspace: WorkspaceHarness,
+    business_resident: ResidentHarness,
+    business_workspace: WorkspaceHarness,
     claim_house: dict[str, Any],
 ) -> None:
+    resident = business_resident
+    workspace = business_workspace
     first = submit(resident, claim_house)
     cancelled = resident.client.post(
         f"/v1/miniapp-users/me/house-claims/{first['id']}/cancellations",
@@ -170,13 +178,16 @@ def test_cancel_then_reapply_release_and_reapply_preserve_history(
 
 @pytest.mark.parametrize("failure", ["binding", "audit"])
 def test_approval_failure_rolls_back_application_binding_and_audit(
-    resident: ResidentHarness,
-    workspace: WorkspaceHarness,
+    business_resident: ResidentHarness,
+    business_workspace: WorkspaceHarness,
     claim_house: dict[str, Any],
-    harness: Harness,
+    business_harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
     failure: str,
 ) -> None:
+    resident = business_resident
+    workspace = business_workspace
+    harness = business_harness
     claim = submit(resident, claim_house)
 
     def fail_audit(*args: Any, **kwargs: Any) -> None:
@@ -215,8 +226,12 @@ def test_approval_failure_rolls_back_application_binding_and_audit(
 
 
 def test_claim_scope_and_duplicate_pending_are_enforced(
-    resident: ResidentHarness, workspace: WorkspaceHarness, claim_house: dict[str, Any]
+    business_resident: ResidentHarness,
+    business_workspace: WorkspaceHarness,
+    claim_house: dict[str, Any],
 ) -> None:
+    resident = business_resident
+    workspace = business_workspace
     claim = submit(resident, claim_house)
     phone = resident.phone()
     data = {
@@ -254,10 +269,12 @@ def test_claim_scope_and_duplicate_pending_are_enforced(
 
 
 def test_claimable_options_follow_enabled_path_and_never_expose_owners(
-    resident: ResidentHarness,
-    workspace: WorkspaceHarness,
+    business_resident: ResidentHarness,
+    business_workspace: WorkspaceHarness,
     claim_house: dict[str, Any],
 ) -> None:
+    resident = business_resident
+    workspace = business_workspace
     prefix = f"/v1/claimable-communities/{workspace.community_id}"
     nodes = resident.client.get(prefix + "/space-nodes", headers=resident.headers()).json()
     assert nodes["total"] == 1 and nodes["items"][0]["node_type"] == "building"
@@ -294,11 +311,14 @@ def test_claimable_options_follow_enabled_path_and_never_expose_owners(
 
 
 def test_stopped_company_does_not_block_resident_history_or_release(
-    resident: ResidentHarness,
-    workspace: WorkspaceHarness,
+    business_resident: ResidentHarness,
+    business_workspace: WorkspaceHarness,
     claim_house: dict[str, Any],
-    harness: Harness,
+    business_harness: Harness,
 ) -> None:
+    resident = business_resident
+    workspace = business_workspace
+    harness = business_harness
     claim = submit(resident, claim_house)
     assert review(workspace, claim).status_code == 200
     with harness.factory() as db:
@@ -327,10 +347,12 @@ def test_stopped_company_does_not_block_resident_history_or_release(
 
 
 def test_revoke_requires_reason_and_current_version(
-    resident: ResidentHarness,
-    workspace: WorkspaceHarness,
+    business_resident: ResidentHarness,
+    business_workspace: WorkspaceHarness,
     claim_house: dict[str, Any],
 ) -> None:
+    resident = business_resident
+    workspace = business_workspace
     claim = submit(resident, claim_house)
     assert review(workspace, claim).status_code == 200
     binding = workspace.client.get(
@@ -357,11 +379,14 @@ def test_revoke_requires_reason_and_current_version(
 
 
 def test_property_data_and_counts_cannot_cross_companies(
-    resident: ResidentHarness,
-    workspace: WorkspaceHarness,
+    business_resident: ResidentHarness,
+    business_workspace: WorkspaceHarness,
     claim_house: dict[str, Any],
-    harness: Harness,
+    business_harness: Harness,
 ) -> None:
+    resident = business_resident
+    workspace = business_workspace
+    harness = business_harness
     from tests.support.admin import admin, company
 
     claim = submit(resident, claim_house)

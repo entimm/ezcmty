@@ -10,7 +10,15 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from alembic import command
+from alembic.config import Config
+from pytest import MonkeyPatch
 from sqlalchemy import create_engine
+from sqlalchemy.engine import make_url
+
+from backend_app.core.config import get_settings
+from backend_app.core.error_catalog import CONTRACT_VERSION
+from tests.support.paths import BACKEND_ROOT
 
 
 def free_port() -> int:
@@ -106,12 +114,13 @@ def postgresql_server(directory: Path) -> Iterator[str]:
 
 
 @contextmanager
-def temporary_database(server_url: str) -> Iterator[str]:
+def temporary_database(server_url: str, *, template: str = "template0") -> Iterator[str]:
     name = "test_" + uuid4().hex
     server = create_engine(server_url + "/postgres", isolation_level="AUTOCOMMIT")
     try:
         with server.connect() as connection:
-            connection.exec_driver_sql(f'CREATE DATABASE "{name}" TEMPLATE template0')
+            quoted_template = server.dialect.identifier_preparer.quote_identifier(template)
+            connection.exec_driver_sql(f'CREATE DATABASE "{name}" TEMPLATE {quoted_template}')
         try:
             yield server_url + "/" + name
         finally:
@@ -119,3 +128,27 @@ def temporary_database(server_url: str) -> Iterator[str]:
                 connection.exec_driver_sql(f'DROP DATABASE "{name}" WITH (FORCE)')
     finally:
         server.dispose()
+
+
+@contextmanager
+def migrated_database_template(server_url: str) -> Iterator[str]:
+    with temporary_database(server_url) as url:
+        with MonkeyPatch.context() as environment:
+            environment.setenv("APP_ENV", "test")
+            environment.setenv("APP_DATABASE_URL", url)
+            environment.setenv("APP_REDIS_URL", "redis://127.0.0.1:6379/0")
+            environment.setenv("APP_VERSION", CONTRACT_VERSION)
+            get_settings.cache_clear()
+            try:
+                command.upgrade(Config(str(BACKEND_ROOT / "alembic.ini")), "head")
+            finally:
+                get_settings.cache_clear()
+        name = make_url(url).database
+        assert name is not None
+        server = create_engine(server_url + "/postgres", isolation_level="AUTOCOMMIT")
+        try:
+            with server.connect() as connection:
+                connection.exec_driver_sql(f'ALTER DATABASE "{name}" ALLOW_CONNECTIONS false')
+            yield name
+        finally:
+            server.dispose()

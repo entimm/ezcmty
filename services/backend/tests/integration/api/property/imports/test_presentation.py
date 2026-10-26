@@ -35,7 +35,6 @@ def test_business_projection_is_whitelisted_and_summary_uses_the_complete_plan(
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    workspace.complete_login()
     install_http_registry(monkeypatch, tmp_path, adapter=PresentationAdapter())
     created = workspace.client.post(
         f"{PREFIX}/import-batches",

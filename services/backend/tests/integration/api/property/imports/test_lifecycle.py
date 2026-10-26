@@ -15,7 +15,6 @@ def test_paused_unpublished_recheck_hides_preview_rows_and_requires_original_rec
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    workspace.complete_login()
     install_http_registry(monkeypatch, tmp_path)
     created = workspace.client.post(
         f"{PREFIX}/import-batches",
@@ -84,7 +83,6 @@ def test_running_artifact_does_not_block_safe_cancellation_or_keep_old_file_curr
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    workspace.complete_login()
     install_http_registry(monkeypatch, tmp_path)
     created = workspace.client.post(
         f"{PREFIX}/import-batches",

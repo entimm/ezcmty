@@ -5,7 +5,6 @@ from tests.support.workspace import PREFIX, WorkspaceHarness
 def test_property_production_catalogue_does_not_expose_test_types(
     workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
     result = workspace.client.get(f"{PREFIX}/import-types")
     assert result.status_code == 200, result.text
     assert all(item["key"] != "test_records" for item in result.json()["items"])
@@ -27,7 +26,6 @@ def test_property_production_catalogue_does_not_expose_test_types(
 def test_empty_role_lists_empty_types_but_cannot_create_or_read_target_batches(
     workspace: WorkspaceHarness,
 ) -> None:
-    workspace.complete_login()
     body = {
         "import_type": "houses",
         "template_version_no": 1,
