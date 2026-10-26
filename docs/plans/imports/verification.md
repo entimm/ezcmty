@@ -2,7 +2,7 @@
 
 ## 交付范围
 
-2026-10-23，在独立 worktree `.worktrees/imports`、分支 `feat/generic-imports` 完成 [实施计划](implementation.md) 的代码及专项验收。P7-05 的全仓质量门禁仍受下述既有格式问题阻断，未勾选为完成。
+2026-10-23，在独立 worktree `.worktrees/imports`、分支 `feat/generic-imports` 完成 [实施计划](implementation.md) 的代码及专项验收。P7-05 的全仓质量门禁未通过，未勾选为完成。
 
 已实现八表及迁移、持久请求幂等、私有文件与有界解析、版本注册、持久 Worker、预检确认、执行账本、取消、原任务恢复、失败新批次、错误文件、保留清理，以及平台与物业两端 API 和管理页面。正式 OpenAPI 版本为 `0.14.0`。
 
@@ -21,7 +21,7 @@
 | `make check-frontend`                         | 两端 TypeScript、ESLint、Vitest、边界检查及生产构建通过。                                                                |
 | `pnpm api:check`                              | OpenAPI lint、bundle、错误目录生成一致性及四运行端契约检查通过。                                                         |
 | 本任务修改文件的 Prettier、`git diff --check` | 通过。                                                                                                                   |
-| `make check`                                  | 未通过。唯一已知阻塞为下述未修改文件的既有格式问题。                                                                     |
+| `make check`                                  | 未通过。                                                                                                                 |
 
 最终导入回归命令：
 
@@ -58,6 +58,6 @@ APP_RUN_POSTGRESQL_TESTS=1 .venv/bin/pytest \
 
 ## 遗留问题与停止边界
 
-全仓 `make check` 在 Prettier 阶段因 `deploy/staging/README.md` 失败。该文件与任务开始时的 HEAD 完全一致，`git diff --exit-code HEAD -- deploy/staging/README.md` 通过。依照任务范围约束仅记录，不顺带修正；P7-05 保持未完成，不能声称全仓质量门禁通过。
+当次全仓 `make check` 未通过，P7-05 保持未完成。
 
 除该门禁基线问题外，未发现本次范围内未完成的实现。真实环境性能、存储配置及发布恢复演练不由本地隔离验收替代；部署与业务接入仍在本次授权之外。本阶段在交付后停止。

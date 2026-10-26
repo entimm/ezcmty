@@ -4,7 +4,7 @@
 
 开发填充工具位于 `services/backend/devtools/seed/`，不进入仅收集 `src/` 的后端发布包。业务写入遵循「命令生成参数 → 现有应用 Service → 现有持久化逻辑 → PostgreSQL」。只读恢复查询与覆盖检查位于开发工具自己的 Repository，不向业务代码增加 seed 分支，不修改公共 API、数据库结构或 Service 的事务边界。
 
-写入必须显式配置 `APP_ENV=local/test` 和 `SEED_ENABLED=1`，且数据库迁移已到当前 head。生产部署不分发 `devtools/`，生产及 staging 环境不提供绕过开关。工具使用已有 PostgreSQL、Redis，无须启动 HTTP 进程。凭据不进入日志或 Git。
+写入必须显式配置 `APP_ENV=local/test` 和 `SEED_ENABLED=1`，且数据库迁移已到当前 head；不提供绕过环境限制的开关。生产部署不分发 `devtools/`。工具使用已有 PostgreSQL、Redis，无须启动 HTTP 进程。凭据不进入日志或 Git。
 
 ## 场景与数量
 
