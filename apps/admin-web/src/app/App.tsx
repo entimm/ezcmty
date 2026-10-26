@@ -722,7 +722,7 @@ function Workspace({
                     <Select
                       className="community-select"
                       aria-label="当前小区"
-                      variant="borderless"
+                      variant="outlined"
                       showSearch
                       optionFilterProp="label"
                       value={communityId || undefined}
