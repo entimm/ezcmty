@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { useState } from 'react';
+import { ConfigProvider } from 'antd';
 import {
   act,
   cleanup,
@@ -103,6 +104,14 @@ function WorkspaceProbe() {
         临时查看备注
         <input value={note} onChange={(event) => setNote(event.target.value)} />
       </label>
+      <button
+        onClick={() => {
+          setNote('等待提交的备注');
+          context.setDirty(true);
+        }}
+      >
+        填写未保存备注
+      </button>
       {context.page === 'houses' && (
         <button
           onClick={() =>
@@ -205,7 +214,11 @@ function show(path: string, permissions = ['property.housing.read']) {
   });
   vi.stubGlobal('fetch', fetch);
   act(() => navigate(path, true));
-  render(<App />);
+  render(
+    <ConfigProvider theme={{ token: { motion: false } }}>
+      <App />
+    </ConfigProvider>,
+  );
   return fetch;
 }
 async function ready(page: string) {
@@ -218,7 +231,7 @@ async function ready(page: string) {
     ),
   );
 }
-async function switchToLastCommunity() {
+async function selectLastCommunity() {
   const combo = screen.getByRole('combobox', { name: '当前小区' });
   fireEvent.mouseDown(combo);
   fireEvent.change(combo, { target: { value: '云栖花园' } });
@@ -232,6 +245,9 @@ async function switchToLastCommunity() {
       selector: '.ant-select-item-option-content',
     }),
   );
+}
+async function switchToLastCommunity() {
+  await selectLastCommunity();
   await waitFor(() =>
     expect(screen.getByTestId('business-community')).toHaveTextContent(
       lastCommunity,
@@ -289,9 +305,7 @@ describe('工作空间完整组装', () => {
   it('公司范围页面切换小区时保持公司范围和页面状态', async () => {
     show('/property/company');
     await ready('company');
-    expect(
-      screen.getByText('本页为本公司范围 · 不受小区选择影响'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('公司范围 · 不受小区选择影响')).toBeInTheDocument();
     fireEvent.change(screen.getByRole('textbox', { name: '临时查看备注' }), {
       target: { value: '查看公司整体资料' },
     });
@@ -375,6 +389,13 @@ describe('工作空间完整组装', () => {
       expect(screen.getByTestId('business-page')).toHaveTextContent(page),
     );
     expect(screen.queryByText('页面或记录不存在')).not.toBeInTheDocument();
+    expect(screen.getByText('平台管理范围')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('combobox', { name: '当前小区' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: '面包屑' }),
+    ).toBeInTheDocument();
   });
   it('只读物业命令面板仅列出本端授权菜单，不暴露跨端或写操作', async () => {
     show('/property/houses', ['property.housing.read', 'property.bill.read']);
@@ -440,6 +461,11 @@ describe('工作空间完整组装', () => {
     expect(window.location.pathname).toBe(
       '/property/communities/' + firstCommunity + '/houses/' + house,
     );
+    expect(
+      within(screen.getByRole('navigation', { name: '面包屑' })).getByText(
+        '房屋详情',
+      ),
+    ).toHaveAttribute('aria-current', 'page');
     fireEvent.click(screen.getByRole('button', { name: '返回房屋列表' }));
     await waitFor(() =>
       expect(screen.getByTestId('business-page')).toHaveTextContent('houses'),
@@ -452,4 +478,58 @@ describe('工作空间完整组装', () => {
       '/property/communities/' + firstCommunity + '/houses',
     );
   });
+  it.each(['面包屑导航', '切换小区'])(
+    '%s先确认未保存内容，取消保留原页，确认后执行目标',
+    async (action) => {
+      show('/property/houses');
+      await ready('houses');
+      fireEvent.click(screen.getByRole('button', { name: '填写未保存备注' }));
+      expect(screen.getByText(/有未保存内容/)).toBeInTheDocument();
+      const leave = async () => {
+        if (action === '切换小区') await selectLastCommunity();
+        else
+          fireEvent.click(
+            within(
+              screen.getByRole('navigation', { name: '面包屑' }),
+            ).getByRole('button', { name: '工作概览' }),
+          );
+      };
+      await leave();
+      const dialog = await screen.findByRole('dialog');
+      expect(dialog).toHaveTextContent('离开前放弃未保存的内容？');
+      fireEvent.click(within(dialog).getByRole('button', { name: '继续编辑' }));
+      await waitFor(() => expect(dialog).not.toBeInTheDocument());
+      expect(window.location.pathname).toBe('/property/houses');
+      expect(screen.getByTestId('business-page')).toHaveTextContent('houses');
+      expect(screen.getByTestId('business-community')).toHaveTextContent(
+        firstCommunity,
+      );
+      expect(screen.getByRole('textbox', { name: '临时查看备注' })).toHaveValue(
+        '等待提交的备注',
+      );
+      expect(screen.getByText(/有未保存内容/)).toBeInTheDocument();
+      await leave();
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', {
+          name: '放弃并继续',
+        }),
+      );
+      if (action === '切换小区') {
+        await waitFor(() =>
+          expect(screen.getByTestId('business-community')).toHaveTextContent(
+            lastCommunity,
+          ),
+        );
+        expect(window.location.pathname).toBe(
+          '/property/communities/' + lastCommunity + '/houses',
+        );
+      } else {
+        await waitFor(() =>
+          expect(screen.getByTestId('business-page')).toHaveTextContent('home'),
+        );
+        expect(window.location.pathname).toBe('/property');
+      }
+      expect(screen.queryByText(/有未保存内容/)).not.toBeInTheDocument();
+    },
+  );
 });

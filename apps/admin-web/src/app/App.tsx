@@ -491,6 +491,9 @@ function Workspace({
     active = match?.route.parent || page;
   const title = match?.route.title || '页面不存在',
     companyScope = auth.scope === 'platform' || match?.route.companyScope;
+  const navigationGroup =
+    groups.find((group) => group.items.some((item) => item.page === active))
+      ?.label || '账户';
   const actions =
     auth.scope === 'property'
       ? [
@@ -676,81 +679,85 @@ function Workspace({
       </aside>
       <div className="main-area">
         <div className="contextbar">
-          <div className="context-selector">
-            {auth.scope === 'property' ? (
-              <>
-                <span className="context-icon">
-                  <ApartmentOutlined />
-                </span>
-                <span className="context-label">当前小区</span>
-                <Select
-                  aria-label="当前小区"
-                  variant="borderless"
-                  showSearch
-                  optionFilterProp="label"
-                  value={communityId || undefined}
-                  placeholder={
-                    communities.isPending ? '正在读取小区' : '请选择小区'
-                  }
-                  loading={communities.isFetching}
-                  onChange={switchCommunity}
-                  options={options.map((item) => ({
-                    value: item.id,
-                    label: item.name + (item.enabled ? '' : '（已停用）'),
-                  }))}
-                  style={{ minWidth: 148, maxWidth: 260, fontWeight: 600 }}
-                  notFoundContent={
-                    communities.error
-                      ? '读取失败，请在下方重试'
-                      : '暂无可选小区'
-                  }
-                />
-                <div className="context-divider" />
-                <span
-                  className={
-                    'scope-explanation ' + (companyScope ? 'company-scope' : '')
-                  }
-                >
-                  {companyScope
-                    ? '本页为本公司范围 · 不受小区选择影响'
-                    : `本页业务范围：${community?.name || '请选择小区'}`}
-                </span>
-              </>
-            ) : (
-              <>
-                <BankOutlined />
-                <strong>平台管理范围</strong>
-                <div className="context-divider" />
-                <span className="scope-explanation">
-                  按权限管理物业接入、支付资金与系统配置
-                </span>
-              </>
-            )}
-          </div>
-          <span className="context-right">
-            <SafetyCertificateOutlined />{' '}
-            {auth.scope === 'property' ? '公司授权范围' : '平台授权范围'}
-          </span>
-        </div>
-        <main className="workspace-scroll">
-          <div className="breadcrumb">
-            <button onClick={() => go('home')}>工作概览</button>
+          <nav
+            className="breadcrumb"
+            aria-label="面包屑"
+            title={
+              page === 'home'
+                ? '工作概览'
+                : `工作概览 / ${navigationGroup} / ${title}`
+            }
+          >
+            <button
+              aria-current={page === 'home' ? 'page' : undefined}
+              onClick={() => go('home')}
+            >
+              工作概览
+            </button>
             {page !== 'home' && (
               <>
-                <span>/</span>
-                <span>
-                  {groups.find((group) =>
-                    group.items.some((item) => item.page === active),
-                  )?.label || '账户'}
-                </span>
-                <span>/</span>
-                <strong>{title}</strong>
+                <span aria-hidden="true">/</span>
+                <span className="breadcrumb-group">{navigationGroup}</span>
+                <span aria-hidden="true">/</span>
+                <strong aria-current="page" title={title}>
+                  {title}
+                </strong>
               </>
             )}
-            <span className="draft-marker">
-              {dirty ? '● 有未保存内容' : ''}
-            </span>
+          </nav>
+          <div className="context-tools">
+            {dirty && (
+              <span className="draft-marker" role="status">
+                ● 有未保存内容
+              </span>
+            )}
+            <div className="context-selector">
+              {auth.scope === 'property' ? (
+                <>
+                  <div className="community-selector" title={community?.name}>
+                    <span className="context-icon">
+                      <ApartmentOutlined />
+                    </span>
+                    <span className="context-label">当前小区</span>
+                    <Select
+                      className="community-select"
+                      aria-label="当前小区"
+                      variant="borderless"
+                      showSearch
+                      optionFilterProp="label"
+                      value={communityId || undefined}
+                      placeholder={
+                        communities.isPending ? '正在读取小区' : '请选择小区'
+                      }
+                      loading={communities.isFetching}
+                      onChange={switchCommunity}
+                      options={options.map((item) => ({
+                        value: item.id,
+                        label: item.name + (item.enabled ? '' : '（已停用）'),
+                      }))}
+                      notFoundContent={
+                        communities.error
+                          ? '读取失败，请在下方重试'
+                          : '暂无可选小区'
+                      }
+                    />
+                  </div>
+                  {companyScope && (
+                    <span className="company-scope">
+                      公司范围 · 不受小区选择影响
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <BankOutlined />
+                  <strong>平台管理范围</strong>
+                </>
+              )}
+            </div>
           </div>
+        </div>
+        <main className="workspace-scroll">
           {communities.error && (
             <ReadError
               error={communities.error}
