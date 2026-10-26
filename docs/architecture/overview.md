@@ -77,4 +77,4 @@ backend_app/api/webhook/
 
 ## 项目命名
 
-`xlife2` 仅是当前临时仓库目录名。代码、Python 包、前端包、运行服务、环境变量和 OpenAPI 标识不得依赖该名称。
+项目名称统一为 `ezcmty`，展示名称按上下文使用 `Ezcmty` 或 `EZCMTY`。Python 包、业务模块、运行进程和环境变量继续使用通用技术名称，不依赖仓库目录名。

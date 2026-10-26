@@ -11,7 +11,7 @@
 
 ### 本地管理后台 HTTPS
 
-本地域名站点复用 macOS 的 dnsmasq 和 Homebrew Nginx。`platform.xlife.test`、`property.xlife.test` 解析到回环地址，由 Nginx 在 `127.0.0.1:8443` 终止 TLS，再通过 HTTP / WebSocket 转发到 Umi 的 5173 端口；API 继续使用 Umi 的同源代理。该入口用于本机开发，保留两端既有路由、API 前缀和会话隔离。
+本地域名站点复用 macOS 的 dnsmasq 和 Homebrew Nginx。`platform.ezcmty.test`、`property.ezcmty.test` 解析到回环地址，由 Nginx 在 `127.0.0.1:8443` 终止 TLS，再通过 HTTP / WebSocket 转发到 Umi 的 5173 端口；API 继续使用 Umi 的同源代理。该入口用于本机开发，保留两端既有路由、API 前缀和会话隔离。
 
 ```mermaid
 flowchart LR

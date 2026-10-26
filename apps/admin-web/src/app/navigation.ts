@@ -14,7 +14,7 @@ function publish() {
 export function navigate(to: string, replace = false) {
   if (!replace) acceptedIndex++;
   window.history[replace ? 'replaceState' : 'pushState'](
-    { xlifeNavigationIndex: acceptedIndex },
+    { ezcmtyNavigationIndex: acceptedIndex },
     '',
     to,
   );
@@ -31,11 +31,11 @@ function subscribe(listener: () => void) {
   if (!listeners.size) {
     accepted = address();
     acceptedIndex =
-      typeof window.history.state?.xlifeNavigationIndex === 'number'
-        ? window.history.state.xlifeNavigationIndex
+      typeof window.history.state?.ezcmtyNavigationIndex === 'number'
+        ? window.history.state.ezcmtyNavigationIndex
         : 0;
     window.history.replaceState(
-      { xlifeNavigationIndex: acceptedIndex },
+      { ezcmtyNavigationIndex: acceptedIndex },
       '',
       accepted,
     );
@@ -55,7 +55,7 @@ function onBack() {
     return;
   }
   const target = address();
-  const targetIndex = window.history.state?.xlifeNavigationIndex as
+  const targetIndex = window.history.state?.ezcmtyNavigationIndex as
     number | undefined;
   if (guard && shouldBlock?.() && accepted !== target) {
     if (typeof targetIndex === 'number' && targetIndex !== acceptedIndex) {
@@ -64,7 +64,7 @@ function onBack() {
       window.history.go(-delta);
     } else {
       window.history.replaceState(
-        { xlifeNavigationIndex: acceptedIndex },
+        { ezcmtyNavigationIndex: acceptedIndex },
         '',
         accepted,
       );

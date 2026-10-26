@@ -255,8 +255,8 @@ function importRoutes(scope: Scope): Route[] {
   ];
 }
 export const configuredHosts = {
-  platform: process.env.UMI_APP_PLATFORM_HOST || 'platform.xlife.test',
-  property: process.env.UMI_APP_PROPERTY_HOST || 'property.xlife.test',
+  platform: process.env.UMI_APP_PLATFORM_HOST || 'platform.ezcmty.test',
+  property: process.env.UMI_APP_PROPERTY_HOST || 'property.ezcmty.test',
 };
 export function resolveScope(
   hostname: string,

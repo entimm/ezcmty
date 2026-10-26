@@ -109,16 +109,16 @@ export default function App() {
     pathname = address.split('?')[0],
     scope = resolveScope(window.location.hostname, pathname);
   const [brand, setBrand] = useState<Brand>(() => {
-    const value = stored('xlife-admin-brand', 'blue');
+    const value = stored('ezcmty-admin-brand', 'blue');
     return value in colors ? (value as Brand) : 'blue';
   });
   const [compact, setCompact] = useState(
-    () => stored('xlife-admin-density', 'standard') === 'compact',
+    () => stored('ezcmty-admin-density', 'standard') === 'compact',
   );
   const color = colors[brand];
   useEffect(() => {
-    remember('xlife-admin-brand', brand);
-    remember('xlife-admin-density', compact ? 'compact' : 'standard');
+    remember('ezcmty-admin-brand', brand);
+    remember('ezcmty-admin-density', compact ? 'compact' : 'standard');
   }, [brand, compact]);
   return (
     <ConfigProvider
@@ -369,7 +369,7 @@ function Workspace({
       window.removeEventListener('beforeunload', before);
     };
   }, [confirmLeave]);
-  const communityKey = `xlife-admin:${auth.scope}:${session.subjectId}:community`;
+  const communityKey = `ezcmty-admin:${auth.scope}:${session.subjectId}:community`;
   const [selected, setSelected] = useState(() => stored(communityKey, ''));
   const communities = useQuery({
     queryKey: [auth.scope, session.subjectId, 'context-communities'],

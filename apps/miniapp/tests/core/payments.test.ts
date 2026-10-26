@@ -247,7 +247,7 @@ it.each(['success', 'cancelled'] as const)(
     const pending = controller.pay(order());
     await ready;
     const userBKey =
-      'xlife:' +
+      'ezcmty:' +
       API_BASE_URL +
       ':resident-payment:resident-b:uncertain:order-a';
     storage.set(userBKey, true);

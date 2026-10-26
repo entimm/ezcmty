@@ -11,7 +11,7 @@ const storage = new Map(
     ? JSON.parse(fs.readFileSync(stateFile, 'utf8'))
     : [],
 );
-storage.set('xlife:' + input.base + ':resident-session', {
+storage.set('ezcmty:' + input.base + ':resident-session', {
   token: input.token,
   userId: input.userId,
   expiresAt: new Date(Date.now() + 3600000).toISOString(),

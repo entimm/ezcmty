@@ -8,7 +8,7 @@ export interface Credential {
   expiresAt: string;
 }
 
-const storageKey = 'xlife:' + API_BASE_URL + ':resident-session';
+const storageKey = 'ezcmty:' + API_BASE_URL + ':resident-session';
 let credential: Credential | null | undefined;
 let revision = 0;
 let loginPromise: Promise<void> | null = null;

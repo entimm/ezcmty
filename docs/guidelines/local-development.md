@@ -95,9 +95,9 @@ make init-platform-admin
 
 ### 本地域名站点
 
-推荐访问 `https://platform.xlife.test:8443/`、`https://property.xlife.test:8443/`。本地 HTTPS 的组件、证书和恢复约定见 [部署约定](../architecture/deployment.md#本地管理后台-https)。普通 HTTP 的 `.test` 域名不属于安全上下文，不能直接使用 `crypto.randomUUID()`。
+推荐访问 `https://platform.ezcmty.test:8443/`、`https://property.ezcmty.test:8443/`。本地 HTTPS 的组件、证书和恢复约定见 [部署约定](../architecture/deployment.md#本地管理后台-https)。普通 HTTP 的 `.test` 域名不属于安全上下文，不能直接使用 `crypto.randomUUID()`。
 
-将两个域名解析到 `127.0.0.1`；已有 dnsmasq 与 `/etc/resolver/test` 时先用 `dscacheutil -q host -a name platform.xlife.test` 验证，复用已有解析。Nginx 在回环地址的 8443 端口提供 HTTPS，再转发到 `127.0.0.1:5173`；8080 保留为 HTTP 开发入口。
+将两个域名解析到 `127.0.0.1`；已有 dnsmasq 与 `/etc/resolver/test` 时先用 `dscacheutil -q host -a name platform.ezcmty.test` 验证，复用已有解析。Nginx 在回环地址的 8443 端口提供 HTTPS，再转发到 `127.0.0.1:5173`；8080 保留为 HTTP 开发入口。
 
 先设置证书目录和 OpenSSL 路径。Homebrew OpenSSL 在 Apple Silicon Mac 上通常位于 `/opt/homebrew/opt/openssl@3/bin/openssl`，Intel Mac 按实际安装前缀调整：
 
@@ -131,41 +131,41 @@ sudo security add-trusted-cert -d -r trustRoot \
 
 ```bash
 "$TLS_OPENSSL" req -new -newkey rsa:2048 -nodes -sha256 \
-  -subj '/CN=platform.xlife.test/O=Local Development' \
-  -keyout "$TLS_ROOT/certs/xlife.test.key" -out "$TLS_ROOT/certs/xlife.test.csr"
-cat > "$TLS_ROOT/certs/xlife.test.ext" <<'EOF'
+  -subj '/CN=platform.ezcmty.test/O=Local Development' \
+  -keyout "$TLS_ROOT/certs/ezcmty.test.key" -out "$TLS_ROOT/certs/ezcmty.test.csr"
+cat > "$TLS_ROOT/certs/ezcmty.test.ext" <<'EOF'
 basicConstraints=critical,CA:FALSE
 keyUsage=critical,digitalSignature,keyEncipherment
 extendedKeyUsage=serverAuth
 subjectKeyIdentifier=hash
 authorityKeyIdentifier=keyid,issuer
-subjectAltName=DNS:platform.xlife.test,DNS:property.xlife.test
+subjectAltName=DNS:platform.ezcmty.test,DNS:property.ezcmty.test
 EOF
 "$TLS_OPENSSL" x509 -req -sha256 -days 365 \
-  -in "$TLS_ROOT/certs/xlife.test.csr" \
+  -in "$TLS_ROOT/certs/ezcmty.test.csr" \
   -CA "$TLS_ROOT/ca/root-ca.pem" -CAkey "$TLS_ROOT/ca/root-ca.key" \
   -CAserial "$TLS_ROOT/ca/root-ca.srl" -CAcreateserial \
-  -extfile "$TLS_ROOT/certs/xlife.test.ext" -out "$TLS_ROOT/certs/xlife.test.pem"
+  -extfile "$TLS_ROOT/certs/ezcmty.test.ext" -out "$TLS_ROOT/certs/ezcmty.test.pem"
 chmod 700 "$TLS_ROOT" "$TLS_ROOT/ca" "$TLS_ROOT/certs"
-chmod 600 "$TLS_ROOT/ca/root-ca.key" "$TLS_ROOT/certs/xlife.test.key"
+chmod 600 "$TLS_ROOT/ca/root-ca.key" "$TLS_ROOT/certs/ezcmty.test.key"
 "$TLS_OPENSSL" verify -CAfile "$TLS_ROOT/ca/root-ca.pem" \
-  -purpose sslserver -verify_hostname platform.xlife.test "$TLS_ROOT/certs/xlife.test.pem"
+  -purpose sslserver -verify_hostname platform.ezcmty.test "$TLS_ROOT/certs/ezcmty.test.pem"
 "$TLS_OPENSSL" verify -CAfile "$TLS_ROOT/ca/root-ca.pem" \
-  -purpose sslserver -verify_hostname property.xlife.test "$TLS_ROOT/certs/xlife.test.pem"
+  -purpose sslserver -verify_hostname property.ezcmty.test "$TLS_ROOT/certs/ezcmty.test.pem"
 ```
 
 更改前将现有 Nginx 站点配置与两个本地环境文件备份到仓库外或 `.dev/`，备份目录权限设为 `700`、文件权限设为 `600`。从仓库根目录安装 [Nginx 示例](../../apps/admin-web/config/nginx.local.conf)，替换证书目录占位符：
 
 ```bash
 sed "s|LOCAL_HTTPS_PATH|$TLS_ROOT|g" apps/admin-web/config/nginx.local.conf \
-  > /opt/homebrew/etc/nginx/servers/xlife.test.conf
+  > /opt/homebrew/etc/nginx/servers/ezcmty.test.conf
 nginx -t -c /opt/homebrew/etc/nginx/nginx.conf
 nginx -s reload
 ```
 
 在 `services/backend/.env` 的 `APP_ADMIN_TRUSTED_ORIGINS` 中加入两个完整 HTTPS Origin（包含 `:8443`，不包含末尾 `/`），保留需要的 HTTP 与直连开发 Origin；Cookie 路径使用对应 API 前缀。域名变更时同步配置前端 hostname、证书 SAN 和后端可信 Origin。
 
-移除 `apps/admin-web/.env.local` 中固定指向 HTTP 的 `SOCKET_SERVER`，让 Umi 按当前页面来源连接同源 WSS。浏览器或系统使用代理时，将 `platform.xlife.test`、`property.xlife.test` 配置为直连。环境文件不会自动触发后端配置重载；通过现有开发入口停止并重启所属服务批次。单一完整后台批次可使用 `make stop`、`make dev-bg`；多个批次应记录原服务组合并分别恢复。
+移除 `apps/admin-web/.env.local` 中固定指向 HTTP 的 `SOCKET_SERVER`，让 Umi 按当前页面来源连接同源 WSS。浏览器或系统使用代理时，将 `platform.ezcmty.test`、`property.ezcmty.test` 配置为直连。环境文件不会自动触发后端配置重载；通过现有开发入口停止并重启所属服务批次。单一完整后台批次可使用 `make stop`、`make dev-bg`；多个批次应记录原服务组合并分别恢复。
 
 使用两个 HTTPS 地址确认浏览器无证书警告，控制台执行 `window.isSecureContext` 应为 `true`、`crypto.randomUUID()` 应返回 UUID；网络面板应显示同源 WSS 连接成功。核对登录、写请求的 Origin 校验及两端 API 隔离。验证期间保留 8080，续期时备份并重新签发站点证书，验证证书链后检查、重载 Nginx；恢复时还原上述配置备份并重启受影响服务。
 
@@ -173,12 +173,12 @@ nginx -s reload
 
 ```bash
 TLS_ROOT="$HOME/.config/local-https"
-/usr/bin/security verify-cert -c "$TLS_ROOT/certs/xlife.test.pem" \
-  -p ssl -s platform.xlife.test
-/usr/bin/security verify-cert -c "$TLS_ROOT/certs/xlife.test.pem" \
-  -p ssl -s property.xlife.test
-/usr/bin/curl --noproxy '*' -I https://platform.xlife.test:8443/
-/usr/bin/curl --noproxy '*' -I https://property.xlife.test:8443/
+/usr/bin/security verify-cert -c "$TLS_ROOT/certs/ezcmty.test.pem" \
+  -p ssl -s platform.ezcmty.test
+/usr/bin/security verify-cert -c "$TLS_ROOT/certs/ezcmty.test.pem" \
+  -p ssl -s property.ezcmty.test
+/usr/bin/curl --noproxy '*' -I https://platform.ezcmty.test:8443/
+/usr/bin/curl --noproxy '*' -I https://property.ezcmty.test:8443/
 ```
 
 上述 `verify-cert` 应报告验证成功，系统 `curl` 应通过默认信任返回 HTTP 响应；使用 `--cacert` 验证成功只证明指定 CA 下的证书链有效，不能证明系统已经信任。系统验证通过后刷新页面；Chrome 仍保留旧警告时，保存正在编辑的内容后完全退出并重新打开 Chrome。不要通过跳过浏览器警告或 `curl -k` 判定验收通过。

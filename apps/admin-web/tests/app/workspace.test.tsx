@@ -288,7 +288,7 @@ describe('工作空间完整组装', () => {
       '/property/communities/' + lastCommunity + '/houses',
     );
     expect(
-      localStorage.getItem('xlife-admin:property:' + subject + ':community'),
+      localStorage.getItem('ezcmty-admin:property:' + subject + ':community'),
     ).toBe(lastCommunity);
     const nav = screen.getByRole('navigation', { name: '主导航' });
     fireEvent.click(within(nav).getByRole('button', { name: /工作概览/ }));

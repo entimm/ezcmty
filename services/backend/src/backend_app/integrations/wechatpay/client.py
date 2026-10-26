@@ -381,7 +381,7 @@ class WechatPayClient:
                 ),
                 "Accept": "application/octet-stream" if download else "application/json",
                 "Content-Type": "application/json",
-                "User-Agent": "xlife2-wechatpay/1",
+                "User-Agent": "ezcmty-wechatpay/1",
             }
         )
         if encrypted:

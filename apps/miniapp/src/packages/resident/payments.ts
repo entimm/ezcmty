@@ -20,7 +20,7 @@ interface PendingPayment {
   orderId?: string;
 }
 export type PanelResult = 'success' | 'cancelled' | 'unknown';
-const prefix = 'xlife:' + API_BASE_URL + ':resident-payment:';
+const prefix = 'ezcmty:' + API_BASE_URL + ':resident-payment:';
 let owner = currentCredential()?.userId;
 
 function scopedKey(kind: 'bill' | 'uncertain', id: string): string {

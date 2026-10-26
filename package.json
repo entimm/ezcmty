@@ -1,5 +1,5 @@
 {
-  "name": "community-property-platform",
+  "name": "ezcmty",
   "private": true,
   "packageManager": "pnpm@10.33.2",
   "engines": {

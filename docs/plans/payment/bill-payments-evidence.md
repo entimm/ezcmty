@@ -4,7 +4,7 @@
 
 ## 阶段 0 核查范围
 
-核查日期：2026-10-19。工作目录：`/Users/xsavorai/Dev/git-worktree/xlife2-bill-payments`。已阅读项目 `AGENTS.md`、开发及文档规范、测试及数据库规范、支付业务与数据设计、既有账单设计、API 规范及 OpenAPI、代码组织、后端、后台、小程序及本地开发约定。
+核查日期：2026-10-19。工作目录：`/Users/xsavorai/Dev/git-worktree/ezcmty-bill-payments`。已阅读项目 `AGENTS.md`、开发及文档规范、测试及数据库规范、支付业务与数据设计、既有账单设计、API 规范及 OpenAPI、代码组织、后端、后台、小程序及本地开发约定。
 
 初始只读核查确认：OpenAPI 为 `0.12.0`，运行时错误目录为 `0.9.0`；Worker 与本地启动器依赖占位 `task_handlers=0` 标记。不能通过手改生成目录或运行环境版本掩盖差异；生成目录由 P0-04 更新，Worker 及启动器由 P2-07 更新。
 
@@ -122,7 +122,7 @@ Domain 单元测试验证计算与规则；应用/API 集成测试验证权限�
 
 ## 阶段 0 集成核实
 
-- 分支 `feat/bill-payments`，工作区 `/Users/xsavorai/Dev/git-worktree/xlife2-bill-payments`，来源 `b2c85ed`；原仓库工作区干净且未改动。
+- 分支 `feat/bill-payments`，工作区 `/Users/xsavorai/Dev/git-worktree/ezcmty-bill-payments`，来源 `b2c85ed`；原仓库工作区干净且未改动。
 - 后端基线 `make check-backend`：Ruff、格式及 mypy（211 文件）通过；pytest 为 266 通过、5 失败、133 按范围未选择，无跳过（263.51 秒）。五项失败分别为旧生成目录与四个运行端支付契约缺口，详见 `.dev/payment/baseline-backend.log`。
 - P0-04 已运行 `pnpm api:generate-errors`，运行时目录现为 0.12.0；生成后完整契约仍因缺失支付实现失败，未修改检查算法。
 - P0-05 将 `cryptography>=50.0.2,<51` 声明为直接运行依赖，使用 uv 更新现有锁文件。Python 3.14.4 下真实 RSA-SHA256 签名验签与 AES-256-GCM 加解密通过；不等于真实微信渠道验收。
@@ -239,4 +239,4 @@ P8-03、P8-09～P8-12 的隔离工程工作已完成。故障注入由任务与�
 | 真实渠道及资金      | 未执行，P8-05～P8-08 保持未勾选                                                          | 真实材料、接收关系、受控付款/分账/解冻、实际账单和真机支付须先取得明确授权 |
 | 发布准备            | 发布/迁移顺序、恢复与监控清单已落盘，隔离恢复演练已完成                                  | 目标环境备份恢复、迁移、部署及新单开放须另行授权                           |
 
-实施分支为 `feat/bill-payments`，worktree 位于 `/Users/xsavorai/Dev/git-worktree/xlife2-bill-payments`。原仓库工作区保持干净；未向既有业务数据库迁移、seed 或写入，未推送、合并或部署。默认新单开关关闭。剩余风险集中在尚未实测的商户材料、真实渠道行为、真实账单口径与真机交互；本地工程证据不代替这些条件。
+实施分支为 `feat/bill-payments`，worktree 位于 `/Users/xsavorai/Dev/git-worktree/ezcmty-bill-payments`。原仓库工作区保持干净；未向既有业务数据库迁移、seed 或写入，未推送、合并或部署。默认新单开关关闭。剩余风险集中在尚未实测的商户材料、真实渠道行为、真实账单口径与真机交互；本地工程证据不代替这些条件。

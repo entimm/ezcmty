@@ -18,7 +18,7 @@ class Settings(BaseSettings):
         hide_input_in_errors=True,
     )
 
-    name: str = "Community Property Platform"
+    name: str = "Ezcmty"
     env: Literal["local", "test", "staging", "production"] = "local"
     version: str = CONTRACT_VERSION
     database_url: SecretStr = SecretStr("")

@@ -67,7 +67,7 @@ flowchart TD
 
 ## 域名与页面路径
 
-`UMI_APP_PLATFORM_HOST` 和 `UMI_APP_PROPERTY_HOST` 配置 hostname，不包含协议或端口，默认分别为 `platform.xlife.test`、`property.xlife.test`。域名精确匹配所属后台；根路径进入本端首页，未登录时进入 `/login`，不显示双端入口。
+`UMI_APP_PLATFORM_HOST` 和 `UMI_APP_PROPERTY_HOST` 配置 hostname，不包含协议或端口，默认分别为 `platform.ezcmty.test`、`property.ezcmty.test`。域名精确匹配所属后台；根路径进入本端首页，未登录时进入 `/login`，不显示双端入口。
 
 域名内使用 `/login`、`/change-password`、`/profile` 等相对根路径。平台公司接入使用 `/companies`、`/companies/:company` 和 `/communities`。两端系统管理均使用本端 `/system/*`；物业账号、角色及日志只使用本端会话和公司范围。物业另使用本端房屋、账单、认领、绑定、导入和资金路径，具体路径与权限以 `app/routes.ts` 为唯一代码来源。
 

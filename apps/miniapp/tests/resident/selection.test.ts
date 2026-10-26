@@ -18,24 +18,24 @@ it.each([
   async (environment, otherEnvironment) => {
     const { storage } = device();
     vi.doMock('../../src/config', () => ({ API_BASE_URL: environment }));
-    storage.set('xlife:' + environment + ':resident-session', {
+    storage.set('ezcmty:' + environment + ':resident-session', {
       token: 'token-a',
       userId: 'resident-a',
       expiresAt: '2030-01-01T00:00:00Z',
     });
-    const ownKey = 'xlife:' + environment + ':resident-house:resident-a';
+    const ownKey = 'ezcmty:' + environment + ':resident-house:resident-a';
     const others = new Map([
-      ['xlife:' + environment + ':resident-house:resident-b', 'binding-b'],
+      ['ezcmty:' + environment + ':resident-house:resident-b', 'binding-b'],
       [
-        'xlife:' + otherEnvironment + ':resident-house:resident-a',
+        'ezcmty:' + otherEnvironment + ':resident-house:resident-a',
         'binding-other-environment',
       ],
       [
-        'xlife:' + environment + ':property-house:resident-a',
+        'ezcmty:' + environment + ':property-house:resident-a',
         'binding-property',
       ],
       [
-        'xlife:' + environment + ':merchant-house:resident-a',
+        'ezcmty:' + environment + ':merchant-house:resident-a',
         'binding-merchant',
       ],
     ]);
@@ -57,7 +57,7 @@ it('clears the old selection on login as another user and only clears that user 
   const { API_BASE_URL } = await import('../../src/config');
   const selection = await import('../../src/packages/resident/selection');
   const session = await import('../../src/core/session');
-  const prefix = 'xlife:' + API_BASE_URL;
+  const prefix = 'ezcmty:' + API_BASE_URL;
   const otherScopeKey = prefix + ':property-house:resident-b';
   storage.set(prefix + ':resident-house:resident-b', 'binding-b');
   storage.set(otherScopeKey, 'property-binding-b');

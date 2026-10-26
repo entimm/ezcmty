@@ -5,7 +5,7 @@ import { PaymentOrder, ResidentBill } from '../../src/core/types';
 export function device(userId = 'resident-a') {
   const storage = new Map<string, unknown>([
     [
-      'xlife:' + API_BASE_URL + ':resident-session',
+      'ezcmty:' + API_BASE_URL + ':resident-session',
       {
         token: 'test-token',
         userId,

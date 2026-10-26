@@ -1,3 +1,3 @@
-"""Shared backend package for the xcmty property platform."""
+"""Shared backend package."""
 
 __version__ = "0.1.0"

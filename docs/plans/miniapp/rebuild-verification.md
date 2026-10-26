@@ -2,7 +2,7 @@
 
 ## 实施与回滚
 
-- 工作区：`/Users/xsavorai/.codex-pro/worktrees/miniapp-rebuild/xlife2`。
+- 工作区：`/Users/xsavorai/.codex-pro/worktrees/miniapp-rebuild/ezcmty`。
 - 分支：`codex/miniapp-rebuild-20261024`。原工作区保持不变。
 - 已验证回滚标签与归档，完全删除原 `apps/miniapp` 后从空目录重建；回滚信息见[实施计划](rebuild.md#回滚)。
 - 首次验收采用确认后的紧凑预览，并将品牌改为“美好社区”。提交 `6e08a20` 中 `docs/design/resident/assets/miniapp-review.html` 的 SHA-256：`14cafddec5bcc8086829c848fbb3141fbfc4194f7aa450b8aaaf54bace6975a7`。

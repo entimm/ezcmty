@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '../../config';
 import { currentCredential, onSessionReset } from '../../core/session';
 
-const prefix = 'xlife:' + API_BASE_URL + ':resident-house:';
+const prefix = 'ezcmty:' + API_BASE_URL + ':resident-house:';
 let owner: string | undefined;
 
 function key(): string | null {
