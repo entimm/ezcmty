@@ -8,6 +8,8 @@
 
 遵循 KISS、YAGNI、DRY，优先选择简单实现。
 
+通用技术能力优先复用标准库、现有依赖及成熟方案，结合契约适配、维护状态、安全性和引入成本选型。已有能力满足当前约束时直接复用；不能满足时保留必要的局部实现，不为减少手写代码削弱业务规则或工程保障。
+
 ## 代码组织与职责
 
 本节规定通用编码要求。模块位置、分层依赖和调用边界遵循 [代码组织与账单支付接入](../architecture/code-organization.md)、[后端业务边界](../architecture/backend-services.md)、[管理后台前端设计](../architecture/admin-web.md) 和 [小程序架构](../architecture/miniapp.md)。
@@ -31,10 +33,10 @@
 ## 专题约定
 
 - 管理后台前端的组件复用、视觉、交互及交付评审遵循 [后台前端开发规范](../conventions/admin-frontend.md)。
-- 本地环境准备、配置、运行和检查命令见 [本地开发指南](local-development.md)。
+- 本地环境准备、配置、运行和检查命令见 [本地开发指南](local-development.md)；进程探测与安全清理遵循 [本地开发入口设计](../architecture/local-development.md#停止与故障清理)。
 - 测试分类、组织、隔离与执行要求见 [测试规范](../conventions/testing.md)。
 - 代码目录与业务接入见 [代码组织方案](../architecture/code-organization.md)，进程边界见 [系统架构](../architecture/overview.md)。
-- API 设计与契约维护见 [API 规范](../api/conventions.md)。
+- API 设计、契约维护与前端类型生成见 [API 规范](../api/conventions.md)。
 - 数据库与迁移见 [数据库规范](../database/conventions.md)。
 
 ## 安全

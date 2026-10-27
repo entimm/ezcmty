@@ -37,6 +37,7 @@ ProComponents 保留 Ant Design Pro 模板选定的兼容版本，pnpm 对齐 Um
 | `shared/context.tsx`、`shared/hooks.ts`                      | 当前端上下文与查询机制；业务查询按端和当前账号隔离。                                                               |
 | `shared/request.ts`、`shared/types.ts`                       | 同源请求、认证失效、CSRF、下载、上传进度、错误类型及稳定共用类型。                                                 |
 | `shared/ui.tsx`、`shared/forms.tsx`                          | 页面标题、卡片、状态、基础反馈、弹窗与表单变更判断。                                                               |
+| `shared/datetime.ts`、`shared/DatePicker.ts`                 | 后台时间展示、当前业务日期、时间边界转换和共享日期选择器。                                                         |
 | `shared/imports/`                                            | 两端一致的通用任务契约、导入页面、预检确认、行问题、进度、文件和安全恢复机制；端专属范围通过运行环境传入。         |
 | `shared/system/`                                             | 两端一致的账号、角色、业务权限配置及审计页面；由所属端传入固定请求客户端，保持后台与公司范围隔离。                 |
 | `shared/payments/`                                           | 两端一致的支付契约、读取传输与展示流程；写能力通过平台运行环境显式注入，物业运行环境不包含这些能力。               |
@@ -119,9 +120,11 @@ API 前缀为 `/api/platform` 和 `/api/property`，Cookie 路径与前缀一致
 
 Umi 管理路由入口、开发服务器、热更新与生产构建，产物输出到 `apps/admin-web/dist/`。应用路由和权限由 `app/routes.ts` 维护，Umi 只注册应用入口。生产部署使用前端路由回退，API 代理独立处理。
 
+路径匹配、参数路径生成和浏览器历史操作复用 Umi 提供的能力；应用封装保留后台识别、路由白名单、权限与未保存内容保护，不另建浏览器历史或通用路径解析实现。
+
 TypeScript 使用 5.9.3，保留 ESLint、Prettier、Vitest。Umi 生成文件不提交、不参与人工检查。测试位于 `apps/admin-web/tests/`，按 `app/`、`auth/`、`features/`、`shared/` 和实际工程配置职责组织，使用 `.test.*`；Vitest 仅收集该目录，TypeScript 和 ESLint 同时检查测试。
 
-类型生成使用独立的 `src/.umi-types/`，`max setup` 与类型检查不会清理运行中开发服务器的 `src/.umi/`。TypeScript 继承该生成配置，保持 Umi 导出和路径别名一致。
+Umi 类型生成使用独立的 `src/.umi-types/`，`max setup` 与类型检查不会清理运行中开发服务器的 `src/.umi/`。TypeScript 继承该生成配置，保持 Umi 导出和路径别名一致。
 
 开发服务器固定监听 `127.0.0.1:5173`。`scripts/dev.cjs` 加载 Umi 并登记批次身份和就绪状态，防止端口占用时自动改用其他端口；进程退出和清理沿用 [本地开发入口](local-development.md) 约定，具体命令见 [本地开发指南](../guidelines/local-development.md)。
 
