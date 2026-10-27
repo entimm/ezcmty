@@ -1,99 +1,82 @@
 import hashlib
 import json
-import re
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
-from typing import Any, Protocol
+from typing import Annotated, Any, Protocol
+
+from pydantic import ConfigDict, Field, TypeAdapter
+from pydantic.dataclasses import dataclass as validated_dataclass
+
+_CONFIG = ConfigDict(
+    strict=True,
+    revalidate_instances="always",
+    extra="forbid",
+    allow_inf_nan=False,
+    hide_input_in_errors=True,
+    regex_engine="python-re",
+)
+_Key = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{0,63}\z")]
+_Nonempty = Annotated[str, Field(min_length=1)]
+_Scalar = str | int | float | bool | None
+_Scope = Annotated[str, Field(pattern=r"^(company|community)\z")]
+_Actor = Annotated[str, Field(pattern=r"^(platform_admin|property_admin)\z")]
+_Normalization = Annotated[str, Field(pattern=r"^(trim|lowercase|uppercase)\z")]
 
 
 @dataclass(frozen=True)
 class ImportField:
-    key: str
-    label: str
-    order: int
+    # Validate fields at the definition boundary, including existing dataclass instances.
+    __pydantic_config__ = _CONFIG
+
+    key: _Key
+    label: Annotated[str, Field(min_length=1, pattern=r"^[^\x00-\x1f]*\z")]
+    order: Annotated[int, Field(gt=0)]
     required: bool = False
-    data_type: str = "string"
-    max_length: int | None = None
-    format: str | None = None
-    enum_values: tuple[Any, ...] = ()
-    example: Any = None
+    data_type: Annotated[
+        str, Field(pattern=r"^(string|integer|decimal|boolean|date|datetime)\z")
+    ] = "string"
+    max_length: Annotated[int, Field(gt=0)] | None = None
+    format: (
+        Annotated[str, Field(pattern=r"^(email|phone|mobile|uuid|date|date-time|datetime)\z")]
+        | None
+    ) = None
+    enum_values: tuple[_Scalar, ...] = ()
+    example: _Scalar = None
     description: str = ""
-    normalization_rules: tuple[str, ...] = ()
+    normalization_rules: tuple[_Normalization, ...] = ()
     sensitive: bool = False
 
 
-@dataclass(frozen=True)
+@validated_dataclass(frozen=True, config=_CONFIG)
 class ImportDefinition:
-    key: str
-    name: str
-    version_no: int
-    adapter_key: str
-    fields: tuple[ImportField, ...]
-    allowed_scope_types: tuple[str, ...] = ("company", "community")
-    supported_modes: tuple[str, ...] = ("create",)
-    allowed_actor_scopes: tuple[str, ...] = ("platform_admin", "property_admin")
+    key: _Key
+    name: _Nonempty
+    version_no: Annotated[int, Field(gt=0)]
+    adapter_key: _Nonempty
+    fields: Annotated[tuple[ImportField, ...], Field(min_length=1, max_length=200)]
+    allowed_scope_types: Annotated[tuple[_Scope, ...], Field(min_length=1)] = (
+        "company",
+        "community",
+    )
+    supported_modes: tuple[Annotated[str, Field(pattern=r"^create\z")]] = ("create",)
+    allowed_actor_scopes: Annotated[tuple[_Actor, ...], Field(min_length=1)] = (
+        "platform_admin",
+        "property_admin",
+    )
     required_permissions: tuple[str, ...] = ()
     read_permissions: tuple[str, ...] = ()
     available_for_new_batches: bool = True
     template_downloadable: bool = True
     released_at: str = ""
     release_notes: str = ""
-    sheet_name: str = "导入数据"
+    sheet_name: Annotated[str, Field(min_length=1, max_length=31)] = "导入数据"
 
     def __post_init__(self) -> None:
-        if (
-            not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", self.key)
-            or type(self.version_no) is not int
-            or self.version_no < 1
-            or not self.name
-            or not self.adapter_key
-            or not isinstance(self.fields, tuple)
-            or not 1 <= len(self.fields) <= 200
-            or not self.allowed_scope_types
-            or not isinstance(self.allowed_scope_types, tuple)
-            or set(self.allowed_scope_types) - {"company", "community"}
-            or self.supported_modes != ("create",)
-            or not self.allowed_actor_scopes
-            or not isinstance(self.allowed_actor_scopes, tuple)
-            or not isinstance(self.required_permissions, tuple)
-            or not isinstance(self.read_permissions, tuple)
-            or type(self.available_for_new_batches) is not bool
-            or type(self.template_downloadable) is not bool
-            or set(self.allowed_actor_scopes) - {"platform_admin", "property_admin"}
-            or len(self.sheet_name) > 31
-            or not self.sheet_name
-        ):
-            raise ValueError("Invalid import definition")
         keys: set[str] = set()
         labels: set[str] = set()
         orders: set[int] = set()
         for definition in self.fields:
-            if (
-                not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", definition.key)
-                or definition.key in keys
-                or definition.order in orders
-                or type(definition.order) is not int
-                or definition.order < 1
-                or not definition.label
-                or definition.label in labels
-                or any(ord(character) < 32 for character in definition.label)
-                or type(definition.required) is not bool
-                or type(definition.sensitive) is not bool
-                or not isinstance(definition.enum_values, tuple)
-                or not isinstance(definition.normalization_rules, tuple)
-                or any(
-                    value is not None and not isinstance(value, (str, int, float, bool))
-                    for value in (*definition.enum_values, definition.example)
-                )
-                or definition.data_type
-                not in {"string", "integer", "decimal", "boolean", "date", "datetime"}
-                or definition.max_length is not None
-                and (type(definition.max_length) is not int or definition.max_length < 1)
-                or definition.format is not None
-                and definition.format
-                not in {"email", "phone", "mobile", "uuid", "date", "date-time", "datetime"}
-                or set(definition.normalization_rules) - {"trim", "lowercase", "uppercase"}
-            ):
+            if definition.key in keys or definition.order in orders or definition.label in labels:
                 raise ValueError("Invalid import field definition")
             keys.add(definition.key)
             labels.add(definition.label)
@@ -132,31 +115,9 @@ class ImportRegistry(Protocol):
     def get_adapter(self, adapter_key: str) -> Any: ...
 
 
+_DEFINITION_ADAPTER = TypeAdapter(ImportDefinition)
+
+
 def definition_from_mapping(value: Mapping[str, Any]) -> ImportDefinition:
-    copied = dict(value)
-    fields = copied.pop("fields", None)
-    if not isinstance(fields, list):
-        raise ValueError("Invalid import definition")
-    definitions: list[ImportField] = []
-    for item in fields:
-        if not isinstance(item, dict):
-            raise ValueError("Invalid import field definition")
-        item = dict(item)
-        for key in ("enum_values", "normalization_rules"):
-            if key in item:
-                if not isinstance(item[key], list):
-                    raise ValueError("Invalid import field definition")
-                item[key] = tuple(item[key])
-        definitions.append(ImportField(**item))
-    for key in (
-        "allowed_scope_types",
-        "supported_modes",
-        "allowed_actor_scopes",
-        "required_permissions",
-        "read_permissions",
-    ):
-        if key in copied:
-            if not isinstance(copied[key], list):
-                raise ValueError("Invalid import definition")
-            copied[key] = tuple(copied[key])
-    return ImportDefinition(fields=tuple(definitions), **copied)
+    # JSON mode accepts arrays as tuples while retaining strict scalar validation.
+    return _DEFINITION_ADAPTER.validate_json(json.dumps(dict(value), allow_nan=False))
