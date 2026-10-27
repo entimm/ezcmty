@@ -19,6 +19,7 @@ import type { ComponentType, ReactNode } from 'react';
 import { useAdmin } from '../shared/context';
 import { useResource } from '../shared/hooks';
 import { money, PageHeader, Panel, ReadError } from '../shared/ui';
+import { businessNow } from '../shared/datetime';
 import type { Page } from '../shared/types';
 interface Summary {
   billing_month: string;
@@ -245,8 +246,8 @@ export function Dashboard({ companyName }: { companyName?: string }) {
           icon: UserOutlined,
         },
       ];
-  const now = new Date(),
-    hour = now.getHours(),
+  const now = businessNow(),
+    hour = now.hour(),
     greeting = hour < 12 ? '上午好' : hour < 18 ? '下午好' : '晚上好';
   const received = value?.monthly_settled_cents,
     receivable = value?.monthly_receivable_cents;
@@ -267,14 +268,7 @@ export function Dashboard({ companyName }: { companyName?: string }) {
             : '物业接入、资金处理与平台治理，一处掌握'
         }
         extra={
-          <span className="date-label">
-            {now.toLocaleDateString('zh-CN', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              weekday: 'long',
-            })}
-          </span>
+          <span className="date-label">{now.format('YYYY年M月D日 dddd')}</span>
         }
       />
       <div className="welcome-banner">

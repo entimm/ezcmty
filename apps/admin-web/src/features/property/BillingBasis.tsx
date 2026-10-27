@@ -1,3 +1,4 @@
+import { DatePicker } from '../../shared/DatePicker';
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PlusOutlined } from '@ant-design/icons';
@@ -6,7 +7,6 @@ import {
   App,
   Button,
   Col,
-  DatePicker,
   Drawer,
   Empty,
   Form,
@@ -20,8 +20,9 @@ import {
   Table,
   Tag,
 } from 'antd';
-import dayjs, { type Dayjs } from 'dayjs';
+import type { Dayjs } from 'dayjs';
 import { useAdmin } from '../../shared/context';
+import { businessNow } from '../../shared/datetime';
 import { DetailGrid, Panel } from '../../shared/ui';
 import {
   createPropertyApi,
@@ -136,7 +137,7 @@ export function FeeBasisPanel({ house }: { house: BasisHouse }) {
   const { message } = App.useApp();
   const api = useMemo(() => createPropertyApi(request), [request]);
   const queryClient = useQueryClient();
-  const [month, setMonth] = useState<Dayjs>(dayjs());
+  const [month, setMonth] = useState<Dayjs>(businessNow());
   const [page, setPage] = useState(1);
   const [preparing, setPreparing] = useState(false);
   const [editing, setEditing] = useState<{
@@ -357,7 +358,7 @@ function BasisEditor({
   const [expectedLatest, setExpectedLatest] = useState(expected);
   const [changedBasis, setChangedBasis] = useState<FeeBasis>();
   const initial = {
-    month: dayjs().add(1, 'month'),
+    month: businessNow().add(1, 'month'),
     house_usage: source?.house_usage ?? 'residential',
     method: source?.fixed_amount_cents != null ? 'fixed' : 'area',
     area: source?.area_sqm ? Number(source.area_sqm) : undefined,

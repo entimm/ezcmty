@@ -1,11 +1,11 @@
+import { DatePicker } from '../DatePicker';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import dayjs, { type Dayjs } from 'dayjs';
+import type { Dayjs } from 'dayjs';
 import {
   Alert,
   App,
   Button,
-  DatePicker,
   Descriptions,
   Divider,
   Drawer,
@@ -30,6 +30,7 @@ import {
 } from '@ant-design/icons';
 import { useAdmin } from '../context';
 import { DetailGrid, PageHeader, Panel, Status } from '../ui';
+import { pickerTimeToInstant, toPickerTime } from '../datetime';
 import {
   type Account,
   type Audit,
@@ -171,16 +172,6 @@ function auditValue(value: unknown): ReactNode {
   };
   return statuses[String(value)] || String(value);
 }
-function wallClock(value: string) {
-  const milliseconds = new Date(value).getTime();
-  return Number.isNaN(milliseconds)
-    ? null
-    : dayjs(new Date(milliseconds + 8 * 3600000).toISOString().slice(0, 19));
-}
-function instant(value: Dayjs) {
-  return new Date(value.format('YYYY-MM-DDTHH:mm:ss') + '+08:00').toISOString();
-}
-
 function SystemDetail({
   detail,
   onClose,
@@ -673,7 +664,7 @@ export function SystemPages({ page, params, go }: SystemPagesProps) {
     [auditResult, setAuditResult] = useState(params.result);
   const [dates, setDates] = useState<[Dayjs | null, Dayjs | null] | null>(
     params.from_time && params.to_time
-      ? [wallClock(params.from_time), wallClock(params.to_time)]
+      ? [toPickerTime(params.from_time), toPickerTime(params.to_time)]
       : null,
   );
   useEffect(() => {
@@ -687,7 +678,7 @@ export function SystemPages({ page, params, go }: SystemPagesProps) {
     setAuditResult(params.result);
     setDates(
       params.from_time && params.to_time
-        ? [wallClock(params.from_time), wallClock(params.to_time)]
+        ? [toPickerTime(params.from_time), toPickerTime(params.to_time)]
         : null,
     );
   }, [
@@ -1156,8 +1147,12 @@ export function SystemPages({ page, params, go }: SystemPagesProps) {
                   search: auditSearch.trim() || undefined,
                   field: auditField,
                   result: auditResult,
-                  from_time: dates?.[0] ? instant(dates[0]) : undefined,
-                  to_time: dates?.[1] ? instant(dates[1]) : undefined,
+                  from_time: dates?.[0]
+                    ? pickerTimeToInstant(dates[0])
+                    : undefined,
+                  to_time: dates?.[1]
+                    ? pickerTimeToInstant(dates[1])
+                    : undefined,
                   page: undefined,
                 })
               }

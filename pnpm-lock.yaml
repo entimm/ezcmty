@@ -26,6 +26,9 @@ importers:
       '@ant-design/pro-components':
         specifier: 3.1.14-2
         version: 3.1.14-2(antd@6.6.6(date-fns@2.30.0)(moment@2.31.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@rc-component/picker':
+        specifier: 1.12.2
+        version: 1.12.2(date-fns@2.30.0)(dayjs@1.11.23)(moment@2.31.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@tanstack/react-query':
         specifier: ^5.66.0
         version: 5.104.2(react@19.3.0)

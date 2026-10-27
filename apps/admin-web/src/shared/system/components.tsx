@@ -19,26 +19,13 @@ import { useAdmin } from '../context';
 import { hasFormChanges, NewPasswordInput, newPasswordRules } from '../forms';
 import { ApiError } from '../request';
 import { createSystemApi, type Filters, type Page } from './api';
+export { formatTime as time } from '../datetime';
 
 export function useSystemApi() {
   const { request } = useAdmin();
   return useMemo(() => createSystemApi(request), [request]);
 }
 
-export function time(value?: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return '—';
-  return new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'Asia/Shanghai',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date);
-}
 export function errorText(error: unknown) {
   if (error instanceof TypeError)
     return '网络连接中断。请检查网络；提交操作请先刷新列表核实结果，再决定是否重试。';

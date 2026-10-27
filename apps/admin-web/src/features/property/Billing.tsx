@@ -1,3 +1,4 @@
+import { DatePicker } from '../../shared/DatePicker';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -11,7 +12,6 @@ import {
 import {
   Alert,
   Button,
-  DatePicker,
   Dropdown,
   Empty,
   Input,
@@ -254,12 +254,15 @@ export function BillingPage({ detail = false }: { detail?: boolean }) {
   );
   const [months, setMonths] = useState<[Dayjs, Dayjs] | null>(
     params.billing_month_from && params.billing_month_to
-      ? [dayjs(params.billing_month_from), dayjs(params.billing_month_to)]
+      ? [
+          dayjs.utc(params.billing_month_from),
+          dayjs.utc(params.billing_month_to),
+        ]
       : null,
   );
   const [dates, setDates] = useState<[Dayjs, Dayjs] | null>(
     params.due_date_from && params.due_date_to
-      ? [dayjs(params.due_date_from), dayjs(params.due_date_to)]
+      ? [dayjs.utc(params.due_date_from), dayjs.utc(params.due_date_to)]
       : null,
   );
   const [editor, setEditor] = useState<BillEditorState>();

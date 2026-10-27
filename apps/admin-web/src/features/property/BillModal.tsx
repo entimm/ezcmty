@@ -1,3 +1,4 @@
+import { DatePicker } from '../../shared/DatePicker';
 import { useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -5,7 +6,6 @@ import {
   App,
   Button,
   Col,
-  DatePicker,
   Divider,
   Form,
   Input,
@@ -18,6 +18,7 @@ import {
 } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useAdmin } from '../../shared/context';
+import { businessNow } from '../../shared/datetime';
 import { ApiError } from '../../shared/request';
 import {
   createPropertyApi,
@@ -148,7 +149,7 @@ export function BillModal({
   const initial: Record<string, unknown> = editor
     ? {
         external: bill?.external_bill_no ?? '',
-        due: bill?.due_date ? dayjs(bill.due_date) : null,
+        due: bill?.due_date ? dayjs.utc(bill.due_date) : null,
         amount:
           action === 'receipt'
             ? bill!.outstanding_cents / 100
@@ -158,18 +159,18 @@ export function BillModal({
         received:
           action === 'correct'
             ? editor.entry?.received_on
-              ? dayjs(editor.entry.received_on)
+              ? dayjs.utc(editor.entry.received_on)
               : null
-            : dayjs(businessToday()),
+            : dayjs.utc(businessToday()),
       }
     : {
         house_id: initialHouseId,
         month: original
-          ? dayjs(original.billing_month)
-          : dayjs().add(1, 'month').startOf('month'),
+          ? dayjs.utc(original.billing_month)
+          : businessNow().add(1, 'month').startOf('month'),
         due: original?.due_date
-          ? dayjs(original.due_date)
-          : dayjs().add(1, 'month').endOf('month'),
+          ? dayjs.utc(original.due_date)
+          : businessNow().add(1, 'month').endOf('month'),
         source: can('property.bill.read') ? 'basis' : 'manual',
         paid: 0,
       };

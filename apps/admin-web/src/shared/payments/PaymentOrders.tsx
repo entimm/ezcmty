@@ -1,6 +1,8 @@
+import { DatePicker } from '../DatePicker';
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
-import { Button, DatePicker, Input, Select, Table, Tag } from 'antd';
+import { dayStartInstant, dayAfterInstant } from '../datetime';
+import { Button, Input, Select, Table, Tag } from 'antd';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { PageHeader, Panel, Status } from '../ui';
 import { useResource } from '../hooks';
@@ -20,14 +22,18 @@ export function PaymentOrders({
   const [status, setStatus] = useState<string | undefined>(params.status);
   const [company, setCompany] = useState<string | undefined>(params.company);
   const [dates, setDates] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(
-    params.from && params.to ? [dayjs(params.from), dayjs(params.to)] : null,
+    params.from && params.to
+      ? [dayjs.utc(params.from), dayjs.utc(params.to)]
+      : null,
   );
   useEffect(() => {
     setSearch(params.order || '');
     setStatus(params.status);
     setCompany(params.company);
     setDates(
-      params.from && params.to ? [dayjs(params.from), dayjs(params.to)] : null,
+      params.from && params.to
+        ? [dayjs.utc(params.from), dayjs.utc(params.to)]
+        : null,
     );
   }, [params.order, params.status, params.company, params.from, params.to]);
   const current = Number(params.p) || 1;
@@ -45,12 +51,8 @@ export function PaymentOrders({
           params.by !== 'channel_transaction_no' ? params.order : undefined,
         channel_transaction_no:
           params.by === 'channel_transaction_no' ? params.order : undefined,
-        created_from: params.from
-          ? dayjs(params.from).startOf('day').toISOString()
-          : undefined,
-        created_before: params.to
-          ? dayjs(params.to).add(1, 'day').startOf('day').toISOString()
-          : undefined,
+        created_from: params.from ? dayStartInstant(params.from) : undefined,
+        created_before: params.to ? dayAfterInstant(params.to) : undefined,
       }),
   );
   const companies = useResource(

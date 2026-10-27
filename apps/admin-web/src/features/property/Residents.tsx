@@ -1,3 +1,4 @@
+import { DatePicker } from '../../shared/DatePicker';
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -14,7 +15,6 @@ import {
   App,
   Avatar,
   Button,
-  DatePicker,
   Divider,
   Empty,
   Form,
@@ -26,7 +26,12 @@ import {
   Table,
   Tag,
 } from 'antd';
-import dayjs, { type Dayjs } from 'dayjs';
+import type { Dayjs } from 'dayjs';
+import {
+  dateRangeFromInstants,
+  dayStartInstant,
+  dayAfterInstant,
+} from '../../shared/datetime';
 import { useAdmin } from '../../shared/context';
 import { ApiError } from '../../shared/request';
 import { DetailGrid, PageHeader, Panel, Status } from '../../shared/ui';
@@ -61,9 +66,7 @@ export function ClaimsPage({ detail = false }: { detail?: boolean }) {
   const size = Number(params.page_size) || 20;
   const [status, setStatus] = useState(params.status || 'pending');
   const [dates, setDates] = useState<[Dayjs, Dayjs] | null>(
-    params.created_from && params.created_to
-      ? [dayjs(params.created_from), dayjs(params.created_to)]
-      : null,
+    dateRangeFromInstants(params.created_from, params.created_to),
   );
   const [searchText, setSearchText] = useState('');
   const [search, setSearch] = useState('');
@@ -139,8 +142,8 @@ export function ClaimsPage({ detail = false }: { detail?: boolean }) {
       ...params,
       page: '1',
       status,
-      created_from: dates?.[0].startOf('day').toISOString(),
-      created_to: dates?.[1].endOf('day').toISOString(),
+      created_from: dates?.[0] ? dayStartInstant(dates[0]) : undefined,
+      created_to: dates?.[1] ? dayAfterInstant(dates[1]) : undefined,
     });
   };
   return (
@@ -545,9 +548,7 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
   const size = Number(params.page_size) || 20;
   const [status, setStatus] = useState(params.status || 'active');
   const [dates, setDates] = useState<[Dayjs, Dayjs] | null>(
-    params.created_from && params.created_to
-      ? [dayjs(params.created_from), dayjs(params.created_to)]
-      : null,
+    dateRangeFromInstants(params.created_from, params.created_to),
   );
   const [searchText, setSearchText] = useState('');
   const [search, setSearch] = useState('');
@@ -619,8 +620,8 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
       ...params,
       page: '1',
       status,
-      created_from: dates?.[0].startOf('day').toISOString(),
-      created_to: dates?.[1].endOf('day').toISOString(),
+      created_from: dates?.[0] ? dayStartInstant(dates[0]) : undefined,
+      created_to: dates?.[1] ? dayAfterInstant(dates[1]) : undefined,
     });
   };
   return (

@@ -1,15 +1,8 @@
+import { DatePicker } from '../DatePicker';
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
-import {
-  App,
-  Button,
-  DatePicker,
-  Empty,
-  Input,
-  Select,
-  Table,
-  Tag,
-} from 'antd';
+import { dayStartInstant, dayAfterInstant } from '../datetime';
+import { App, Button, Empty, Input, Select, Table, Tag } from 'antd';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { PageHeader, Panel } from '../ui';
 import { useResource } from '../hooks';
@@ -47,14 +40,18 @@ function ImportCenter({
   const [batchId, setBatchId] = useState('');
   const [status, setStatus] = useState<string | undefined>(params.status);
   const [dates, setDates] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(
-    params.from && params.to ? [dayjs(params.from), dayjs(params.to)] : null,
+    params.from && params.to
+      ? [dayjs.utc(params.from), dayjs.utc(params.to)]
+      : null,
   );
   const current = Number(params.p) || 1;
   const pageSize = 20;
   useEffect(() => {
     setStatus(params.status);
     setDates(
-      params.from && params.to ? [dayjs(params.from), dayjs(params.to)] : null,
+      params.from && params.to
+        ? [dayjs.utc(params.from), dayjs.utc(params.to)]
+        : null,
     );
   }, [params.status, params.from, params.to]);
   const result = useResource(
@@ -64,12 +61,8 @@ function ImportCenter({
         page: current,
         page_size: pageSize,
         status: params.status,
-        created_from: params.from
-          ? dayjs(params.from).startOf('day').toISOString()
-          : undefined,
-        created_before: params.to
-          ? dayjs(params.to).add(1, 'day').startOf('day').toISOString()
-          : undefined,
+        created_from: params.from ? dayStartInstant(params.from) : undefined,
+        created_before: params.to ? dayAfterInstant(params.to) : undefined,
         ...(r.scope === 'property' && r.communityId
           ? { scope_type: 'community', scope_id: r.communityId }
           : {}),

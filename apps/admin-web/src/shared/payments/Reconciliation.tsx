@@ -1,9 +1,9 @@
+import { DatePicker } from '../DatePicker';
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import {
   Alert,
   Button,
-  DatePicker,
   Descriptions,
   Drawer,
   Select,
@@ -32,7 +32,9 @@ export function Reconciliation({
   go,
 }: FlowPageProps & { runtime: PaymentsRuntime }) {
   const [dates, setDates] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(
-    params.from && params.to ? [dayjs(params.from), dayjs(params.to)] : null,
+    params.from && params.to
+      ? [dayjs.utc(params.from), dayjs.utc(params.to)]
+      : null,
   );
   const [status, setStatus] = useState<string | undefined>(params.status);
   const [company, setCompany] = useState<string | undefined>(params.company);
@@ -52,7 +54,9 @@ export function Reconciliation({
     setStatement(params.statement);
     setDifferenceStatus(params.diff);
     setDates(
-      params.from && params.to ? [dayjs(params.from), dayjs(params.to)] : null,
+      params.from && params.to
+        ? [dayjs.utc(params.from), dayjs.utc(params.to)]
+        : null,
     );
   }, [
     params.status,

@@ -3,6 +3,7 @@ import { Alert, Button, Empty } from 'antd';
 import dayjs from 'dayjs';
 import { money, Status } from '../../shared/ui';
 import type { Bill, HousingRecord, FeeBasis } from './api';
+export { businessToday, formatTime as time } from '../../shared/datetime';
 
 export const usageLabels = {
   residential: '住宅',
@@ -21,17 +22,8 @@ export const actionLabels = {
 };
 export const cents = (value: number | null | undefined) =>
   value === null || value === undefined ? '—' : money(value / 100);
-export const time = (value: string | null | undefined) =>
-  value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '—';
 export const date = (value: string | null | undefined) =>
-  value ? dayjs(value).format('YYYY-MM-DD') : '—';
-export const businessToday = () =>
-  new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Shanghai',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
+  value ? dayjs.utc(value).format('YYYY-MM-DD') : '—';
 export function toCents(value: unknown, positive = false) {
   const raw = String(value ?? '').trim();
   if (!/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(raw))

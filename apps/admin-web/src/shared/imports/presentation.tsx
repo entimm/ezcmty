@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import { Alert, Button, Progress, Space, Tag } from 'antd';
 import { ApiError } from '../request';
+import { formatTime as time } from '../datetime';
 import type { Task } from './types';
+export { time };
 export const batchNames: Record<string, string> = {
   draft: '待上传',
   uploading: '接收文件中',
@@ -48,13 +50,6 @@ export const phaseNames: Record<string, string> = {
   finished: '已结束',
   artifact: '生成问题文件',
 };
-export function time(value: string | null | undefined) {
-  if (!value) return '—';
-  const date = new Date(value);
-  return Number.isNaN(date.valueOf())
-    ? value
-    : date.toLocaleString('zh-CN', { hour12: false });
-}
 export function ErrorNotice({
   error,
   retry,
