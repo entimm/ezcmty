@@ -356,19 +356,10 @@ function Workspace({
     [modal, setDirty],
   );
   useEffect(() => {
-    setNavigationGuard(confirmLeave, () => dirtyRef.current);
-    const before = (event: BeforeUnloadEvent) => {
-      if (dirtyRef.current) {
-        event.preventDefault();
-        event.returnValue = '';
-      }
-    };
-    window.addEventListener('beforeunload', before);
-    return () => {
-      setNavigationGuard();
-      window.removeEventListener('beforeunload', before);
-    };
-  }, [confirmLeave]);
+    // history.block also protects reloads; clean pages must not install it.
+    if (dirty) setNavigationGuard(confirmLeave);
+    return () => setNavigationGuard();
+  }, [confirmLeave, dirty]);
   const communityKey = `ezcmty-admin:${auth.scope}:${session.subjectId}:community`;
   const [selected, setSelected] = useState(() => stored(communityKey, ''));
   const communities = useQuery({

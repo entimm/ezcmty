@@ -12,6 +12,13 @@ const community = '019a1234-5678-7abc-9def-0123456789ab';
 const house = '00000000-0000-4000-8000-000000000001';
 
 describe('双后台域名与路由边界', () => {
+  it.each(['', '/Companies', '/companies/', '//companies', '/companies//'])(
+    '匹配仍严格拒绝非白名单路径%s',
+    (path) => {
+      expect(matchRoute('platform', path, configuredHosts.platform)).toBeNull();
+      expect(safeReturn('platform', path, configuredHosts.platform)).toBe('/');
+    },
+  );
   it.each(['/communities', '/payment-configuration'])(
     '关闭的物业页面%s不接受域名、本地或旧前缀直达，也不作为登录回跳目标',
     (path) => {
@@ -117,6 +124,42 @@ describe('双后台域名与路由边界', () => {
     expect(() =>
       routePath('platform', 'company-detail', {}, configuredHosts.platform),
     ).toThrow();
+  });
+  it.each([
+    ['payment-detail', 'payments'],
+    ['import-detail', 'imports'],
+  ])('生成%s使用资源别名并完整保留嵌套返回条件', (page, resource) => {
+    const back = 'search=锦城&status=enabled&page=2';
+    const url = new URL(
+      routePath(
+        'platform',
+        page,
+        { id: company, _back: back },
+        configuredHosts.platform,
+      ),
+      'https://admin.example',
+    );
+    expect(url.pathname).toBe(`/${resource}/${company}`);
+    expect(url.searchParams.get('_back')).toBe(back);
+    expect([...url.searchParams.keys()]).toEqual(['_back']);
+  });
+  it('路径参数单次编码，编码后的非UUID路径不能直达', () => {
+    const path = routePath(
+      'platform',
+      'company-detail',
+      { company: '锦城/公司?x=1%' },
+      configuredHosts.platform,
+    );
+    expect(path).toBe('/companies/' + encodeURIComponent('锦城/公司?x=1%'));
+    expect(matchRoute('platform', path, configuredHosts.platform)).toBeNull();
+    const encodedUuid = company.replace('0', '%30');
+    expect(
+      matchRoute(
+        'platform',
+        '/companies/' + encodedUuid,
+        configuredHosts.platform,
+      )?.params,
+    ).toEqual({ company });
   });
 });
 describe('登录安全回跳', () => {

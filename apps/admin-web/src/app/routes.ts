@@ -1,3 +1,4 @@
+import { generatePath, matchPath } from '@umijs/max';
 import type { Scope } from '../shared/types';
 import { propertyOrganizationPermissions } from '../shared/authorization';
 import { isPageAvailable } from './page-availability';
@@ -296,39 +297,32 @@ export function matchRoute(
   }
   if (legacyPlatformGroup && path.startsWith('/property/'))
     path = path.slice('/property'.length);
+  if (!path.startsWith('/') || (path.length > 1 && path.endsWith('/')))
+    return null;
+  try {
+    decodeURI(path);
+  } catch {
+    return null;
+  }
   for (const route of [...routes[scope]].sort(
     (a, b) => b.path.split('/').length - a.path.split('/').length,
   )) {
     if (!isPageAvailable(scope, route.page)) continue;
-    const actual = path.split('/'),
-      expected = route.path.split('/');
-    if (actual.length !== expected.length) continue;
-    const params: Record<string, string> = {};
-    let matched = true;
-    for (let i = 0; i < expected.length; i++) {
-      if (expected[i].startsWith(':')) {
-        let value: string;
-        try {
-          value = decodeURIComponent(actual[i]);
-        } catch {
-          matched = false;
-          break;
-        }
-        if (
-          !/^[0-9a-f]{8}-[0-9a-f]{4}-[47][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    const match = matchPath(
+      { path: route.path, caseSensitive: true, end: true },
+      path,
+    );
+    if (
+      match &&
+      Object.values(match.params).every(
+        (value) =>
+          typeof value === 'string' &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[47][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
             value,
-          )
-        ) {
-          matched = false;
-          break;
-        }
-        params[expected[i].slice(1)] = value;
-      } else if (actual[i] !== expected[i]) {
-        matched = false;
-        break;
-      }
-    }
-    if (matched) return { route, params };
+          ),
+      )
+    )
+      return { route, params: match.params as Record<string, string> };
   }
   return null;
 }
@@ -358,13 +352,19 @@ export function routePath(
       ),
     ) || options[0];
   if (!target) throw new Error('未注册的后台页面');
-  const used = new Set<string>();
-  const path = target.path.replace(/:([a-z_]+)/g, (_, key: string) => {
-    used.add(key);
-    const value = normalized[key as keyof typeof normalized];
-    if (!value) throw new Error('缺少页面资源标识');
-    return encodeURIComponent(value);
-  });
+  const used = new Set(
+    [...target.path.matchAll(/:([a-z_]+)/g)].map(([, key]) => key),
+  );
+  const path = generatePath(
+    target.path,
+    Object.fromEntries(
+      [...used].map((key) => {
+        const value = normalized[key];
+        if (!value) throw new Error('缺少页面资源标识');
+        return [key, encodeURIComponent(value)];
+      }),
+    ),
+  );
   const query = new URLSearchParams();
   Object.entries(normalized).forEach(([key, value]) => {
     if (

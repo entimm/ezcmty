@@ -24,11 +24,10 @@ afterEach(async () => {
 async function show() {
   cleanup();
   navigation?.setNavigationGuard();
-  vi.resetModules();
   navigation = await import('../../src/app/navigation');
   const api = navigation;
   const prefix = '/navigation-' + String(++serial);
-  window.history.pushState(null, '', prefix + '/start');
+  api.navigate(prefix + '/start', true);
   function Editor() {
     const [draft, setDraft] = useState('');
     return (
@@ -49,21 +48,18 @@ async function show() {
     );
   }
   render(<Location />);
-  let dirty = false,
-    pending: (() => void) | undefined;
+  let pending: (() => void) | undefined;
   const guard = vi.fn((action: () => void) => {
     pending = action;
   });
-  api.setNavigationGuard(guard, () => dirty);
   return {
     prefix,
     api,
     guard,
     setDirty: (value: boolean) => {
-      dirty = value;
+      api.setNavigationGuard(value ? guard : undefined);
     },
     confirm: () => {
-      dirty = false;
       const action = pending;
       pending = undefined;
       action?.();
@@ -81,6 +77,63 @@ async function at(path: string) {
 }
 
 describe('浏览器历史导航与未保存保护', () => {
+  it.each([false, true])(
+    '页面跳转 replace=%s 取消时保留输入，确认后沿原操作继续',
+    async (replace) => {
+      const view = await show();
+      const start = view.prefix + '/start',
+        target = view.prefix + '/target?page=3';
+      const originalLength = window.history.length;
+      const input = screen.getByRole('textbox', { name: '未保存内容' });
+      fireEvent.change(input, { target: { value: '尚未提交' } });
+      view.setDirty(true);
+      act(() => view.api.navigate(target, replace));
+      await at(start);
+      view.cancel();
+      expect(input).toHaveValue('尚未提交');
+      expect(screen.getByRole('textbox', { name: '未保存内容' })).toBe(input);
+      act(() => view.api.navigate(target, replace));
+      act(() => view.confirm());
+      await at(target);
+      expect(view.guard).toHaveBeenCalledTimes(2);
+      expect(window.history.length).toBe(originalLength + (replace ? 0 : 1));
+    },
+  );
+  it('替换当前页面后，后退跳过被替换地址并保留前进目标', async () => {
+    const view = await show();
+    const first = view.prefix + '/first',
+      replaced = view.prefix + '/replaced',
+      target = view.prefix + '/target?tab=owners';
+    act(() => {
+      view.api.navigate(first);
+      view.api.navigate(replaced);
+      view.api.navigate(target, true);
+    });
+    await at(target);
+    act(() => window.history.back());
+    await at(first);
+    act(() => window.history.forward());
+    await at(target);
+  });
+  it('仅未保存时拦截刷新，清除工作区拦截后旧确认不能跳转', async () => {
+    const view = await show();
+    const unload = () => {
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    expect(unload()).toBe(false);
+    view.setDirty(true);
+    expect(unload()).toBe(true);
+    act(() => view.api.navigate(view.prefix + '/stale'));
+    view.api.setNavigationGuard();
+    expect(unload()).toBe(false);
+    act(() => view.confirm());
+    await at(view.prefix + '/start');
+    act(() => view.api.navigate(view.prefix + '/new-session'));
+    await at(view.prefix + '/new-session');
+    expect(view.guard).toHaveBeenCalledOnce();
+  });
   it('没有未保存内容时多次后退前进沿原历史移动，不弹确认也不形成循环', async () => {
     const view = await show();
     const first = view.prefix + '/first?search=锦城',
