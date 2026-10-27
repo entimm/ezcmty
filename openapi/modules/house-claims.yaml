@@ -2,33 +2,37 @@ communities:
   get:
     operationId: listClaimableCommunities
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 查找可认领小区
-    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    description: 要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联。传入本人有效额外身份但类型不适用时返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422；资源限定本人范围；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': &id002
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientUnauthorized
       '403': &id003
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientProblem
       '404': &id004
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientProblem
       '409': &id005
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientProblem
       '422': &id006
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientProblem
       '500': &id007
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientProblem
       '503': &id008
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientProblem
       '429': &id009
         description: 操作过于频繁
         headers:
           X-Request-ID: &id001
             $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
           Retry-After:
             schema:
               type: integer
@@ -41,11 +45,16 @@ communities:
         description: 操作成功
         headers: &id010
           X-Request-ID: *id001
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
         content:
           application/json:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/ClaimableCommunityPage
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: name
         in: query
         required: false
@@ -75,13 +84,13 @@ nodes:
   get:
     operationId: listClaimableSpaceNodes
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 逐级选择空间
-    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    description: 要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联。传入本人有效额外身份但类型不适用时返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422；资源限定本人范围；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -99,6 +108,7 @@ nodes:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/ClaimableSpaceNodePage
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: community_id
         in: path
         required: true
@@ -118,13 +128,13 @@ houses:
   get:
     operationId: listClaimableHouses
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 选择当前空间直接房屋
-    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    description: 要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联。传入本人有效额外身份但类型不适用时返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422；资源限定本人范围；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -142,6 +152,7 @@ houses:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/ClaimableHousePage
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: community_id
         in: path
         required: true
@@ -165,13 +176,13 @@ house:
   get:
     operationId: getClaimableHouse
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 读取房屋选项
-    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    description: 要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联。传入本人有效额外身份但类型不适用时返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422；资源限定本人范围；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -189,6 +200,7 @@ house:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/ClaimableHouse
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: community_id
         in: path
         required: true
@@ -203,13 +215,13 @@ myClaims:
   get:
     operationId: listMyHouseClaims
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 查询本人申请
-    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    description: 要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联。传入本人有效额外身份但类型不适用时返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422；资源限定本人范围；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -227,6 +239,7 @@ myClaims:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/ResidentHouseClaimPage
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: status
         in: query
         required: false
@@ -254,15 +267,15 @@ myClaims:
   post:
     operationId: createHouseClaim
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 提交房屋认领
     description:
-      按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+      要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联。传入本人有效额外身份但类型不适用时返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422；资源限定本人范围；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
       创建首次201，同键同输入重放返回原记录当前状态200；同键不同输入409。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -284,6 +297,7 @@ myClaims:
         headers: *id010
         content: *id014
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: Idempotency-Key
         in: header
         required: true
@@ -302,13 +316,13 @@ myClaim:
   get:
     operationId: getMyHouseClaim
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 读取本人申请
-    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    description: 要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联。传入本人有效额外身份但类型不适用时返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422；资源限定本人范围；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -326,6 +340,7 @@ myClaim:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/ResidentHouseClaim
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: claim_id
         in: path
         required: true
@@ -335,13 +350,13 @@ cancellations:
   post:
     operationId: cancelHouseClaim
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 撤回待审申请
-    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    description: 要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联。传入本人有效额外身份但类型不适用时返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422；资源限定本人范围；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -359,6 +374,7 @@ cancellations:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/ResidentHouseClaim
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: claim_id
         in: path
         required: true
@@ -374,13 +390,13 @@ myBindings:
   get:
     operationId: listMyHouseBindings
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 查询本人房屋
-    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    description: 要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联。传入本人有效额外身份但类型不适用时返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422；资源限定本人范围；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -398,6 +414,7 @@ myBindings:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/ResidentHouseBindingPage
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: status
         in: query
         required: false
@@ -416,13 +433,13 @@ myBinding:
   get:
     operationId: getMyHouseBinding
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 读取本人房屋
-    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    description: 要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联。传入本人有效额外身份但类型不适用时返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422；资源限定本人范围；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -440,6 +457,7 @@ myBinding:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/ResidentHouseBinding
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: binding_id
         in: path
         required: true
@@ -449,13 +467,13 @@ releases:
   post:
     operationId: releaseHouseBinding
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 主动解绑房屋
-    description: 按本人或当前物业公司限定资源；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
+    description: 要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联。传入本人有效额外身份但类型不适用时返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422；资源限定本人范围；状态/版本变化返回409。分页按创建时间及ID稳定排序。仅待审核允许撤回或审批。批准时申请、房屋绑定和审计同事务提交。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -473,6 +491,7 @@ releases:
             schema:
               $ref: ../components/house-claim-schemas.yaml#/ResidentHouseBinding
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: binding_id
         in: path
         required: true
@@ -496,16 +515,24 @@ claims:
     security:
       - AdminSession: []
     responses:
-      '401': *id002
-      '403': *id003
-      '404': *id004
-      '409': *id005
-      '422': *id006
-      '500': *id007
-      '503': *id008
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
       '200':
         description: 操作成功
-        headers: *id010
+        headers:
+          X-Request-ID: *id001
         content:
           application/json:
             schema:
@@ -584,16 +611,24 @@ claim:
     security:
       - AdminSession: []
     responses:
-      '401': *id002
-      '403': *id003
-      '404': *id004
-      '409': *id005
-      '422': *id006
-      '500': *id007
-      '503': *id008
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
       '200':
         description: 操作成功
-        headers: *id010
+        headers:
+          X-Request-ID: *id001
         content:
           application/json:
             schema:
@@ -618,16 +653,24 @@ reviews:
     security:
       - AdminSession: []
     responses:
-      '401': *id002
-      '403': *id003
-      '404': *id004
-      '409': *id005
-      '422': *id006
-      '500': *id007
-      '503': *id008
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
       '200':
         description: 操作成功
-        headers: *id010
+        headers:
+          X-Request-ID: *id001
         content:
           application/json:
             schema:
@@ -673,16 +716,24 @@ bindings:
     security:
       - AdminSession: []
     responses:
-      '401': *id002
-      '403': *id003
-      '404': *id004
-      '409': *id005
-      '422': *id006
-      '500': *id007
-      '503': *id008
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
       '200':
         description: 操作成功
-        headers: *id010
+        headers:
+          X-Request-ID: *id001
         content:
           application/json:
             schema:
@@ -720,16 +771,24 @@ binding:
     security:
       - AdminSession: []
     responses:
-      '401': *id002
-      '403': *id003
-      '404': *id004
-      '409': *id005
-      '422': *id006
-      '500': *id007
-      '503': *id008
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
       '200':
         description: 操作成功
-        headers: *id010
+        headers:
+          X-Request-ID: *id001
         content:
           application/json:
             schema:
@@ -754,16 +813,24 @@ revocations:
     security:
       - AdminSession: []
     responses:
-      '401': *id002
-      '403': *id003
-      '404': *id004
-      '409': *id005
-      '422': *id006
-      '500': *id007
-      '503': *id008
+      '401':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '403':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '404':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '409':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '422':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '500':
+        $ref: ../components/responses.yaml#/AdminProblem
+      '503':
+        $ref: ../components/responses.yaml#/AdminProblem
       '200':
         description: 操作成功
-        headers: *id010
+        headers:
+          X-Request-ID: *id001
         content:
           application/json:
             schema:

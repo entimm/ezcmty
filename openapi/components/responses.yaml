@@ -91,3 +91,35 @@ AdminProblem:
     application/problem+json:
       schema:
         $ref: ./errors.yaml#/ProblemDetails
+ClientProblem:
+  description: 客户端操作失败；按 Problem Details 的 code 区分身份不可用、类型不匹配和具体业务错误，不撤销仍有效的客户端登录。
+  headers:
+    X-Request-ID:
+      $ref: ./headers.yaml#/RequestId
+    Cache-Control:
+      description: 客户端敏感响应禁止缓存。
+      schema:
+        type: string
+        const: no-store
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/ProblemDetails
+ClientUnauthorized:
+  description: 缺少、无效、过期或已撤销的客户端会话，或微信用户不可用；401表示全局认证失败，业务身份拒绝使用403。
+  headers:
+    X-Request-ID:
+      $ref: ./headers.yaml#/RequestId
+    Cache-Control:
+      schema:
+        type: string
+        const: no-store
+    WWW-Authenticate:
+      description: 指示请求需要有效 Bearer 凭证。
+      schema:
+        type: string
+        const: Bearer
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./errors.yaml#/ProblemDetails

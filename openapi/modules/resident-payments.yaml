@@ -2,17 +2,19 @@ houseBills:
   get:
     operationId: listResidentHouseBills
     x-runtimes: &residentRuntimes
-      - resident_api
+      - client_api
     tags: &residentTags
       - payments
     summary: 查询当前授权房屋的历史账单
     description: >-
+      要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联；本人有效额外身份类型不适用返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422。
       校验当前居民账号、公司、房屋完整路径及房屋绑定均有效，越界返回404。
       不限制认领前账期；默认查询仍有欠款的有效账单，scope=all 查询全部历史账单。
       返回脱敏视图；GET只读取本地事实，不下单、关单或签发支付参数。
     security: &residentSecurity
-      - ResidentToken: []
+      - ClientToken: []
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: binding_id
         in: path
         required: true
@@ -81,9 +83,10 @@ houseBills:
           application/json:
             schema:
               $ref: ../components/resident-payment-schemas.yaml#/ResidentBillPage
-      '401': &residentProblem
-        $ref: ../components/responses.yaml#/AdminProblem
-      '403': *residentProblem
+      '401':
+        $ref: ../components/responses.yaml#/ClientUnauthorized
+      '403': &residentProblem
+        $ref: ../components/responses.yaml#/ClientProblem
       '404': *residentProblem
       '422': *residentProblem
       '429': &residentRateLimit
@@ -91,6 +94,10 @@ houseBills:
         headers:
           X-Request-ID:
             $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
           Retry-After:
             schema:
               type: integer
@@ -108,11 +115,13 @@ bill:
     tags: *residentTags
     summary: 查看当前授权房屋账单
     description: >-
+      要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联；本人有效额外身份类型不适用返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422。
       要求当前有效房屋授权，允许查看认领前账单。本人历史支付关系不能替代房屋当前授权。
       其他居民占用仅显示通用处理中提示；只在占用属于本人时返回本人原订单ID。
       GET只读取本地事实；派生的可支付提示不替代创建支付时的锁内校验。
     security: *residentSecurity
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: bill_id
         in: path
         required: true
@@ -126,7 +135,8 @@ bill:
           application/json:
             schema:
               $ref: ../components/resident-payment-schemas.yaml#/ResidentBill
-      '401': *residentProblem
+      '401':
+        $ref: ../components/responses.yaml#/ClientUnauthorized
       '403': *residentProblem
       '404': *residentProblem
       '422': *residentProblem
@@ -140,11 +150,13 @@ entries:
     tags: *residentTags
     summary: 查询房屋历史收款流水
     description: >-
+      要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联；本人有效额外身份类型不适用返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422。
       要求当前有效房屋授权，认领前流水同样可见。仅返回日期、金额、来源及调整标识；
       不公开他人的付款身份、渠道单号、凭证及管理员自由文本。
       仅本人的线上流水返回 own_payment_order_id。线下冲正展示为线下登记调整，不表示退款。
     security: *residentSecurity
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: bill_id
         in: path
         required: true
@@ -175,7 +187,8 @@ entries:
           application/json:
             schema:
               $ref: ../components/resident-payment-schemas.yaml#/ResidentBillSettlementEntryPage
-      '401': *residentProblem
+      '401':
+        $ref: ../components/responses.yaml#/ClientUnauthorized
       '403': *residentProblem
       '404': *residentProblem
       '422': *residentProblem
@@ -189,11 +202,13 @@ orders:
     tags: *residentTags
     summary: 查询本人缴费订单
     description: >-
+      要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联；本人有效额外身份类型不适用返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422。
       仅按付款人关系返回本人订单；解绑后仍可查询本人历史订单及所付账单摘要，
       但不能据此读取房屋最新余额和他人流水。idempotency_key 精确筛选用于恢复丢失响应；
       空结果仅表示当前未查到已提交订单，不能据此更换幂等键重付。GET不发起渠道请求。
     security: *residentSecurity
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: status
         in: query
         required: false
@@ -252,7 +267,8 @@ orders:
           application/json:
             schema:
               $ref: ../components/resident-payment-schemas.yaml#/ResidentPaymentOrderPage
-      '401': *residentProblem
+      '401':
+        $ref: ../components/responses.yaml#/ClientUnauthorized
       '403': *residentProblem
       '404': *residentProblem
       '422': *residentProblem
@@ -265,6 +281,7 @@ orders:
     tags: *residentTags
     summary: 创建单张账单付清订单
     description: >-
+      要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联；本人有效额外身份类型不适用返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422。
       先完成当前居民认证，并在本人范围匹配幂等原单；同键同输入重放不要求当前房屋授权。
       仅新建订单要求当前有效房屋授权。按既有锁顺序锁账单后，核对 expected_row_version、剩余欠款、
       支付占用及收款配置，同事务持久创建订单、明细、占用和可靠任务后返回201。
@@ -276,6 +293,7 @@ orders:
       201不承诺渠道已下单或收款。超时、503及空查询结果均不能作为换键重付依据。
     security: *residentSecurity
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: Idempotency-Key
         in: header
         required: true
@@ -294,11 +312,12 @@ orders:
           application/json:
             schema:
               $ref: ../components/resident-payment-schemas.yaml#/ResidentPaymentOrder
-      '401': *residentProblem
+      '401':
+        $ref: ../components/responses.yaml#/ClientUnauthorized
       '403': *residentProblem
       '404': *residentProblem
       '409':
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientProblem
         description: >-
           payment.idempotency_conflict：同键不同输入；payment.bill_reserved：账单已被支付占用；
           payment.bill_version_conflict：账单版本变化；payment.bill_not_payable：账单不可支付；
@@ -315,12 +334,14 @@ order:
     tags: *residentTags
     summary: 查看本人缴费订单
     description: >-
+      要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联；本人有效额外身份类型不适用返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422。
       仅付款人本人可读，越界返回404；解绑后仍返回本人历史付款及账单摘要。
       awaiting_posting 仅来源于已完成身份、商户、AppID、订单、金额和成功状态核验的可信收款证据；
       此时显示已收款确认中，不允许重复支付。仅 succeeded/posted 可显示缴费成功。
       分账、解冻或对账未完成不改变居民缴费成功。GET不发起渠道请求。
     security: *residentSecurity
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: payment_order_id
         in: path
         required: true
@@ -334,7 +355,8 @@ order:
           application/json:
             schema:
               $ref: ../components/resident-payment-schemas.yaml#/ResidentPaymentOrder
-      '401': *residentProblem
+      '401':
+        $ref: ../components/responses.yaml#/ClientUnauthorized
       '403': *residentProblem
       '404': *residentProblem
       '422': *residentProblem
@@ -348,6 +370,7 @@ parameters:
     tags: *residentTags
     summary: 取得原订单客户端调起参数
     description: >-
+      要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联；本人有效额外身份类型不适用返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422。
       同时要求本人订单关系与当前有效房屋授权，且原订单允许继续支付；否则409或越界404。
       使用原金额、原商户、原规则及原预支付凭证签发参数，不创建新订单，不接受客户端覆盖支付字段。
       pending、unknown、closing、已到期、可信收款待入账和终态订单均不得签发。
@@ -356,6 +379,7 @@ parameters:
       此操作无需新的幂等键；重复签发仍属于同一订单。已签发凭证不能承诺在撤权时即时失效。
     security: *residentSecurity
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: payment_order_id
         in: path
         required: true
@@ -369,11 +393,12 @@ parameters:
           application/json:
             schema:
               $ref: ../components/resident-payment-schemas.yaml#/ResidentClientPaymentParameters
-      '401': *residentProblem
+      '401':
+        $ref: ../components/responses.yaml#/ClientUnauthorized
       '403': *residentProblem
       '404': *residentProblem
       '409':
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientProblem
         description: >-
           payment.parameters_unavailable：原订单尚无有效调起参数；
           payment.order_not_payable：原订单当前不允许继续支付，包括可信收款待入账、到期、关闭中或终态。
@@ -388,12 +413,14 @@ refreshes:
     tags: *residentTags
     summary: 请求核实原支付结果
     description: >-
+      要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联；本人有效额外身份类型不适用返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422。
       仅付款人本人可请求，解绑后仍可核实本人订单。
       非终态按原订单合并持久查单任务后返回202，已有可靠任务则复用，不为每次点击新建资金业务。
       已终态返回200当前订单。无需新的幂等键，禁止将客户端成功或取消标记作为收款或关单依据。
       202不承诺已经完成渠道查询；查询结果和通知共用可信、幂等入账入口。
     security: *residentSecurity
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: payment_order_id
         in: path
         required: true
@@ -414,7 +441,8 @@ refreshes:
           application/json:
             schema:
               $ref: ../components/resident-payment-schemas.yaml#/ResidentPaymentOrder
-      '401': *residentProblem
+      '401':
+        $ref: ../components/responses.yaml#/ClientUnauthorized
       '403': *residentProblem
       '404': *residentProblem
       '422': *residentProblem
@@ -428,6 +456,7 @@ closures:
     tags: *residentTags
     summary: 请求关闭本人原支付订单
     description: >-
+      要求 ClientToken 与 X-Client-Identity=resident，从当前微信用户派生居民身份，不查询 resident 关联；本人有效额外身份类型不适用返回403 client.identity_mismatch，额外身份不可用返回403 client.identity_unavailable，未知或他人关联返回404，缺少或格式错误返回422。
       仅付款人本人可请求，解绑后仍可关闭本人未支付订单。
       按原订单合并可靠查询及关单任务，非终态返回202；关闭前先核实原单，确认关闭后才释放占用。
       本地到期、未支付、客户端取消或请求超时都不能直接释放占用。
@@ -436,6 +465,7 @@ closures:
       无需新的幂等键，不为重复点击创建新的支付或资金业务。
     security: *residentSecurity
     parameters:
+      - $ref: ../components/client-parameters.yaml#/ClientIdentity
       - name: payment_order_id
         in: path
         required: true
@@ -456,7 +486,8 @@ closures:
           application/json:
             schema:
               $ref: ../components/resident-payment-schemas.yaml#/ResidentPaymentOrder
-      '401': *residentProblem
+      '401':
+        $ref: ../components/responses.yaml#/ClientUnauthorized
       '403': *residentProblem
       '404': *residentProblem
       '422': *residentProblem

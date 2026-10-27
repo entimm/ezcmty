@@ -2,7 +2,7 @@
 
 ## 范围与依据
 
-本文件规定后端、管理后台、居民小程序和测试的代码归属，以及账单支付接入现有模块的方式。目录表示职责分配，只在实现对应能力时创建文件，不表示其中所有路径均已实现。设计确认与实施授权遵循 [设计工作流](../standards/documentation.md#设计工作流)。
+本文件规定后端、管理后台、平台小程序和测试的代码归属，以及账单支付接入现有模块的方式。目录表示职责分配，只在实现对应能力时创建文件，不表示其中所有路径均已实现。设计确认与实施授权遵循 [设计工作流](../standards/documentation.md#设计工作流)。
 
 - 进程、技术栈和会话边界见 [系统架构](overview.md)。
 - 后端分层、依赖、事务及任务执行边界见 [后端业务边界与公共能力](backend-services.md)。
@@ -13,7 +13,7 @@
 
 ## 组织原则
 
-保留一个后端包、五个运行进程、按层组织的目录。各端应用 Service 负责自己的身份、数据范围和用例编排，通过共用 Domain、Repository、Model、Integration 和纯 Mapper 协作，不相互调用应用 Service。
+保留一个后端包、五个运行进程、按层组织的目录，居民进程演进为统一 client 进程。client 认证、业务身份扩展及迁移见 [客户端技术架构](../design/client/architecture.md)。各端应用 Service 负责自己的身份、数据范围和用例编排，通过共用 Domain、Repository、Model、Integration 和纯 Mapper 协作，不相互调用应用 Service。
 
 支付执行归 `services/worker/payments/`；Webhook 可靠保存通知和处理任务，其他入口安排或合并持久任务。渠道通知、主动查询、人工恢复和资金核对最终进入同一收款确认能力。共享账单入账归 `domain/billing/posting.py`，与支付编排分开。
 
@@ -28,11 +28,11 @@ backend_app/
 ├─ app_factory.py                         各运行入口的装配
 ├─ runtimes/                              五个进程入口
 ├─ api/
-│  ├─ resident/
-│  │  ├─ dependencies.py                公共居民身份与 HTTP 依赖
-│  │  ├─ router.py                      居民路由组装
-│  │  ├─ bills.py                       居民账单读取
-│  │  └─ payments.py                    本人支付接口
+│  ├─ client/
+│  │  ├─ dependencies.py                统一认证与业务身份选择依赖
+│  │  ├─ identity.py                    会话、本人账号、手机号及身份目录
+│  │  ├─ router.py                      client 路由组装
+│  │  └─ resident/                      认领、房屋、账单与本人支付接口
 │  ├─ platform_admin/
 │  │  ├─ payment_configuration.py       配置接口
 │  │  └─ payments.py                    记录、核对和恢复接口
@@ -43,9 +43,10 @@ backend_app/
 │     ├─ router.py
 │     └─ payments.py                    渠道通知及 ACK
 ├─ services/
-│  ├─ resident/
-│  │  ├─ bills.py
-│  │  └─ payments.py
+│  ├─ client/
+│  │  ├─ identity.py                    公共账号与会话用例
+│  │  ├─ identities.py                  通用额外关联及身份编排
+│  │  └─ resident/                      认领、账单与支付用例
 │  ├─ platform_admin/
 │  │  ├─ payment_configuration.py
 │  │  └─ payments.py
@@ -105,7 +106,7 @@ backend_app/
 
 Model 按配置、订单、资金执行、调度证据和核对等生命周期组织，不要求一张表一个文件。请求与响应按实际契约组织，不将管理员完整对象作为居民响应的基础。微信协议字段只在 Integration 映射，领域和数据库继续使用通用名称。
 
-居民公共依赖从身份路由提取到 `dependencies.py`，账单、支付、认领路由均依赖公共入口，不从其他业务路由导入身份处理。`app_factory.py` 只装配本进程路由，不承载业务流程。
+client 公共认证及身份选择放在 `api/client/dependencies.py`，账单、支付、认领等居民路由依赖该入口，不从其他业务路由导入认证。居民选择键为派生 `resident`，不读取居民关联记录。`app_factory.py` 只装配本进程路由，不承载业务流程。
 
 ### 共享账单能力
 
@@ -121,7 +122,7 @@ Model 按配置、订单、资金执行、调度证据和核对等生命周期�
 
 | 入口       | 用例归属                    | 与共享能力协作                                                                                                 |
 | ---------- | --------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| 居民端     | `services/resident/`        | 当前房屋授权与本人订单授权分别判断；创建订单和任务，读取本地结果，签发原订单调起参数。                         |
+| 居民端     | `services/client/resident/` | 当前房屋授权与本人订单授权分别判断；创建订单和任务，读取本地结果，签发原订单调起参数。                         |
 | 平台管理端 | `services/platform_admin/`  | 校验配置与资金异常处理授权，核验渠道能力，提交配置和审计；恢复只安排原业务任务，外部处置仅记录差异结论与审计。 |
 | 物业管理端 | `services/property_admin/`  | 本公司数据范围；支付及资金只读；线下账单写入检查当前占用。                                                     |
 | Webhook    | `services/webhook/`         | 使用 Integration 验签解密，可靠保存通知及任务后应答，不同步执行账务。                                          |
@@ -195,29 +196,9 @@ src/
 
 ## 居民小程序目录
 
-路径相对 `apps/miniapp/src/`。原生页面与居民子包保留，具体职责以[平台微信小程序架构](miniapp.md#前端边界)为准。
+公共会话、身份目录、本人账号与手机号留主包，居民 API、类型、页面、选房和支付恢复归居民分包。完整目录及导入边界由 [平台微信小程序架构](miniapp.md#前端边界) 维护；本期不预建物业或商家分包。
 
-```text
-src/
-├─ app.json                            页面注册
-├─ core/                              居民契约、会话及主包请求能力
-│  ├─ api.ts、types.ts
-│  ├─ session.ts、request.ts
-│  └─ phones.ts                       本人手机号提交与恢复
-├─ ui/navigation.ts                   安全返回白名单
-├─ components/                        无业务副作用的统一展示
-└─ packages/resident/
-   ├─ claims.ts、payments.ts           居民认领与支付原请求恢复、SDK 适配
-   ├─ selection.ts                    按环境和居民用户隔离的房屋选择 ID
-   ├─ presentation.ts、page-state.ts   展示转换与页面隔离
-   ├─ components/house-picker/         分层认领/已授权切换抽屉
-   └─ pages/
-      ├─ home、house-detail、profile  入口
-      ├─ bills、bill-detail
-      └─ payment-confirm、payment-orders、payment-detail
-```
-
-支付确认页负责展示和按钮，`packages/resident/payments.ts` 协调原请求恢复、调起和结果刷新，SDK 适配只返回面板操作结果。恢复状态及调起参数的隔离要求见 [小程序身份、请求与状态](miniapp.md#身份请求与状态)。SDK 成功只触发服务端核实，取消或未知结果继续处理原订单。
+支付确认页负责展示和按钮，`packages/resident/payments.ts` 协调原请求恢复、调起和结果刷新，SDK 适配只返回面板操作结果。恢复状态及调起参数的隔离要求见 [小程序请求与状态](miniapp.md#请求与状态)。SDK 成功只触发服务端核实，取消或未知结果继续处理原订单。
 
 账单页面检查当前房屋授权，本人订单页面使用本人订单授权；不对全部支付页面统一要求当前房屋绑定。居民响应使用单独的白名单 Mapper，不复用管理员完整记录。新页面注册、安全回跳和查询参数一并调整，不将调起参数放进导航。
 
@@ -269,4 +250,4 @@ Domain 测试验证规则，应用集成测试验证状态和事务，PostgreSQL
 - 包公开导出保持有限，避免汇总导入引入循环；不通过 `common` 或 `utils` 隐藏业务归属。跨端导入、向上依赖和公开契约纳入既有检查。
 - 合并支付沿订单明细和固定锁序扩展，多接收方沿应分与执行明细扩展；开放入口前另行确认业务规则。退款、进件和其他渠道不预建实现。
 - 接入顺序遵循依赖：先统一账单契约和共享入账，再建立支付数据、任务及渠道能力；配置可用后才开放收款；支付确认闭环成立后接入分账、解冻和核对。页面以已确认契约和对应服务能力为前提。
-- 必要改动限于共享入账、资源锁、线上来源与系统操作者、占用保护、居民路由依赖、运行入口装配及支付模块。现有身份会话、后台缓存隔离、线下语义和原生小程序保持；其他旧模块问题不作为支付实施前置重构。
+- 必要改动限于共享入账、资源锁、线上来源与系统操作者、占用保护、居民路由依赖、运行入口装配及支付模块。后台缓存隔离、线下语义和原生小程序保持；客户端统一会话与居民迁移按 [身份框架设计](../design/client/overview.md) 执行，其他旧模块问题不作为支付实施前置重构。

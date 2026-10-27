@@ -6,25 +6,25 @@
 
 - 平台管理端
 - 物业管理端
-- 平台微信小程序（当前实现居民功能）
+- 平台微信小程序（统一客户端身份框架，首期接入居民业务）
 - Webhook 端
 - 任务系统
 
 后端使用一个 Python 包 `backend_app`，通过独立运行入口提供以下进程：
 
-| 进程                 | 职责               |
-| -------------------- | ------------------ |
-| `platform-admin-api` | 平台管理接口       |
-| `property-admin-api` | 物业管理接口       |
-| `resident-api`       | 居民小程序接口     |
-| `webhook`            | 外部回调接收和校验 |
-| `worker`             | 异步任务执行       |
+| 进程                 | 职责                                   |
+| -------------------- | -------------------------------------- |
+| `platform-admin-api` | 平台管理接口                           |
+| `property-admin-api` | 物业管理接口                           |
+| `client-api`         | 统一微信账号、身份框架与客户端业务接口 |
+| `webhook`            | 外部回调接收和校验                     |
+| `worker`             | 异步任务执行                           |
 
 各 API 进程使用独立的应用 Service，共享 Domain、Repository、Model、Integration 和响应映射。后台业务编排与复用边界见 [后端业务边界与公共能力](backend-services.md)，后端、前端及测试的目录和支付接入方式见 [代码组织与账单支付接入](code-organization.md)。
 
 管理后台平台和物业功能共用 Ant Design Pro 项目，但保持独立路由、布局、会话和权限上下文；前端工程与缓存隔离见 [管理后台前端设计](admin-web.md)。
 
-居民、物业、商家共用一个平台微信小程序，业务模块和授权上下文独立，见 [平台微信小程序架构](miniapp.md)。居民身份、手机号和房屋认领见 [居民接入设计](../design/resident/identity-and-house-claims.md)。
+平台小程序使用统一微信登录和 client 会话，业务模块与授权上下文独立，见 [客户端统一身份框架](../design/client/overview.md) 和 [平台微信小程序架构](miniapp.md)。居民身份由微信用户派生，不进入通用额外身份关联表；首期接入居民业务，物业与商家接入另行设计。居民房屋认领见 [居民接入设计](../design/resident/identity-and-house-claims.md)。
 
 居民账单支付、商户绑定、分账、解冻及后台恢复的业务规则、权限与交互见 [居民账单支付与资金处理](../design/payment/bill-payments.md)，数据与事务设计见 [账单支付与分账数据设计](../design/payment/bill-payments-and-profit-sharing.md)。
 
@@ -49,11 +49,12 @@ Worker → Service
 
 ## 会话
 
-Redis 作为共享会话存储：
+Redis 作为会话基础设施：
 
 - 管理端使用安全 Cookie。
-- 居民端使用独立会话令牌。
-- 平台、物业、居民会话使用不同命名空间。
+- 小程序使用统一 client Bearer 会话，切换业务身份不更换令牌。
+- 平台后台、物业后台和 client 使用不同命名空间；client 认证会话仅由 client-api 管理，不跨进程共享。
+- 业务请求显式选择身份；派生居民和额外业务身份分别执行当前授权，不在会话中合并权限或保存可变当前公司。
 - Redis 不承担初期任务队列职责。
 
 PostgreSQL 保存业务数据，Redis 会话丢失时允许用户重新登录。
@@ -71,7 +72,7 @@ API 模块固定为：
 ```text
 backend_app/api/platform_admin/
 backend_app/api/property_admin/
-backend_app/api/resident/
+backend_app/api/client/
 backend_app/api/webhook/
 ```
 

@@ -3,9 +3,10 @@ AdminSession:
   in: cookie
   name: admin_session
 
-ResidentToken:
+ClientToken:
   type: http
   scheme: bearer
+  description: 仅由 client-api 接受的统一微信用户会话；业务请求另以 X-Client-Identity 选择并验证业务身份，不共享后台 Cookie 会话。
 
 WebhookSignature:
   type: apiKey

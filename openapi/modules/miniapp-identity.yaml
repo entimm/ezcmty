@@ -1,33 +1,37 @@
 sessions:
   post:
-    operationId: createResidentSession
+    operationId: createClientSession
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
-    summary: 微信登录
-    description: 独立居民会话；仅操作本人资源。敏感结果不缓存，状态或幂等冲突返回409。
+    summary: 统一微信登录并创建客户端会话
+    description: 微信 code 仅用于解析平台微信用户。成功签发新的随机不透明 ClientToken，会话不保存当前选中身份或角色权限。居民身份从有效微信用户派生，不创建、补建或回填 resident 关联；其他已撤销关联不会因登录被恢复。身份目录另行只读查询。登录无 Idempotency-Key；结果未知时重新取得微信 code，不自动重放一次性 code。
     security: []
     responses:
       '401': &id002
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientUnauthorized
       '403': &id003
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientProblem
       '404': &id004
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientProblem
       '409': &id005
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientProblem
       '422': &id006
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientProblem
       '500': &id007
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientProblem
       '503': &id008
-        $ref: ../components/responses.yaml#/AdminProblem
+        $ref: ../components/responses.yaml#/ClientProblem
       '429': &id009
         description: 操作过于频繁
         headers:
           X-Request-ID: &id001
             $ref: ../components/headers.yaml#/RequestId
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
           Retry-After:
             schema:
               type: integer
@@ -40,10 +44,14 @@ sessions:
         description: 操作成功
         headers: &id010
           X-Request-ID: *id001
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
         content:
           application/json:
             schema:
-              $ref: ../components/miniapp-schemas.yaml#/ResidentSession
+              $ref: ../components/miniapp-schemas.yaml#/ClientSession
     requestBody:
       required: true
       content:
@@ -52,15 +60,15 @@ sessions:
             $ref: ../components/miniapp-schemas.yaml#/MiniappLogin
 currentSession:
   get:
-    operationId: getResidentSession
+    operationId: getClientSession
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
-    summary: 恢复居民会话
-    description: 独立居民会话；仅操作本人资源。敏感结果不缓存，状态或幂等冲突返回409。
+    summary: 恢复客户端会话
+    description: 统一客户端会话授权访问本人公共资源，不要求 X-Client-Identity；敏感响应不缓存。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -76,17 +84,17 @@ currentSession:
         content:
           application/json:
             schema:
-              $ref: ../components/miniapp-schemas.yaml#/ResidentSessionState
+              $ref: ../components/miniapp-schemas.yaml#/ClientSessionState
   delete:
-    operationId: deleteResidentSession
+    operationId: deleteClientSession
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
-    summary: 退出居民会话
-    description: 独立居民会话；仅操作本人资源。敏感结果不缓存，状态或幂等冲突返回409。
+    summary: 退出当前客户端会话
+    description: 统一客户端会话授权访问本人公共资源，不要求 X-Client-Identity；敏感响应不缓存。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -103,13 +111,13 @@ me:
   get:
     operationId: getMiniappUser
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 获取本人账号
-    description: 独立居民会话；仅操作本人资源。敏感结果不缓存，状态或幂等冲突返回409。
+    description: 统一客户端会话授权访问本人公共资源，不要求 X-Client-Identity；敏感响应不缓存。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -130,13 +138,13 @@ phones:
   get:
     operationId: listPhoneBindings
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 查询本人手机号
-    description: 独立居民会话；仅操作本人资源。敏感结果不缓存，状态或幂等冲突返回409。
+    description: 统一客户端会话授权访问本人公共资源，不要求 X-Client-Identity；敏感响应不缓存。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -172,13 +180,13 @@ phones:
   post:
     operationId: createPhoneBinding
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 微信快速验证并绑定手机号
     description: 微信快速验证成功后直接保存绑定与成功记录；多号码可复用。Idempotency-Key同键同输入返回当前绑定，包括已解绑状态；同键不同输入409。手填号码须与微信结果一致。新建与重放均201。Redis不保存临时手机号凭证或结果。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -214,13 +222,13 @@ phone:
   delete:
     operationId: deletePhoneBinding
     x-runtimes:
-      - resident_api
+      - client_api
     tags:
       - miniapp
     summary: 解绑手机号
-    description: 独立居民会话；仅操作本人资源。敏感结果不缓存，状态或幂等冲突返回409。
+    description: 统一客户端会话授权访问本人公共资源，不要求 X-Client-Identity；敏感响应不缓存。
     security:
-      - ResidentToken: []
+      - ClientToken: []
     responses:
       '401': *id002
       '403': *id003
@@ -246,3 +254,90 @@ phone:
           type: integer
           minimum: 1
           maximum: 9007199254740991
+identities:
+  get:
+    operationId: listMyClientIdentities
+    x-runtimes:
+      - client_api
+    tags:
+      - miniapp
+    summary: 查询本人可用业务身份
+    description: >-
+      仅要求 ClientToken，不要求 X-Client-Identity。居民身份从当前有效微信用户派生，
+      固定返回 id=resident、type=resident、display_name=居民，不读取或建立 resident 关联，
+      无房屋不影响居民身份可用。额外身份按本人关联、active 状态及已注册开放解析器的当前有效性过滤。
+      派生居民与过滤后的额外身份合并，resident 固定首位，其余按关联 created_at,id 升序排序，
+      再统一计数和分页；不能先分别分页再拼接，不能接受客户端自报排序时间。
+      items 与 total 使用同一查询快照及有效性范围。有效客户端认证下 total 包含 resident 且至少为1，
+      超出范围的页 items 可以为空。未注册、未开放或主体不可用的额外身份不进入目录。
+      本期生产仅开放 resident。GET 只读，不补建、恢复关联或修改服务器端当前身份。
+      投影不返回内部 subject_id、角色权限、公司或任意业务数据。
+    security:
+      - ClientToken: []
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+          default: 1
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+    responses:
+      '200':
+        description: 本人当前可用业务身份的分页结果。
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/miniapp-schemas.yaml#/ClientIdentityPage
+      '401': *id002
+      '422': *id006
+      '500': *id007
+      '503': *id008
+identity:
+  get:
+    operationId: getMyClientIdentity
+    x-runtimes:
+      - client_api
+    tags:
+      - miniapp
+    summary: 核验并读取本人业务身份
+    description: >-
+      仅要求 ClientToken，不要求 X-Client-Identity。identity_id 是选择键：resident 直接从当前有效微信用户
+      派生居民条目，不查询关联表，也没有独立的居民关联撤销状态；UUID 则按当前用户查找额外关联。
+      未知或他人关联返回404；本人额外关联已撤销、类型未注册或未开放、主体不可用时
+      返回403 client.identity_unavailable，不撤销有效客户端会话。微信用户认证无效仍返回401。
+      成功返回与目录相同的最小投影，不返回权限快照。GET 只读，不补建、重授额外身份或修改服务器端当前身份；
+      进入具体业务后，每次请求仍须核验该操作要求的身份类型及资源权限。
+    security:
+      - ClientToken: []
+    parameters:
+      - name: identity_id
+        in: path
+        required: true
+        description: resident 为派生居民身份选择键；其他身份使用本人额外关联 UUID。
+        schema:
+          $ref: ../components/miniapp-schemas.yaml#/ClientIdentityId
+    responses:
+      '200':
+        description: 本人当前可用业务身份。
+        headers: *id010
+        content:
+          application/json:
+            schema:
+              $ref: ../components/miniapp-schemas.yaml#/ClientIdentity
+      '401': *id002
+      '403': *id003
+      '404': *id004
+      '422': *id006
+      '500': *id007
+      '503': *id008

@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: Ezcmty API
-  version: 0.17.0
+  version: 0.18.0
   description: 社区物业消费返利与物业费抵扣平台 API 契约。
 servers:
   - url: '/'
@@ -18,7 +18,7 @@ tags:
   - name: billing
     description: 物业费计费依据、账单、收款流水与线下登记
   - name: miniapp
-    description: 平台小程序身份与居民业务
+    description: 平台小程序统一账号、多身份与居民业务
   - name: payments
     description: 居民账单缴费与支付渠道通知
   - name: payment-management
@@ -120,12 +120,16 @@ paths:
     '$ref': './modules/billing.yaml#/operations'
   '/v1/bill-operation-results/{idempotency_key}':
     '$ref': './modules/billing.yaml#/operationResult'
-  /v1/resident-sessions:
+  /v1/client-sessions:
     $ref: ./modules/miniapp-identity.yaml#/sessions
-  /v1/resident-sessions/current:
+  /v1/client-sessions/current:
     $ref: ./modules/miniapp-identity.yaml#/currentSession
   /v1/miniapp-users/me:
     $ref: ./modules/miniapp-identity.yaml#/me
+  /v1/miniapp-users/me/identities:
+    $ref: ./modules/miniapp-identity.yaml#/identities
+  /v1/miniapp-users/me/identities/{identity_id}:
+    $ref: ./modules/miniapp-identity.yaml#/identity
   /v1/miniapp-users/me/phone-bindings:
     $ref: ./modules/miniapp-identity.yaml#/phones
   /v1/miniapp-users/me/phone-bindings/{phone_binding_id}:
@@ -387,8 +391,8 @@ components:
   securitySchemes:
     AdminSession:
       '$ref': './components/security-schemes.yaml#/AdminSession'
-    ResidentToken:
-      '$ref': './components/security-schemes.yaml#/ResidentToken'
+    ClientToken:
+      '$ref': './components/security-schemes.yaml#/ClientToken'
     WebhookSignature:
       '$ref': './components/security-schemes.yaml#/WebhookSignature'
     WechatpaySignature:

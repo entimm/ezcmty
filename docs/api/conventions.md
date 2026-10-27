@@ -40,7 +40,7 @@ pnpm api:check
 
 聚合文件的维护方式遵循 [长期文档治理规范](../standards/documentation.md#单一权威来源)。
 
-操作通过 `x-runtimes` 声明所属进程，值使用 `platform_admin_api`、`property_admin_api`、`resident_api` 或 `webhook`。检查逐进程比较归属的接口，同时拒绝遗漏或多暴露的接口，不要求所有进程实现全部业务接口。
+操作通过 `x-runtimes` 声明所属进程，值使用 `platform_admin_api`、`property_admin_api`、`client_api` 或 `webhook`。检查逐进程比较归属的接口，同时拒绝遗漏或多暴露的接口，不要求所有进程实现全部业务接口。
 
 `pnpm api:check` 还生成前端类型，并检查契约版本、错误目录生成文件及请求参数、请求体、响应状态、媒体类型、Schema、响应头和安全方案的一致性。错误目录修改后执行 `pnpm api:generate-errors`，生成文件不人工维护。
 

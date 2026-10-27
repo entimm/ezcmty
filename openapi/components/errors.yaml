@@ -191,6 +191,13 @@ ProblemDetails:
       billing.amount_out_of_range:
         status: 409
         title: 计费金额超过支持范围
+    client:
+      client.identity_unavailable:
+        status: 403
+        title: 当前业务身份不可用
+      client.identity_mismatch:
+        status: 403
+        title: 当前业务身份不适用于此操作
     resident:
       resident.state_changed:
         status: 409

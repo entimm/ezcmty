@@ -42,7 +42,7 @@ MiniappUser:
     - enabled
     - created_at
     - last_login_at
-ResidentSession:
+ClientSession:
   type: object
   additionalProperties: false
   properties:
@@ -55,7 +55,7 @@ ResidentSession:
     - token
     - expires_at
     - user
-ResidentSessionState:
+ClientSessionState:
   type: object
   additionalProperties: false
   properties:
@@ -113,6 +113,74 @@ PhoneBindingPage:
       type: integer
     page_size:
       type: integer
+  required:
+    - items
+    - total
+    - page
+    - page_size
+ClientIdentityId:
+  description: 业务身份选择键。居民固定为 resident，从当前微信用户派生；额外授予身份使用本人关联 UUID。居民不对应关联表记录。
+  oneOf:
+    - type: string
+      const: resident
+    - $ref: ./schemas.yaml#/UUIDIdentifier
+ClientIdentity:
+  type: object
+  additionalProperties: false
+  description: 当前用户可用业务身份的最小投影。居民的 id 与 type 均为 resident，名称为居民；额外身份的 id 为关联 UUID，类型不能为 resident。首期生产仅开放居民，不发布额外业务身份。
+  properties:
+    id:
+      $ref: '#/ClientIdentityId'
+    type:
+      type: string
+      minLength: 1
+      maxLength: 32
+      pattern: ^[a-z][a-z0-9_]{0,31}$
+      description: 内建或生产注册的稳定类型码。额外类型对应关联表的 identity_type，内建 resident 不落表；不识别的类型不得进入业务页面。
+    display_name:
+      type: string
+      minLength: 1
+      maxLength: 160
+      description: 服务端生成的安全身份名称，只用于展示，不作为授权依据。
+  required:
+    - id
+    - type
+    - display_name
+  oneOf:
+    - properties:
+        id:
+          const: resident
+        type:
+          const: resident
+        display_name:
+          const: 居民
+    - properties:
+        id:
+          $ref: ./schemas.yaml#/UUIDIdentifier
+        type:
+          not:
+            const: resident
+ClientIdentityPage:
+  type: object
+  additionalProperties: false
+  description: 派生居民与有效额外身份统一计数分页；有效客户端认证下 total 包含 resident 且至少为1，超出范围的页 items 可以为空。
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ClientIdentity'
+    total:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    page:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    page_size:
+      type: integer
+      minimum: 1
+      maximum: 100
   required:
     - items
     - total

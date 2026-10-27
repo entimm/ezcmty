@@ -1,0 +1,7 @@
+ClientIdentity:
+  name: X-Client-Identity
+  in: header
+  required: true
+  description: 本次请求的业务身份选择键。居民固定为 resident，从当前微信用户派生；额外身份为关联 UUID，须校验本人归属、状态、已开放解析器和业务主体。缺少或格式错误返回422，未知或他人关联返回404，本人额外身份不可用返回403 client.identity_unavailable，有效身份类型不适用于端点时返回403 client.identity_mismatch。不接受客户端自报主体、公司或权限。
+  schema:
+    $ref: ./miniapp-schemas.yaml#/ClientIdentityId
