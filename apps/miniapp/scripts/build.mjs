@@ -13,8 +13,10 @@ import {
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import './check-boundaries.mjs';
 import { subpackageOnlyModules } from './check-package-usage.mjs';
+
+await import('../../../scripts/generate_api_types.mjs');
+await import('./check-boundaries.mjs');
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = path.join(root, 'src');

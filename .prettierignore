@@ -10,6 +10,7 @@ coverage
 services/backend/.venv
 services/backend/uv.lock
 pnpm-lock.yaml
+openapi/types.d.ts
 **/*.py
 **/*.mako
 **/.pytest_cache

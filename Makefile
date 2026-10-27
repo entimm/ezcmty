@@ -121,7 +121,7 @@ check-frontend: ## 管理后台与小程序：类型、Lint、测试及构建
 	pnpm --filter resident-miniapp test
 	pnpm --filter resident-miniapp build
 
-check-api: ## OpenAPI lint、bundle、contract
+check-api: ## OpenAPI lint、前端类型生成、bundle 与 contract
 	@printf '\n[检查] OpenAPI 契约\n'
 	pnpm api:check
 

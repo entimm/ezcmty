@@ -3,9 +3,9 @@
   "private": true,
   "scripts": {
     "build": "node --env-file-if-exists=.env.local scripts/build.mjs",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
-    "lint": "eslint . && node scripts/check-boundaries.mjs",
-    "test": "vitest run",
+    "typecheck": "pnpm -w api:generate-types && tsc --noEmit && tsc -p tsconfig.test.json",
+    "lint": "pnpm -w api:generate-types && eslint . && node scripts/check-boundaries.mjs",
+    "test": "pnpm -w api:generate-types && vitest run",
     "check:native": "node scripts/check-native.mjs"
   },
   "devDependencies": {

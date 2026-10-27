@@ -1,3 +1,4 @@
+import type { components } from '../../../../../../openapi/types';
 import type { AdminRequest } from '../../../shared/request';
 import { query } from '../../../shared/imports/api';
 import { paymentReads } from '../../../shared/payments/api';
@@ -53,7 +54,10 @@ export function platformPaymentWrites(
     activate: (id, bindingId, token) =>
       post(
         `${company(id)}/active-merchant-binding`,
-        { binding_id: bindingId, expected_configuration_token: token },
+        {
+          binding_id: bindingId,
+          expected_configuration_token: token,
+        } satisfies components['schemas']['ActiveMerchantBindingUpdate'],
         undefined,
         'PUT',
       ),

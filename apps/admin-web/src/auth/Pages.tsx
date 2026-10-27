@@ -19,6 +19,7 @@ import {
 import { useResource } from '../shared/hooks';
 import { PageHeader, Panel, ReadError } from '../shared/ui';
 import { ApiError } from '../shared/request';
+import type { components } from '../../../../openapi/types';
 
 type AuthOperation = 'login' | 'password' | 'logout';
 function AuthError({
@@ -388,12 +389,7 @@ export function AuthPage({
   );
 }
 
-interface Profile {
-  id: string;
-  scope: string;
-  login_name: string;
-  display_name: string;
-}
+type Profile = components['schemas']['AdminProfile'];
 export function ProfilePage() {
   const { request, session, scope, setDirty, confirmLeave } = useAdmin(),
     auth = useSession(),

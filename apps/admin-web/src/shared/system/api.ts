@@ -1,67 +1,17 @@
+import type { components } from '../../../../../openapi/types';
 import type { AdminRequest } from '../request';
-export interface Page<T> {
-  items: T[];
-  total: number;
-  page: number;
-  page_size: number;
-}
-export type Filters = Record<string, string | number | boolean | undefined>;
-export interface AccountInput {
-  login_name: string;
-  display_name: string;
-  password: string;
-  role_ids?: string[];
-}
-export interface RoleSummary {
-  id: string;
-  code: string;
-  name: string;
-  enabled: boolean;
-  is_system: boolean;
-}
-export interface Role extends RoleSummary {
-  permissions: string[];
-  affected_account_count: number;
-}
-export interface Account {
-  id: string;
-  scope: 'platform_admin' | 'property_admin';
-  login_name: string;
-  display_name: string;
-  enabled: boolean;
-  must_change_password: boolean;
-  created_at: string;
-  roles: RoleSummary[];
-  effective_permissions: string[];
-  property_company_id?: string;
-}
-export interface Permission {
-  code: string;
-  name: string;
-  group: string;
-  assignable: boolean;
-  level: string;
-  requires: string[];
-}
-export interface Audit {
-  id: string;
-  property_company_id: string | null;
-  actor_id: string | null;
-  actor_name: string | null;
-  action: string;
-  target_type: string;
-  target_id: string | null;
-  result: 'success' | 'failure';
-  request_id: string;
-  created_at: string;
-  metadata: Record<string, unknown>;
-}
+import type { Page } from '../types';
 
-export interface RoleTemplate {
-  code: string;
-  name: string;
-  permissions: string[];
-}
+export type { Page } from '../types';
+export type Filters = Record<string, string | number | boolean | undefined>;
+export type AccountInput = components['schemas']['AccountCreate'];
+export type RoleSummary = components['schemas']['RoleSummary'];
+export type Role = components['schemas']['AdminRole'];
+export type Account = components['schemas']['AdminAccount'];
+export type Permission = components['schemas']['AdminPermission'];
+export type Audit = components['schemas']['AuditEntry'];
+export type RoleTemplate = components['schemas']['AdminRoleTemplate'];
+
 export function createSystemApi(request: AdminRequest) {
   const write = <T>(path: string, method: string, data: unknown) =>
     request<T>(path, {
@@ -83,10 +33,7 @@ export function createSystemApi(request: AdminRequest) {
       request<Account>(`/v1/admin-accounts/${encodeURIComponent(id)}`),
     createAccount: (data: AccountInput) =>
       write<Account>('/v1/admin-accounts', 'POST', data),
-    updateAccount: (
-      id: string,
-      data: { display_name?: string; enabled?: boolean },
-    ) =>
+    updateAccount: (id: string, data: components['schemas']['AccountUpdate']) =>
       write<Account>(
         `/v1/admin-accounts/${encodeURIComponent(id)}`,
         'PATCH',
@@ -108,9 +55,9 @@ export function createSystemApi(request: AdminRequest) {
       request<Page<Role>>(`/v1/admin-roles?${queryString(filters)}`),
     role: (id: string) =>
       request<Role>(`/v1/admin-roles/${encodeURIComponent(id)}`),
-    createRole: (data: { code: string; name: string; permissions: string[] }) =>
+    createRole: (data: components['schemas']['RoleCreate']) =>
       write<Role>('/v1/admin-roles', 'POST', data),
-    updateRole: (id: string, data: { name?: string; enabled?: boolean }) =>
+    updateRole: (id: string, data: components['schemas']['RoleUpdate']) =>
       write<Role>(`/v1/admin-roles/${encodeURIComponent(id)}`, 'PATCH', data),
     assignPermissions: (id: string, permissions: string[]) =>
       write<Role>(

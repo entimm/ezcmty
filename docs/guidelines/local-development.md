@@ -189,30 +189,31 @@ TLS_ROOT="$HOME/.config/local-https"
 
 全部命令在仓库根目录执行；`make` 默认显示帮助。
 
-| 命令                    | 用途                                                                        |
-| ----------------------- | --------------------------------------------------------------------------- |
-| `make install`          | 安装后端及前端工作区开发依赖                                                |
-| `make migrate`          | 执行 Alembic 数据库迁移，升级到 `head`                                      |
-| `make dev`              | 前台同时启动四个 API、Worker 和管理后台                                     |
-| `make dev-bg`           | 后台同时启动同样六个服务，全部就绪后返回                                    |
-| `make stop`             | 停止本仓库所有开发入口登记的批次                                            |
-| `make platform`         | 前台启动平台管理 API，8001                                                  |
-| `make property`         | 前台启动物业管理 API，8002                                                  |
-| `make resident`         | 前台启动居民 API，8003                                                      |
-| `make webhook`          | 前台启动 Webhook，8004                                                      |
-| `make worker`           | 前台启动持久任务 Worker                                                     |
-| `make admin`            | 前台启动管理后台，5173                                                      |
-| `make miniapp-build`    | 构建小程序到 `apps/miniapp/dist/`，通过微信开发者工具打开小程序项目         |
-| `make check`            | 先运行根目录 Prettier，再依次运行后端、前端和 OpenAPI 检查                  |
-| `make check-backend`    | 后端源码、devtools、测试及仓库 scripts 的 Ruff、mypy、pytest                |
-| `make check-frontend`   | 管理后台 typecheck、lint、test、build；小程序 typecheck、lint、test、build  |
-| `make check-api`        | 现有 `pnpm api:check`：OpenAPI lint、bundle、contract                       |
-| `make test-unit`        | 后端单元测试                                                                |
-| `make test-integration` | 后端快速集成测试，排除专用 PostgreSQL/Redis 并发测试和进程生命周期          |
-| `make test-contract`    | 后端与权威 OpenAPI 的契约一致性测试                                         |
-| `make test-postgresql`  | 使用独立临时实例执行真实 PostgreSQL/Redis 测试                              |
-| `make test-full`        | 全部后端、管理后台和小程序测试，包含真实依赖与进程生命周期，生成 JUnit 报告 |
-| `make help`             | 显示全部命令及用途                                                          |
+| 命令                      | 用途                                                                        |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `make install`            | 安装后端及前端工作区开发依赖                                                |
+| `make migrate`            | 执行 Alembic 数据库迁移，升级到 `head`                                      |
+| `make dev`                | 前台同时启动四个 API、Worker 和管理后台                                     |
+| `make dev-bg`             | 后台同时启动同样六个服务，全部就绪后返回                                    |
+| `make stop`               | 停止本仓库所有开发入口登记的批次                                            |
+| `make platform`           | 前台启动平台管理 API，8001                                                  |
+| `make property`           | 前台启动物业管理 API，8002                                                  |
+| `make resident`           | 前台启动居民 API，8003                                                      |
+| `make webhook`            | 前台启动 Webhook，8004                                                      |
+| `make worker`             | 前台启动持久任务 Worker                                                     |
+| `make admin`              | 前台启动管理后台，5173                                                      |
+| `make miniapp-build`      | 构建小程序到 `apps/miniapp/dist/`，通过微信开发者工具打开小程序项目         |
+| `make check`              | 先运行根目录 Prettier，再依次运行后端、前端和 OpenAPI 检查                  |
+| `make check-backend`      | 后端源码、devtools、测试及仓库 scripts 的 Ruff、mypy、pytest                |
+| `make check-frontend`     | 管理后台与小程序 typecheck、lint、test、build，各入口自动生成 OpenAPI 类型  |
+| `make check-api`          | `pnpm api:check`：OpenAPI lint、前端类型生成、bundle、contract              |
+| `pnpm api:generate-types` | 从权威契约刷新本地前端类型声明，产物由 Git 忽略                             |
+| `make test-unit`          | 后端单元测试                                                                |
+| `make test-integration`   | 后端快速集成测试，排除专用 PostgreSQL/Redis 并发测试和进程生命周期          |
+| `make test-contract`      | 后端与权威 OpenAPI 的契约一致性测试                                         |
+| `make test-postgresql`    | 使用独立临时实例执行真实 PostgreSQL/Redis 测试                              |
+| `make test-full`          | 全部后端、管理后台和小程序测试，包含真实依赖与进程生命周期，生成 JUnit 报告 |
+| `make help`               | 显示全部命令及用途                                                          |
 
 小程序不作为常驻进程；构建后使用微信开发者工具运行。
 
@@ -426,7 +427,7 @@ uv run pytest tests/integration/dev --require-all-tests --durations=20
 
 任一检查失败返回非零。也可使用上表中的单项检查或构建命令。
 
-契约测试会调用现有 `pnpm api:bundle`，确保使用最新 OpenAPI 文件。API 设计与错误处理约定见 [API 规范](../api/conventions.md)。
+契约测试会调用现有 `pnpm api:bundle`，确保使用最新 OpenAPI 文件。安装依赖及前端开发、检查和构建入口会自动生成本地类型；契约变更后也可执行 `pnpm api:generate-types` 刷新 IDE，再运行两端类型检查确认消费者兼容。提交契约和必要源码，生成声明由 Git 忽略。生成规则、API 设计与错误处理约定见 [API 规范](../api/conventions.md)。
 
 ### 账单支付专项验证
 

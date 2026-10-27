@@ -9,13 +9,16 @@
     "api:lint": "redocly lint openapi/openapi.yaml",
     "api:bundle": "redocly bundle openapi/openapi.yaml --output build/openapi/openapi.bundled.json",
     "api:generate-errors": "pnpm api:bundle && uv run --project services/backend python -m scripts.build_error_catalog",
+    "api:generate-types": "node scripts/generate_api_types.mjs",
     "api:contract": "uv run --project services/backend python -m scripts.check_api_contract",
-    "api:check": "pnpm api:lint && pnpm api:bundle && pnpm api:contract",
+    "api:check": "pnpm api:lint && pnpm api:generate-types && pnpm api:bundle && pnpm api:contract",
+    "postinstall": "pnpm api:generate-types",
     "format:check": "prettier --check .",
     "format": "prettier --write ."
   },
   "devDependencies": {
     "@redocly/cli": "^2.63.0",
+    "openapi-typescript": "7.13.0",
     "prettier": "^3.5.0"
   }
 }

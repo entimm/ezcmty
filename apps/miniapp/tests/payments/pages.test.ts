@@ -86,7 +86,7 @@ beforeEach(() => {
   mocks.credential.mockReturnValue({ userId: 'resident-1' });
   mocks.requireSession.mockReturnValue(true);
   mocks.canContinue.mockImplementation((item: PaymentOrder) =>
-    item.available_actions.includes('continue_payment'),
+    item.available_actions.some((action) => action === 'continue_payment'),
   );
   mocks.uncertain.mockReturnValue(false);
   mocks.recover.mockResolvedValue(null);

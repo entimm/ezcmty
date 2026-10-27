@@ -30,6 +30,8 @@ coverage/
 
 # Generated documentation and build output
 build/
+/openapi/types.d.ts
+/openapi/.types-*/
 
 # IDEs
 .idea/

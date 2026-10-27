@@ -108,12 +108,14 @@ export function paymentPresentation(order: PaymentOrder, message = '') {
     closed,
     canPay,
     canRefresh:
-      !posted && !closed && order.available_actions.includes('refresh'),
+      !posted &&
+      !closed &&
+      order.available_actions.some((action) => action === 'refresh'),
     canClose:
       !posted &&
       !closed &&
       !received &&
-      order.available_actions.includes('close'),
+      order.available_actions.some((action) => action === 'close'),
     label: posted ? '缴费成功' : closed ? '已关闭' : '待确认',
     labelTone: posted ? 'ok' : closed ? 'gray' : 'wait',
   };

@@ -3,12 +3,12 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/dev.cjs",
-    "build": "max build",
+    "build": "pnpm -w api:generate-types && max build",
     "postinstall": "max setup",
-    "lint": "eslint .",
+    "lint": "pnpm -w api:generate-types && eslint .",
     "format:check": "prettier --check .",
-    "test": "vitest run",
-    "typecheck": "max setup && tsc --noEmit --pretty false"
+    "test": "pnpm -w api:generate-types && vitest run",
+    "typecheck": "pnpm -w api:generate-types && max setup && tsc --noEmit --pretty false"
   },
   "dependencies": {
     "@ant-design/icons": "6.3.4",

@@ -1,3 +1,4 @@
+import type { operations } from '../../../../openapi/types';
 import { query } from './request';
 import { residentRequest } from './session';
 import {
@@ -8,7 +9,6 @@ import {
   ClaimStatus,
   ClientParameters,
   Community,
-  ConfirmationStatus,
   House,
   PageResult,
   PaymentInput,
@@ -94,12 +94,10 @@ export const releaseBinding = (item: Binding) =>
     { method: 'POST', data: { expected_row_version: item.row_version } },
   );
 
-export interface BillFilters {
-  billing_month_from?: string;
-  billing_month_to?: string;
-  page_size?: number;
-  sort?: '-billing_month,-id' | 'billing_month,id';
-}
+export type BillFilters = Omit<
+  NonNullable<operations['listResidentHouseBills']['parameters']['query']>,
+  'page' | 'scope'
+>;
 export const bills = (
   bindingId: string,
   page = 1,
@@ -120,14 +118,10 @@ export const entries = (billId: string, page = 1) =>
     me + '/bills/' + id(billId) + '/settlement-entries' + query({ page }),
   );
 
-export interface OrderFilters {
-  confirmation_status?: ConfirmationStatus;
-  idempotency_key?: string;
-  created_at_from?: string;
-  created_at_to?: string;
-  page_size?: number;
-  sort?: '-created_at,-id' | 'created_at,id';
-}
+export type OrderFilters = Omit<
+  NonNullable<operations['listResidentPaymentOrders']['parameters']['query']>,
+  'page' | 'status'
+>;
 const orderPath = (orderId: string) => me + '/payment-orders/' + id(orderId);
 export const orders = (
   page = 1,

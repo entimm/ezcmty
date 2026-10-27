@@ -1,4 +1,5 @@
-import type { AdminRequest } from '../request';
+import type { components } from '../../../../../openapi/types';
+import type { AdminRequest, Download } from '../request';
 import type {
   Batch,
   BatchAction,
@@ -8,11 +9,11 @@ import type {
   Filters,
   ImportEvent,
   ImportRow,
-  ImportType,
   Issue,
   Page,
   Template,
 } from './types';
+type Schemas = components['schemas'];
 export function query(filters: Filters) {
   const q = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
@@ -29,13 +30,13 @@ export function createImportsApi(request: AdminRequest) {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   return {
-    types: () => request<{ items: ImportType[] }>('/v1/import-types'),
+    types: () => request<Schemas['ImportTypeList']>('/v1/import-types'),
     template: (key: string, version: number) =>
       request<Template>(
         `/v1/import-types/${encodeURIComponent(key)}/versions/${version}`,
       ),
     templateDownload: (key: string, version: number) =>
-      request<{ blob: Blob; fileName: string }>(
+      request<Download>(
         `/v1/import-types/${encodeURIComponent(key)}/versions/${version}/template-file`,
         { responseType: 'download' },
       ),
@@ -70,7 +71,7 @@ export function createImportsApi(request: AdminRequest) {
     precheck: (id: string, version: number, key: string) =>
       post<BatchAction>(
         `${root(id)}/precheck`,
-        { preview_version: version },
+        { preview_version: version } satisfies Schemas['ImportPrecheck'],
         key,
       ),
     confirm: (id: string, body: ConfirmInput, key: string) =>
@@ -78,35 +79,42 @@ export function createImportsApi(request: AdminRequest) {
     cancel: (id: string, key: string) =>
       post<BatchAction>(`${root(id)}/cancel`, undefined, key),
     retry: (id: string, key: string) =>
-      post<{
-        source_batch_id: string;
-        selected_rows: number;
-        batch: BatchAction;
-      }>(`${root(id)}/retry-failed`, { selection: 'retryable_only' }, key),
+      post<Schemas['ImportRetryResult']>(
+        `${root(id)}/retry-failed`,
+        { selection: 'retryable_only' } satisfies Schemas['ImportRetry'],
+        key,
+      ),
     recover: (id: string, reason: string, key: string) =>
-      post<BatchAction>(`${root(id)}/recover`, { reason }, key),
+      post<BatchAction>(
+        `${root(id)}/recover`,
+        { reason } satisfies Schemas['ImportRecover'],
+        key,
+      ),
     generateErrorFile: (
       id: string,
       version: number,
-      format: 'csv' | 'xlsx',
+      format: Schemas['ImportErrorFileCreate']['format'],
       key: string,
     ) =>
-      post<unknown>(
+      post<Schemas['ImportErrorFileAction']>(
         `${root(id)}/error-file`,
-        { format, preview_version: version },
+        {
+          format,
+          preview_version: version,
+        } satisfies Schemas['ImportErrorFileCreate'],
         key,
       ),
     errorFile: (id: string) =>
       request<ErrorFile>(`${root(id)}/artifacts/error-file`),
     download: (id: string, generation: number) =>
-      request<{ blob: Blob; fileName: string }>(
+      request<Download>(
         `${root(id)}/artifacts/error-file/download?generation=${generation}`,
         { responseType: 'download' },
       ),
   };
 }
 export type ImportsApi = ReturnType<typeof createImportsApi>;
-export function saveFile(file: { blob: Blob; fileName: string }) {
+export function saveFile(file: Download) {
   const url = URL.createObjectURL(file.blob);
   const a = document.createElement('a');
   a.href = url;

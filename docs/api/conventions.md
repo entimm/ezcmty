@@ -34,6 +34,7 @@ openapi/
 ```bash
 pnpm api:lint
 pnpm api:bundle
+pnpm api:generate-types
 pnpm api:check
 ```
 
@@ -41,7 +42,17 @@ pnpm api:check
 
 操作通过 `x-runtimes` 声明所属进程，值使用 `platform_admin_api`、`property_admin_api`、`resident_api` 或 `webhook`。检查逐进程比较归属的接口，同时拒绝遗漏或多暴露的接口，不要求所有进程实现全部业务接口。
 
-`pnpm api:check` 还检查契约版本、错误目录生成文件及请求参数、请求体、响应状态、媒体类型、Schema、响应头和安全方案的一致性。错误目录修改后执行 `pnpm api:generate-errors`，生成文件不人工维护。
+`pnpm api:check` 还生成前端类型，并检查契约版本、错误目录生成文件及请求参数、请求体、响应状态、媒体类型、Schema、响应头和安全方案的一致性。错误目录修改后执行 `pnpm api:generate-errors`，生成文件不人工维护。
+
+## 前端类型
+
+`pnpm api:generate-types` 在内存中聚合权威契约，再使用锁定版本的 `openapi-typescript` 生成 `openapi/types.d.ts`。仅提交契约、生成器和锁文件；声明由 Git 忽略，不人工修改。内容未变时保留文件，更新通过原子替换完成，支持多个前端入口并发生成。
+
+仓库安装依赖后自动生成声明，供 IDE 使用。后台开发脚本、两端类型检查、Lint、测试和构建以及 API 工程检查均在消费类型前重新生成，生成失败即终止后续步骤；小程序直接构建和原生检查入口同样覆盖。契约变更后可手动运行生成命令立即刷新 IDE 类型，无需提交生成声明。
+
+管理后台与小程序在各自现有类型入口通过 `import type` 引用生成的 Schema 或 Operation，保留端专属 API 方法、请求客户端和权限边界。HTTP 字段、空值、枚举及请求参数不再手写维护；前端会话视图、表单草稿和其他本地状态继续由所属模块定义。生成类型仅提供编译期检查，不代替运行时输入校验或服务端授权。
+
+生成保留契约的必填与可选字段、日期字符串及固定数组长度；字段有默认值不意味着请求必须提供。生成输入将 Schema 中 `$ref` 同级的 `properties` 约束等价表达为 `allOf`，兼容生成器并同时保留引用字段与细化约束，原契约保持权威来源。
 
 ## 命名
 

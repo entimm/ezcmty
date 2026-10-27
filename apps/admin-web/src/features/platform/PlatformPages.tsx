@@ -29,7 +29,12 @@ import {
 import { useAdmin } from '../../shared/context';
 import { ApiError } from '../../shared/request';
 import { DetailGrid, PageHeader, Panel, Status } from '../../shared/ui';
-import type { Account, Community, Company, Filters } from './api';
+import type {
+  PropertyAdminAccount as Account,
+  Community,
+  Company,
+  Filters,
+} from './api';
 import {
   CompanyPicker,
   ListFilter,

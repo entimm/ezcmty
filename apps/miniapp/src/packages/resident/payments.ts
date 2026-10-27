@@ -118,7 +118,7 @@ export function canContinuePayment(item: PaymentOrder): boolean {
   if (terminal(item)) return false;
   if (
     item.confirmation_status === 'awaiting_posting' ||
-    !item.available_actions.includes('continue_payment')
+    !item.available_actions.some((action) => action === 'continue_payment')
   )
     return false;
   try {
@@ -333,7 +333,7 @@ export class PaymentController {
     return this.run(async (epoch) => {
       const current = await api.order(item.id);
       this.current(epoch);
-      if (!current.available_actions.includes('refresh'))
+      if (!current.available_actions.some((action) => action === 'refresh'))
         return reconcilePaymentOrder(current);
       const result = await api.refresh(item.id);
       this.current(epoch);
@@ -344,7 +344,7 @@ export class PaymentController {
     return this.run(async (epoch) => {
       const current = await api.order(item.id);
       this.current(epoch);
-      if (!current.available_actions.includes('close'))
+      if (!current.available_actions.some((action) => action === 'close'))
         return reconcilePaymentOrder(current);
       // A lost closure response cannot safely be interpreted as permission to pay.
       save(scopedKey('uncertain', item.id), true);
