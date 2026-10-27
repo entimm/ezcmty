@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import copy
-import ctypes
 import fcntl
 import json
+import math
 import os
 import signal
 import subprocess
@@ -17,7 +17,13 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, BinaryIO
 
+import psutil
+
 SOURCE_ROOT = Path(__file__).resolve().parents[2]
+IDENTITY_FORMAT = (
+    f"psutil-{psutil.__version__}:{sys.implementation.name}-{sys.version.split()[0]}:"
+    f"hash-{sys.hash_info.width}"
+)
 
 
 class DevError(Exception):
@@ -28,93 +34,54 @@ class DevError(Exception):
 class Identity:
     pid: int
     pgid: int
-    started: int
+    process_hash: int
 
     @classmethod
     def load(cls, value: dict[str, Any]) -> Identity:
-        return cls(pid=int(value["pid"]), pgid=int(value["pgid"]), started=int(value["started"]))
+        pid, pgid, process_hash = (value[key] for key in ("pid", "pgid", "process_hash"))
+        if (
+            type(pid) is not int
+            or pid <= 0
+            or type(pgid) is not int
+            or pgid <= 0
+            or type(process_hash) is not int
+        ):
+            raise ValueError("Invalid process identity")
+        return cls(pid, pgid, process_hash)
 
 
-class BsdInfo(ctypes.Structure):
-    # Darwin's PROC_PIDTBSDINFO, including microsecond start time (not ps lstart).
-    _fields_ = (
-        [
-            (name, ctypes.c_uint32)
-            for name in (
-                "flags",
-                "status",
-                "xstatus",
-                "pid",
-                "ppid",
-                "uid",
-                "gid",
-                "ruid",
-                "rgid",
-                "svuid",
-                "svgid",
-                "reserved",
-            )
-        ]
-        + [("comm", ctypes.c_char * 16), ("name", ctypes.c_char * 32)]
-        + [
-            (name, ctypes.c_uint32)
-            for name in (
-                "nfiles",
-                "pgid",
-                "jobc",
-                "tdev",
-                "tpgid",
-            )
-        ]
-        + [
-            ("nice", ctypes.c_int32),
-            ("start_sec", ctypes.c_uint64),
-            ("start_usec", ctypes.c_uint64),
-        ]
-    )
+def _process_hash(process: psutil.Process, *, include_zombies: bool = False) -> int | None:
+    if sys.platform != "darwin" and not sys.platform.startswith("linux"):
+        raise DevError("开发进程管理支持 macOS 和 Linux；当前系统不支持安全的进程身份验证。")
+    users = process.uids()
+    if users.real != os.getuid() or users.effective != os.getuid():
+        return None
+    if process.status() == psutil.STATUS_ZOMBIE and not include_zombies:
+        return None
+    created = process.create_time()
+    if not math.isfinite(created) or created <= 0:
+        return None
+    # psutil 7.2 uses a monotonic creation identity for hashing on macOS/Linux;
+    # public create_time() is wall-clock based and must not be persisted as identity.
+    fingerprint = hash(process)
+    return fingerprint if process.is_running() else None
 
 
-def darwin_library() -> ctypes.CDLL:
-    library = ctypes.CDLL("/usr/lib/libproc.dylib", use_errno=True)
-    library.proc_pidinfo.argtypes = [
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_uint64,
-        ctypes.c_void_p,
-        ctypes.c_int,
-    ]
-    library.proc_pidinfo.restype = ctypes.c_int
-    library.proc_listallpids.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    library.proc_listallpids.restype = ctypes.c_int
-    return library
-
-
-LIBPROC = darwin_library() if sys.platform == "darwin" else None
+def _identity(process: psutil.Process, *, include_zombies: bool = False) -> Identity | None:
+    fingerprint = _process_hash(process, include_zombies=include_zombies)
+    if fingerprint is None:
+        return None
+    owner = Identity(process.pid, os.getpgid(process.pid), fingerprint)
+    return owner if process.is_running() else None
 
 
 def identity(pid: int, *, include_zombies: bool = False) -> Identity | None:
     if pid <= 0:
         return None
-    if LIBPROC is not None:
-        info = BsdInfo()
-        size = LIBPROC.proc_pidinfo(pid, 3, 0, ctypes.byref(info), ctypes.sizeof(info))
-        if size != ctypes.sizeof(info) or info.uid != os.getuid():
-            return None
-        if info.status == 5 and not include_zombies:
-            return None
-        return Identity(pid, info.pgid, info.start_sec * 1_000_000 + info.start_usec)
-    if sys.platform.startswith("linux"):
-        try:
-            path = Path(f"/proc/{pid}/stat")
-            if path.stat().st_uid != os.getuid():
-                return None
-            fields = path.read_text().rsplit(")", 1)[1].split()
-            if fields[0] == "Z" and not include_zombies:
-                return None
-            return Identity(pid, int(fields[2]), int(fields[19]))
-        except OSError, ValueError, IndexError:
-            return None
-    raise DevError("开发进程管理支持 macOS 和 Linux；当前系统不支持安全的进程身份验证。")
+    try:
+        return _identity(psutil.Process(pid), include_zombies=include_zombies)
+    except psutil.Error, OSError:
+        return None
 
 
 def is_alive(value: dict[str, Any] | Identity | None) -> bool:
@@ -126,37 +93,43 @@ def is_alive(value: dict[str, Any] | Identity | None) -> bool:
 
 def signal_owned(value: dict[str, Any] | Identity, sig: int) -> None:
     expected = value if isinstance(value, Identity) else Identity.load(value)
-    if is_alive(expected):
-        try:
-            os.kill(expected.pid, sig)
-        except ProcessLookupError:
-            pass
+    try:
+        process = psutil.Process(expected.pid)
+        if _identity(process) == expected:
+            # Keep the checked handle so send_signal() also detects subsequent PID reuse.
+            process.send_signal(sig)
+    except psutil.Error, OSError:
+        pass
 
 
 def process_snapshot() -> list[Identity]:
-    if LIBPROC is not None:
-        count = LIBPROC.proc_listallpids(None, 0) + 256
-        buffer = (ctypes.c_int * count)()
-        size = LIBPROC.proc_listallpids(buffer, ctypes.sizeof(buffer))
-        pids = list(buffer[: max(0, min(size, count))])
-    elif sys.platform.startswith("linux"):
-        pids = [int(path.name) for path in Path("/proc").iterdir() if path.name.isdigit()]
-    else:
-        raise DevError("当前系统不支持进程身份验证。")
-    return [value for pid in pids if (value := identity(pid)) is not None]
+    # Use fresh handles instead of process_iter()'s cached Process identities.
+    return [value for pid in psutil.pids() if (value := identity(pid)) is not None]
+
+
+def _zombie_root(root: Identity) -> bool:
+    # macOS cannot getpgid() a zombie. A recorded group leader's PID/hash still
+    # verifies that its original group has not been recycled while it is unreaped.
+    try:
+        process = psutil.Process(root.pid)
+        return (
+            process.status() == psutil.STATUS_ZOMBIE
+            and _process_hash(process, include_zombies=True) == root.process_hash
+        )
+    except psutil.Error, OSError:
+        return False
 
 
 def group_members(group: dict[str, Any], snapshot: list[Identity]) -> list[Identity]:
     root = Identity.load(group["root"])
+    if root.pid != root.pgid:
+        return []
     known = [root, *(Identity.load(item) for item in group["members"])]
     # A dedicated session cannot be joined by processes from an unrelated session.
     # Require a live recorded member before trusting the numeric process group.
-    if (
-        not any(item in snapshot for item in known)
-        and identity(root.pid, include_zombies=True) != root
-    ):
+    if not any(item in snapshot for item in known) and not _zombie_root(root):
         return []
-    return [item for item in snapshot if item.pgid == root.pgid and item.started >= root.started]
+    return [item for item in snapshot if item.pgid == root.pgid]
 
 
 def atomic_json(path: Path, value: object) -> None:
@@ -191,16 +164,24 @@ class Registry:
                     json.loads(path.read_text())
                     if path.exists()
                     else {
-                        "version": 1,
+                        "version": 2,
+                        "identity_format": IDENTITY_FORMAT,
                         "root": str(self.root),
                         "stopping": None,
                         "batches": {},
                     }
                 )
-                if state["version"] != 1 or state["root"] != str(self.root):
+                if state["version"] not in {1, 2} or state["root"] != str(self.root):
                     raise ValueError("registry identity")
                 if not isinstance(state["batches"], dict):
                     raise ValueError("batches")
+                if state["version"] == 1 or state.get("identity_format") != IDENTITY_FORMAT:
+                    if state["batches"] or state["stopping"] is not None:
+                        raise DevError(
+                            "开发进程登记格式与当前工具不兼容；请先使用升级前版本执行 make stop，"
+                            "保留现有进程与登记。"
+                        )
+                    state.update(version=2, identity_format=IDENTITY_FORMAT)
                 for batch_id, batch in state["batches"].items():
                     self.batch_directory(batch_id)
                     if not isinstance(batch["requested"], list):

@@ -112,7 +112,7 @@ def test_stale_identity_never_signals_reused_pid(harness: Harness) -> None:
     try:
         actual = identity(external.pid)
         assert actual is not None
-        stale = {**asdict(actual), "started": actual.started - 1}
+        stale = {**asdict(actual), "process_hash": actual.process_hash ^ 1}
         batch_id = "f" * 32
         with harness.registry.locked() as state:
             state["batches"][batch_id] = {
