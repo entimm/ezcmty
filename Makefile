@@ -8,7 +8,7 @@ SEED_ARGS ?=
 BACKEND := cd services/backend && uv run --no-sync
 POSTGRESQL_TEST := cd services/backend && APP_RUN_POSTGRESQL_TESTS=1 uv run --no-sync pytest --require-all-tests
 
-.PHONY: seed seed-resume seed-list seed-plan seed-coverage install migrate db-reset init-platform-admin dev dev-bg stop platform property resident webhook worker admin miniapp-build check check-backend check-frontend check-api test-unit test-integration test-contract test-postgresql test-full help
+.PHONY: seed seed-resume seed-list seed-plan seed-coverage install migrate db-reset init-platform-admin dev dev-bg stop platform property client webhook worker admin miniapp-build check check-backend check-frontend check-api test-unit test-integration test-contract test-postgresql test-full help
 
 install: ## 安装前后端开发依赖
 	@printf '\n[安装] 后端开发依赖\n'
@@ -60,8 +60,8 @@ platform: ## 前台启动平台管理 API（8001）
 property: ## 前台启动物业管理 API（8002）
 	@$(DEV) start property
 
-resident: ## 前台启动居民 API（8003）
-	@$(DEV) start resident
+client: ## 前台启动客户端 API（8003）
+	@$(DEV) start client
 
 webhook: ## 前台启动 Webhook（8004）
 	@$(DEV) start webhook
@@ -72,9 +72,9 @@ worker: ## 前台启动支付任务 Worker 与周期调度器
 admin: ## 前台启动管理后台（5173，严格端口模式）
 	@$(DEV) start admin
 
-miniapp-build: ## 构建居民小程序到 apps/miniapp/dist
-	@printf '\n[构建] 居民小程序\n'
-	pnpm --filter resident-miniapp build
+miniapp-build: ## 构建客户端小程序到 apps/miniapp/dist
+	@printf '\n[构建] 客户端小程序\n'
+	pnpm --filter client-miniapp build
 
 check: ## 顺序执行 Prettier 和全部质量检查
 	@printf '\n[检查] 仓库 Prettier\n'
@@ -106,7 +106,7 @@ test-postgresql: ## 隔离 PostgreSQL/Redis 集成测试（依赖缺失时失败
 test-full: ## 全部后端及管理后台测试，生成 JUnit 报告
 	$(POSTGRESQL_TEST) --junitxml=../../build/test-results/backend.xml
 	pnpm --filter admin-web test --reporter=default --reporter=junit --outputFile=../../build/test-results/admin-web.xml
-	pnpm --filter resident-miniapp test --reporter=default --reporter=junit --outputFile=../../build/test-results/miniapp.xml
+	pnpm --filter client-miniapp test --reporter=default --reporter=junit --outputFile=../../build/test-results/miniapp.xml
 	uv run --project services/backend --no-sync python -m scripts.check_test_results build/test-results/backend.xml build/test-results/admin-web.xml build/test-results/miniapp.xml
 
 check-frontend: ## 管理后台与小程序：类型、Lint、测试及构建
@@ -115,11 +115,11 @@ check-frontend: ## 管理后台与小程序：类型、Lint、测试及构建
 	pnpm --filter admin-web lint
 	pnpm --filter admin-web test
 	pnpm --filter admin-web build
-	@printf '\n[检查] 居民小程序\n'
-	pnpm --filter resident-miniapp typecheck
-	pnpm --filter resident-miniapp lint
-	pnpm --filter resident-miniapp test
-	pnpm --filter resident-miniapp build
+	@printf '\n[检查] 客户端小程序\n'
+	pnpm --filter client-miniapp typecheck
+	pnpm --filter client-miniapp lint
+	pnpm --filter client-miniapp test
+	pnpm --filter client-miniapp build
 
 check-api: ## OpenAPI lint、前端类型生成、bundle 与 contract
 	@printf '\n[检查] OpenAPI 契约\n'

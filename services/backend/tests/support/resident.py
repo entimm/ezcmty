@@ -3,8 +3,8 @@ from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
+from backend_app.core.client_sessions import ClientSessionStore
 from backend_app.core.errors import AppError
-from backend_app.core.resident_sessions import ResidentSessionStore
 from backend_app.integrations.wechat_miniapp import VerifiedPhone, WechatMiniapp
 
 
@@ -30,14 +30,14 @@ class FakeWechat(WechatMiniapp):
 @dataclass
 class ResidentHarness:
     client: TestClient
-    store: ResidentSessionStore
+    store: ClientSessionStore
     wechat: FakeWechat
     token: str = ""
     user_id: str = ""
     counter: int = field(default=0)
 
     def login(self, code: str = "resident") -> None:
-        response = self.client.post("/v1/resident-sessions", json={"code": code})
+        response = self.client.post("/v1/client-sessions", json={"code": code})
         assert response.status_code == 201, response.text
         self.token = response.json()["token"]
         self.user_id = response.json()["user"]["id"]
@@ -45,6 +45,7 @@ class ResidentHarness:
     def headers(self, key: str | None = None) -> dict[str, str]:
         return {
             "Authorization": "Bearer " + self.token,
+            "X-Client-Identity": "resident",
             **({"Idempotency-Key": key} if key else {}),
         }
 

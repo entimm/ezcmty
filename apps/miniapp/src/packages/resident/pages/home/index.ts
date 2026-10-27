@@ -1,15 +1,18 @@
-import * as api from '../../../../core/api';
+import { residentTabs } from '../../navigation';
+import { requireIdentity as requireResidentIdentity } from '../../../../core/identities';
+import * as api from '../../api';
 import { currentCredential } from '../../../../core/session';
 import { ApiError, errorText } from '../../../../core/request';
 import { money } from '../../../../core/format';
 import { getSelectedBindingId, setSelectedBindingId } from '../../selection';
-import type { Binding } from '../../../../core/types';
+import type { Binding } from '../../types';
 import { go, pageUrl } from '../../../../ui/navigation';
 import { PageScope } from '../../page-state';
 import { bindingView, claimView, loadAll } from '../../presentation';
 
 Page({
   data: {
+    tabs: residentTabs,
     signed: false,
     loading: false,
     loaded: false,
@@ -44,6 +47,14 @@ Page({
     );
   },
   onShow() {
+    if (
+      currentCredential() &&
+      !requireResidentIdentity(
+        'resident',
+        '/packages/resident/pages/home/index',
+      )
+    )
+      return;
     const signed = !!currentCredential();
     const sameOwner = this.scope.enter();
     if (!sameOwner)

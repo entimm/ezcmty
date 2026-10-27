@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 
 from backend_app.core.config import Settings
 from backend_app.core.errors import AppError
-from backend_app.core.resident_sessions import ResidentContext
 from backend_app.domain.billing import business_today
+from backend_app.domain.client.types import ClientAuthorization
 from backend_app.models.billing import Bill
 from backend_app.repositories.miniapp import MiniappRepository
 from backend_app.repositories.payments.billing import ResidentBillingRepository
@@ -84,8 +84,8 @@ class ResidentBillingService:
             }
         )
 
-    def get(self, ctx: ResidentContext, bill_id: str) -> schema.ResidentBill:
-        self.identity.user(ctx)
+    def get(self, ctx: ClientAuthorization, bill_id: str) -> schema.ResidentBill:
+        self.identity.user(ctx.user_id, ctx.version)
         bill = self.repo.bill(ctx.user_id, bill_id)
         repo = ConfigurationRepository(self.db)
         ready = configuration_view(repo, bill.property_company_id, self.settings).ready
@@ -98,9 +98,9 @@ class ResidentBillingService:
         )
 
     def list(
-        self, ctx: ResidentContext, binding_id: str, **filters: Any
+        self, ctx: ClientAuthorization, binding_id: str, **filters: Any
     ) -> schema.ResidentBillPage:
-        self.identity.user(ctx)
+        self.identity.user(ctx.user_id, ctx.version)
         start, end = filters["billing_month_from"], filters["billing_month_to"]
         if start and end and start > end:
             raise AppError("VALIDATION_ERROR")
@@ -122,9 +122,9 @@ class ResidentBillingService:
         )
 
     def entries(
-        self, ctx: ResidentContext, bill_id: str, **filters: Any
+        self, ctx: ClientAuthorization, bill_id: str, **filters: Any
     ) -> schema.ResidentBillSettlementEntryPage:
-        self.identity.user(ctx)
+        self.identity.user(ctx.user_id, ctx.version)
         self.repo.bill(ctx.user_id, bill_id)
         items, total = self.repo.entries(bill_id, **filters)
         own = self.repo.own_payments(

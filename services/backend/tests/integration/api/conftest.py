@@ -17,11 +17,11 @@ from tests.support.resident import FakeWechat, ResidentHarness
 from tests.support.workspace import WorkspaceHarness, create_community
 
 from backend_app.api.admin import get_admin_session_store
-from backend_app.api.resident.dependencies import get_resident_session_store, get_wechat_miniapp
+from backend_app.api.client.dependencies import get_client_session_store, get_wechat_miniapp
 from backend_app.app_factory import create_app
 from backend_app.core.admin_sessions import AdminSessionStore
+from backend_app.core.client_sessions import ClientSessionStore
 from backend_app.core.config import get_settings
-from backend_app.core.resident_sessions import ResidentSessionStore
 from backend_app.db.session import get_database_session
 from backend_app.models.property import Community, PropertyCompany
 from backend_app.services.platform_admin.admin import PlatformAdminService
@@ -61,6 +61,7 @@ def _platform_harness(
             "house_claim_applications",
             "resident_house_bindings",
             "miniapp_users",
+            "miniapp_user_identities",
             "miniapp_phone_bindings",
             "miniapp_phone_verifications",
             "admin_accounts",
@@ -247,17 +248,17 @@ def business_resident(
 
 
 def _resident(harness: Harness, monkeypatch: MonkeyPatch) -> Iterator[ResidentHarness]:
-    store = ResidentSessionStore(cast("Redis[str]", harness.redis), harness.store.settings)
-    monkeypatch.setattr("backend_app.core.resident_sessions.time", lambda: harness.redis.now)
+    store = ClientSessionStore(cast("Redis[str]", harness.redis), harness.store.settings)
+    monkeypatch.setattr("backend_app.core.client_sessions.time", lambda: harness.redis.now)
     wechat = FakeWechat()
-    app = create_app("resident-api")
+    app = create_app("client-api")
 
     def database() -> Generator[Session]:
         with harness.factory() as db:
             yield db
 
     app.dependency_overrides[get_database_session] = database
-    app.dependency_overrides[get_resident_session_store] = lambda: store
+    app.dependency_overrides[get_client_session_store] = lambda: store
     app.dependency_overrides[get_wechat_miniapp] = lambda: wechat
     with TestClient(app) as client:
         value = ResidentHarness(client, store, wechat)

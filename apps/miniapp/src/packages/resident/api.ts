@@ -1,7 +1,7 @@
-import type { operations } from '../../../../openapi/types';
-import { query } from './request';
-import { residentRequest } from './session';
-import {
+import type { operations } from '../../../../../openapi/types';
+import { query } from '../../core/request';
+import { businessRequest } from '../../core/identities';
+import type {
   Binding,
   BindingStatus,
   Claim,
@@ -14,34 +14,16 @@ import {
   PaymentInput,
   PaymentOrder,
   PaymentStatus,
-  PhoneBinding,
   ResidentBill,
   SettlementEntry,
   SpaceNode,
-  User,
 } from './types';
 
 const me = '/miniapp-users/me';
 const id = encodeURIComponent;
-export const user = () => residentRequest<User>(me);
-export const listPhones = (page = 1) =>
-  residentRequest<PageResult<PhoneBinding>>(
-    me + '/phone-bindings' + query({ page, page_size: 100 }),
-  );
-export const bindPhone = (code: string, key: string, expectedPhone?: string) =>
-  residentRequest<PhoneBinding>(me + '/phone-bindings', {
-    method: 'POST',
-    key,
-    data: { code, ...(expectedPhone ? { expected_phone: expectedPhone } : {}) },
-  });
-export const unbindPhone = (phone: PhoneBinding) =>
-  residentRequest<void>(
-    me +
-      '/phone-bindings/' +
-      id(phone.id) +
-      query({ expected_row_version: phone.row_version }),
-    { method: 'DELETE' },
-  );
+const residentRequest: typeof businessRequest = (path, options = {}) =>
+  businessRequest(path, options, 'resident');
+
 export const communities = (name = '', page = 1) =>
   residentRequest<PageResult<Community>>(
     '/claimable-communities' + query({ name, page }),

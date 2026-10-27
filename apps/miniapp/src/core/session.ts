@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config';
 import { ApiError, HttpMethod, request, StaleSessionError } from './request';
-import { Session, SessionState } from './types';
+import { ClientSession, ClientSessionState } from './types';
 
 export interface Credential {
   token: string;
@@ -8,11 +8,12 @@ export interface Credential {
   expiresAt: string;
 }
 
-const storageKey = 'ezcmty:' + API_BASE_URL + ':resident-session';
+const storageKey = 'ezcmty:' + API_BASE_URL + ':client-session';
 let credential: Credential | null | undefined;
 let revision = 0;
 let loginPromise: Promise<void> | null = null;
 const requests = new Set<WechatMiniprogram.RequestTask>();
+let verifiedRevision = -1;
 const resetListeners = new Set<() => void>();
 
 export function currentCredential(): Credential | null {
@@ -41,6 +42,9 @@ export function currentCredential(): Credential | null {
   }
   return credential;
 }
+
+export const authenticatedUserId = (): string | null =>
+  verifiedRevision === revision ? currentCredential()?.userId || null : null;
 
 export const sessionRevision = (): number => revision;
 
@@ -77,9 +81,9 @@ export function clearSession(): void {
   });
 }
 
-function saveSession(value: Session): void {
+function saveSession(value: ClientSession): void {
   if (!value.token || !value.user?.id || !value.user.enabled)
-    throw new ApiError(403, 'resident.disabled', '当前账号暂时无法登录');
+    throw new ApiError(403, 'client.disabled', '当前账号暂时无法登录');
   clearSession();
   const next = {
     token: value.token,
@@ -96,11 +100,18 @@ function saveSession(value: Session): void {
     );
   }
   credential = next;
+  verifiedRevision = revision;
 }
 
-export async function residentRequest<T>(
+export async function clientRequest<T>(
   path: string,
-  options: { method?: HttpMethod; data?: object; key?: string } = {},
+  options: {
+    method?: HttpMethod;
+    data?: object;
+    key?: string;
+    identity?: string;
+    register?: (task: WechatMiniprogram.RequestTask) => () => void;
+  } = {},
 ): Promise<T> {
   const current = currentCredential();
   if (!current) throw new ApiError(401, 'auth.unauthenticated', '请先微信登录');
@@ -111,8 +122,10 @@ export async function residentRequest<T>(
       token: current.token,
       register(task) {
         requests.add(task);
+        const unregister = options.register?.(task);
         return () => {
           requests.delete(task);
+          unregister?.();
         };
       },
     });
@@ -146,10 +159,14 @@ export function login(): Promise<void> {
       });
     });
     if (started !== revision) throw new StaleSessionError();
-    const result = await request<Session>(API_BASE_URL, '/resident-sessions', {
-      method: 'POST',
-      data: { code },
-    });
+    const result = await request<ClientSession>(
+      API_BASE_URL,
+      '/client-sessions',
+      {
+        method: 'POST',
+        data: { code },
+      },
+    );
     if (started !== revision) throw new StaleSessionError();
     saveSession(result);
   })();
@@ -162,10 +179,12 @@ export function login(): Promise<void> {
   return operation;
 }
 
-export async function restoreSession(): Promise<SessionState> {
-  const result = await residentRequest<SessionState>(
-    '/resident-sessions/current',
+export async function restoreSession(): Promise<ClientSessionState> {
+  const started = revision;
+  const result = await clientRequest<ClientSessionState>(
+    '/client-sessions/current',
   );
+  if (started !== revision) throw new StaleSessionError();
   const current = currentCredential();
   if (!current || result.user.id !== current.userId || !result.user.enabled) {
     clearSession();
@@ -176,6 +195,7 @@ export async function restoreSession(): Promise<SessionState> {
     );
   }
   credential = { ...current, expiresAt: result.expires_at };
+  verifiedRevision = revision;
   try {
     wx.setStorageSync(storageKey, credential);
   } catch {
@@ -187,7 +207,7 @@ export async function restoreSession(): Promise<SessionState> {
 export async function logout(): Promise<void> {
   const started = revision;
   try {
-    await residentRequest<void>('/resident-sessions/current', {
+    await clientRequest<void>('/client-sessions/current', {
       method: 'DELETE',
     });
   } finally {

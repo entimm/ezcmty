@@ -37,12 +37,12 @@ class Settings(BaseSettings):
     wechatpay_payment_notify_url: str = ""
     wechatpay_profit_sharing_notify_url: str = ""
     wechatpay_platform_receiver_name: SecretStr = SecretStr("")
-    resident_session_idle_seconds: int = Field(default=604_800, ge=60)
-    resident_session_absolute_seconds: int = Field(default=2_592_000, ge=60)
-    resident_login_limit: int = Field(default=30, ge=1)
-    resident_phone_limit: int = Field(default=10, ge=1)
+    client_session_idle_seconds: int = Field(default=604_800, ge=60)
+    client_session_absolute_seconds: int = Field(default=2_592_000, ge=60)
+    client_login_limit: int = Field(default=30, ge=1)
+    client_phone_limit: int = Field(default=10, ge=1)
     resident_claim_limit: int = Field(default=30, ge=1)
-    resident_rate_window_seconds: int = Field(default=600, ge=60)
+    client_rate_window_seconds: int = Field(default=600, ge=60)
     admin_session_idle_seconds: int = Field(default=1800, ge=60)
     admin_session_absolute_seconds: int = Field(default=43_200, ge=60)
     admin_trusted_origins: list[str] = ["http://127.0.0.1:5173", "http://localhost:5173"]
@@ -71,8 +71,8 @@ class Settings(BaseSettings):
             raise ValueError("APP_REDIS_URL is required")
         if self.admin_session_absolute_seconds < self.admin_session_idle_seconds:
             raise ValueError("Admin absolute lifetime must cover the idle timeout")
-        if self.resident_session_absolute_seconds < self.resident_session_idle_seconds:
-            raise ValueError("Resident absolute lifetime must cover the idle timeout")
+        if self.client_session_absolute_seconds < self.client_session_idle_seconds:
+            raise ValueError("Client absolute lifetime must cover the idle timeout")
         from urllib.parse import urlsplit
 
         for origin in self.admin_trusted_origins:

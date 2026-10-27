@@ -17,8 +17,11 @@ it.each([
   'keeps resident house selection within environment %s and its user',
   async (environment, otherEnvironment) => {
     const { storage } = device();
-    vi.doMock('../../src/config', () => ({ API_BASE_URL: environment }));
-    storage.set('ezcmty:' + environment + ':resident-session', {
+    vi.doMock('../../src/config', () => ({
+      API_BASE_URL: environment,
+      API_STORAGE_MIGRATIONS: [],
+    }));
+    storage.set('ezcmty:' + environment + ':client-session', {
       token: 'token-a',
       userId: 'resident-a',
       expiresAt: '2030-01-01T00:00:00Z',
@@ -43,6 +46,8 @@ it.each([
     others.forEach((value, key) => storage.set(key, value));
     const selection = await import('../../src/packages/resident/selection');
 
+    const session = await import('../../src/core/session');
+    await session.restoreSession();
     expect(selection.getSelectedBindingId()).toBe('binding-a');
     selection.setSelectedBindingId('binding-updated');
     expect(storage.get(ownKey)).toBe('binding-updated');
@@ -52,7 +57,7 @@ it.each([
   },
 );
 
-it('clears the old selection on login as another user and only clears that user on logout', async () => {
+it('isolates stored house choices across accounts and hides them on logout', async () => {
   const { wx, storage } = device();
   const { API_BASE_URL } = await import('../../src/config');
   const selection = await import('../../src/packages/resident/selection');
@@ -61,6 +66,7 @@ it('clears the old selection on login as another user and only clears that user 
   const otherScopeKey = prefix + ':property-house:resident-b';
   storage.set(prefix + ':resident-house:resident-b', 'binding-b');
   storage.set(otherScopeKey, 'property-binding-b');
+  await session.restoreSession();
   selection.setSelectedBindingId('binding-a');
   wx.login.mockImplementation(
     (options: { success: (result: { code: string }) => void }) => {
@@ -96,12 +102,12 @@ it('clears the old selection on login as another user and only clears that user 
 
   await session.login();
   expect(session.currentCredential()?.userId).toBe('resident-b');
-  expect(storage.has(prefix + ':resident-house:resident-a')).toBe(false);
+  expect(storage.has(prefix + ':resident-house:resident-a')).toBe(true);
   expect(selection.getSelectedBindingId()).toBe('binding-b');
 
   await session.logout();
   expect(session.currentCredential()).toBeNull();
   expect(selection.getSelectedBindingId()).toBeNull();
-  expect(storage.has(prefix + ':resident-house:resident-b')).toBe(false);
+  expect(storage.has(prefix + ':resident-house:resident-b')).toBe(true);
   expect(storage.get(otherScopeKey)).toBe('property-binding-b');
 });

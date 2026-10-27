@@ -1,4 +1,4 @@
-import { bindPhone } from './api';
+import { bindPhone } from './account-api';
 import { normalizePhone } from './format';
 import { newKey } from './ids';
 import { isUnknownResult, StaleSessionError } from './request';

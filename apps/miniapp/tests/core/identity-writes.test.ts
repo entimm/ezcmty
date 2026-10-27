@@ -6,7 +6,8 @@ beforeEach(() => {
   device();
 });
 afterEach(() => {
-  vi.doUnmock('../../src/core/api');
+  vi.doUnmock('../../src/core/account-api');
+  vi.doUnmock('../../src/packages/resident/api');
   vi.unstubAllGlobals();
 });
 
@@ -16,7 +17,7 @@ it('replays an uncertain claim with the same key and rejects edits until it is r
     .fn()
     .mockRejectedValueOnce(new ApiError(503, 'service.unavailable', '稍后重试'))
     .mockResolvedValue({ id: 'claim-a', status: 'pending' });
-  vi.doMock('../../src/core/api', () => ({ createClaim }));
+  vi.doMock('../../src/packages/resident/api', () => ({ createClaim }));
   const { ClaimSubmission } =
     await import('../../src/packages/resident/claims');
   const controller = new ClaimSubmission();
@@ -48,7 +49,7 @@ it('normalizes a mainland phone, retries only its original authorization, and ne
     .fn()
     .mockRejectedValueOnce(new ApiError(0, 'network', '网络异常'))
     .mockResolvedValue({ id: 'phone-a', status: 'unbound' });
-  vi.doMock('../../src/core/api', () => ({ bindPhone }));
+  vi.doMock('../../src/core/account-api', () => ({ bindPhone }));
   const { PhoneVerification } = await import('../../src/core/phones');
   const controller = new PhoneVerification();
   await expect(
@@ -77,7 +78,7 @@ it('discards a late claim write after the resident session changes', async () =>
         finish = resolve;
       }),
   );
-  vi.doMock('../../src/core/api', () => ({ createClaim }));
+  vi.doMock('../../src/packages/resident/api', () => ({ createClaim }));
   const { ClaimSubmission } =
     await import('../../src/packages/resident/claims');
   const { clearSession } = await import('../../src/core/session');
@@ -104,7 +105,7 @@ it('discards a late phone authorization and its code after the resident session 
         finish = resolve;
       }),
   );
-  vi.doMock('../../src/core/api', () => ({ bindPhone }));
+  vi.doMock('../../src/core/account-api', () => ({ bindPhone }));
   const { PhoneVerification } = await import('../../src/core/phones');
   const { clearSession } = await import('../../src/core/session');
   const controller = new PhoneVerification();

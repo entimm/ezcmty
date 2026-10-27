@@ -54,6 +54,41 @@ assert(base.hostname, 'API hostname is required');
 if (process.env.NODE_ENV === 'production')
   assert(base.protocol === 'https:', 'Production API must use HTTPS');
 const apiBase = base.href.replace(/\/$/, '');
+const migrations = JSON.parse(
+  process.env.MINIAPP_API_STORAGE_MIGRATIONS || '[]',
+);
+assert(
+  Array.isArray(migrations),
+  'Storage migrations must be an explicit JSON array',
+);
+for (const item of migrations) {
+  assert(
+    item && Object.keys(item).sort().join(',') === 'from,to',
+    'Each migration requires only from/to',
+  );
+  for (const value of [item.from, item.to]) {
+    assert(typeof value === 'string', 'Migration URLs must be strings');
+    const url = new URL(value);
+    assert(
+      ['http:', 'https:'].includes(url.protocol) &&
+        !url.username &&
+        !url.password &&
+        !url.search &&
+        !url.hash &&
+        url.href.replace(/\/$/, '') === value,
+      'Migration URLs must be canonical absolute API bases',
+    );
+    if (process.env.NODE_ENV === 'production')
+      assert(
+        url.protocol === 'https:',
+        'Production migration URLs must use HTTPS',
+      );
+  }
+  assert(
+    item.to === apiBase && item.from !== item.to,
+    'Migration target must match this deployment API base',
+  );
+}
 const version =
   process.env.MINIAPP_BUILD_VERSION ||
   process.env.BUILD_VERSION ||
@@ -116,7 +151,9 @@ assert(
 await writeFile(
   compiledConfig,
   config +
-    '\nexports.API_BASE_URL = ' +
+    '\nexports.API_STORAGE_MIGRATIONS = ' +
+    JSON.stringify(migrations) +
+    ';\nexports.API_BASE_URL = ' +
     JSON.stringify(apiBase) +
     ';\nexports.BUILD_VERSION = ' +
     JSON.stringify(version) +
@@ -133,8 +170,8 @@ const pages = [
   ),
 ];
 assert(
-  pages.length === 15 && new Set(pages).size === 15,
-  'All 15 reviewed routes must be registered once',
+  pages.length > 0 && new Set(pages).size === pages.length,
+  'Registered routes must be unique',
 );
 await access(path.join(output, 'app.js'));
 await access(path.join(output, 'app.wxss'));

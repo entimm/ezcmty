@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session, aliased
 
 from backend_app.core.errors import AppError
 from backend_app.core.identifiers import new_id
-from backend_app.core.resident_sessions import ResidentContext
 from backend_app.db.errors import is_unique_violation
+from backend_app.domain.client.types import ClientAuthorization
 from backend_app.domain.housing import SpaceType
 from backend_app.models.house_claims import HouseClaim, ResidentHouseBinding
 from backend_app.models.housing import House, SpaceNode
@@ -29,11 +29,11 @@ class ResidentHouseClaimService:
         self.identity = MiniappRepository(db)
 
     def create(
-        self, ctx: ResidentContext, data: schema.HouseClaimCreate, key: str
+        self, ctx: ClientAuthorization, data: schema.HouseClaimCreate, key: str
     ) -> tuple[schema.ResidentHouseClaim, bool]:
         digest = sha256(json.dumps(data.model_dump(), sort_keys=True).encode()).hexdigest()
         try:
-            self.identity.user(ctx)
+            self.identity.user(ctx.user_id, ctx.version)
             previous = self.repo.previous(ctx.user_id, key)
             if previous:
                 if previous.request_fingerprint != digest:
@@ -41,7 +41,7 @@ class ResidentHouseClaimService:
                 return resident_claim_view(previous), False
             company, _, _, _ = self.repo.house(data.house_id)
             self.repo.company(company.id)
-            self.identity.user(ctx, lock=True, exclusive=True)
+            self.identity.user(ctx.user_id, ctx.version, lock=True, exclusive=True)
             previous = self.repo.previous(ctx.user_id, key)
             if previous:
                 if previous.request_fingerprint != digest:
@@ -90,12 +90,12 @@ class ResidentHouseClaimService:
             self.db.rollback()
             raise
 
-    def get_claim(self, ctx: ResidentContext, claim_id: str) -> schema.ResidentHouseClaim:
-        self.identity.user(ctx)
+    def get_claim(self, ctx: ClientAuthorization, claim_id: str) -> schema.ResidentHouseClaim:
+        self.identity.user(ctx.user_id, ctx.version)
         return resident_claim_view(self.repo.claim(claim_id, user_id=ctx.user_id))
 
-    def claims(self, ctx: ResidentContext, **filters: Any) -> schema.ResidentHouseClaimPage:
-        self.identity.user(ctx)
+    def claims(self, ctx: ClientAuthorization, **filters: Any) -> schema.ResidentHouseClaimPage:
+        self.identity.user(ctx.user_id, ctx.version)
         items, total = self.repo.records(HouseClaim, user_id=ctx.user_id, **filters)
         return schema.ResidentHouseClaimPage(
             items=[resident_claim_view(i) for i in items],
@@ -105,12 +105,12 @@ class ResidentHouseClaimService:
         )
 
     def cancel(
-        self, ctx: ResidentContext, claim_id: str, data: schema.ClaimCancellation
+        self, ctx: ClientAuthorization, claim_id: str, data: schema.ClaimCancellation
     ) -> schema.ResidentHouseClaim:
         try:
             claim = self.repo.claim(claim_id, user_id=ctx.user_id)
             self.repo.company(claim.property_company_id)
-            self.identity.user(ctx, lock=True)
+            self.identity.user(ctx.user_id, ctx.version, lock=True)
             result = self.repo.transition_claim(claim, data.expected_row_version, "cancelled")
             self.db.commit()
             return resident_claim_view(result)
@@ -125,12 +125,12 @@ class ResidentHouseClaimService:
             item, claim, item.status == "active" and self.repo.enabled(*scope)
         )
 
-    def get_binding(self, ctx: ResidentContext, binding_id: str) -> schema.ResidentHouseBinding:
-        self.identity.user(ctx)
+    def get_binding(self, ctx: ClientAuthorization, binding_id: str) -> schema.ResidentHouseBinding:
+        self.identity.user(ctx.user_id, ctx.version)
         return self._binding_view(self.repo.binding(binding_id, user_id=ctx.user_id))
 
-    def bindings(self, ctx: ResidentContext, **filters: Any) -> schema.ResidentHouseBindingPage:
-        self.identity.user(ctx)
+    def bindings(self, ctx: ClientAuthorization, **filters: Any) -> schema.ResidentHouseBindingPage:
+        self.identity.user(ctx.user_id, ctx.version)
         items, total = self.repo.records(ResidentHouseBinding, user_id=ctx.user_id, **filters)
         return schema.ResidentHouseBindingPage(
             items=[self._binding_view(i) for i in items],
@@ -140,12 +140,12 @@ class ResidentHouseClaimService:
         )
 
     def release(
-        self, ctx: ResidentContext, binding_id: str, data: schema.HouseRelease
+        self, ctx: ClientAuthorization, binding_id: str, data: schema.HouseRelease
     ) -> schema.ResidentHouseBinding:
         try:
             item = self.repo.binding(binding_id, user_id=ctx.user_id)
             self.repo.company(item.property_company_id)
-            self.identity.user(ctx, lock=True)
+            self.identity.user(ctx.user_id, ctx.version, lock=True)
             result = self.repo.end_binding(
                 item, data.expected_row_version, "released", user_id=ctx.user_id, reason=data.reason
             )
@@ -156,9 +156,9 @@ class ResidentHouseClaimService:
             raise
 
     def communities(
-        self, ctx: ResidentContext, *, name: str | None, page: int, page_size: int
+        self, ctx: ClientAuthorization, *, name: str | None, page: int, page_size: int
     ) -> schema.ClaimableCommunityPage:
-        self.identity.user(ctx)
+        self.identity.user(ctx.user_id, ctx.version)
         query = (
             select(Community)
             .join(PropertyCompany)
@@ -183,14 +183,14 @@ class ResidentHouseClaimService:
 
     def nodes(
         self,
-        ctx: ResidentContext,
+        ctx: ClientAuthorization,
         community_id: str,
         *,
         parent_id: str | None,
         page: int,
         page_size: int,
     ) -> schema.ClaimableSpaceNodePage:
-        self.identity.user(ctx)
+        self.identity.user(ctx.user_id, ctx.version)
         self.repo.claimable_community(community_id)
         active = self.repo.enabled_nodes(community_id)
         if (
@@ -241,7 +241,7 @@ class ResidentHouseClaimService:
 
     def houses(
         self,
-        ctx: ResidentContext,
+        ctx: ClientAuthorization,
         community_id: str,
         *,
         space_node_id: str,
@@ -249,7 +249,7 @@ class ResidentHouseClaimService:
         page: int,
         page_size: int,
     ) -> schema.ClaimableHousePage:
-        self.identity.user(ctx)
+        self.identity.user(ctx.user_id, ctx.version)
         community = self.repo.claimable_community(community_id)
         active = self.repo.enabled_nodes(community_id)
         if self.db.scalar(select(active.c.id).where(active.c.id == space_node_id)) is None:
@@ -285,9 +285,9 @@ class ResidentHouseClaimService:
         )
 
     def house(
-        self, ctx: ResidentContext, community_id: str, house_id: str
+        self, ctx: ClientAuthorization, community_id: str, house_id: str
     ) -> schema.ClaimableHouse:
-        self.identity.user(ctx)
+        self.identity.user(ctx.user_id, ctx.version)
         self.repo.claimable_community(community_id)
         item = self.db.scalar(self.repo.claimable_houses(community_id).where(House.id == house_id))
         if item is None:

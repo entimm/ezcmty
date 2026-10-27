@@ -6,22 +6,22 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 from tests.support.resident import FakeWechat
 
-from backend_app.core import resident_sessions
+from backend_app.core import client_sessions
 from backend_app.core.admin_sessions import AdminSessionStore
+from backend_app.core.client_sessions import ClientSessionStore
 from backend_app.core.errors import AppError
 from backend_app.core.identifiers import new_id
-from backend_app.core.resident_sessions import ResidentSessionStore
 from backend_app.integrations.wechat_miniapp import VerifiedPhone
 from backend_app.models.miniapp import MiniappUser, PhoneBinding, PhoneVerification
 from backend_app.schemas.miniapp import MiniappLogin, PhoneBindingCreate
-from backend_app.services.resident.identity import ResidentIdentityService
+from backend_app.services.client.identity import ClientAccountService
 
 
 def test_concurrent_first_login_creates_one_user_and_independent_sessions(
     real_admin: tuple[sessionmaker[Session], AdminSessionStore],
 ) -> None:
     factory, admin = real_admin
-    store = ResidentSessionStore(admin.client, admin.settings)
+    store = ClientSessionStore(admin.client, admin.settings)
     barrier = Barrier(2)
 
     class SimultaneousWechat(FakeWechat):
@@ -31,7 +31,7 @@ def test_concurrent_first_login_creates_one_user_and_independent_sessions(
 
     def login(code: str) -> tuple[str, str]:
         with factory() as db:
-            result = ResidentIdentityService(db).login(
+            result = ClientAccountService(db).login(
                 MiniappLogin(code=code), store, SimultaneousWechat(), "same-source"
             )
             return result.user.id, result.token
@@ -53,11 +53,11 @@ def test_real_resident_session_scope_absolute_lifetime_and_logout(
 ) -> None:
     _, admin = real_admin
     now = 1000.0
-    monkeypatch.setattr(resident_sessions, "time", lambda: now)
+    monkeypatch.setattr(client_sessions, "time", lambda: now)
     settings = admin.settings.model_copy(
-        update={"resident_session_idle_seconds": 60, "resident_session_absolute_seconds": 120}
+        update={"client_session_idle_seconds": 60, "client_session_absolute_seconds": 120}
     )
-    store = ResidentSessionStore(admin.client, settings)
+    store = ClientSessionStore(admin.client, settings)
     user_id = new_id()
     token, _ = store.create(user_id, 2)
     assert store.authenticate(token).version == 2
@@ -69,7 +69,7 @@ def test_real_resident_session_scope_absolute_lifetime_and_logout(
     assert foreign_session.value.code == "auth.unauthenticated"
     now += 115
     assert store.authenticate(token).user_id == user_id
-    key = store.store._key("resident", token)
+    key = store.store._key("client", token)
     assert 0 < admin.client.ttl(key) <= 5
     assert token not in key and token not in (admin.client.get(key) or "")
     now += 6
@@ -87,7 +87,7 @@ def test_real_resident_rate_counter_is_atomic_and_returns_remaining_window(
     real_admin: tuple[sessionmaker[Session], AdminSessionStore],
 ) -> None:
     _, admin = real_admin
-    store = ResidentSessionStore(admin.client, admin.settings)
+    store = ClientSessionStore(admin.client, admin.settings)
     barrier = Barrier(4)
 
     def limited_request() -> int:
@@ -99,7 +99,7 @@ def test_real_resident_rate_counter_is_atomic_and_returns_remaining_window(
             assert error.code == "resident.rate_limited" and error.status_code == 429
             assert (
                 error.retry_after
-                and 0 < error.retry_after <= admin.settings.resident_rate_window_seconds
+                and 0 < error.retry_after <= admin.settings.client_rate_window_seconds
             )
             return error.retry_after
 
@@ -114,7 +114,7 @@ def test_real_phone_lock_prevents_duplicate_exchange_and_replays_durable_result(
     real_admin: tuple[sessionmaker[Session], AdminSessionStore],
 ) -> None:
     factory, admin = real_admin
-    store = ResidentSessionStore(admin.client, admin.settings)
+    store = ClientSessionStore(admin.client, admin.settings)
     entered, release = Event(), Event()
 
     class HeldWechat(FakeWechat):
@@ -126,7 +126,7 @@ def test_real_phone_lock_prevents_duplicate_exchange_and_replays_durable_result(
     wechat = HeldWechat()
     wechat.phones["one-use-phone-code"] = "13800138000"
     with factory() as db:
-        result = ResidentIdentityService(db).login(
+        result = ClientAccountService(db).login(
             MiniappLogin(code="resident"), store, wechat, "source"
         )
     ctx = store.authenticate(result.token)
@@ -135,7 +135,7 @@ def test_real_phone_lock_prevents_duplicate_exchange_and_replays_durable_result(
     def bind() -> str:
         with factory() as db:
             return (
-                ResidentIdentityService(db)
+                ClientAccountService(db)
                 .bind_phone(ctx, data, "phone-key", "request", store, wechat)
                 .id
             )

@@ -15,7 +15,7 @@ BUNDLED_CONTRACT = ROOT / "build" / "openapi" / "openapi.bundled.json"
 RUNTIMES = (
     "platform_admin_api",
     "property_admin_api",
-    "resident_api",
+    "client_api",
     "webhook",
 )
 

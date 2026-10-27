@@ -25,10 +25,13 @@ def typecheck(frontend: Path) -> subprocess.CompletedProcess[str]:
 
 def test_typecheck_generates_types_without_starting_dev_server(harness: Harness) -> None:
     frontend = Path(harness.admin().cwd)
+    contract_types = harness.registry.root / "openapi" / "types.d.ts"
+    assert not contract_types.exists()
 
     result = typecheck(frontend)
 
     assert result.returncode == 0, result.stdout + result.stderr
+    assert contract_types.is_file()
     assert (frontend / "src" / ".umi-types" / "exports.ts").is_file()
     assert not (frontend / "src" / ".umi").exists()
 

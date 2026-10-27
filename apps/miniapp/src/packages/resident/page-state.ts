@@ -1,8 +1,5 @@
-import {
-  currentCredential,
-  onSessionReset,
-  sessionRevision,
-} from '../../core/session';
+import { onContextReset, contextRevision } from '../../core/identities';
+import { currentCredential, sessionRevision } from '../../core/session';
 
 /** A page response belongs to its visible lifetime, latest load, and resident. */
 export class PageScope {
@@ -10,10 +7,11 @@ export class PageScope {
   private active = false;
   private owner: string | null = null;
   private revision = -1;
+  private context = -1;
   private unsubscribe: (() => void) | null = null;
   watch(reset: (visible: boolean) => void): void {
     this.unsubscribe?.();
-    this.unsubscribe = onSessionReset(() => {
+    this.unsubscribe = onContextReset(() => {
       const visible = this.active;
       this.leave();
       reset(visible);
@@ -29,9 +27,11 @@ export class PageScope {
     const sameOwner =
       owner !== null &&
       this.owner === owner &&
-      this.revision === sessionRevision();
+      this.revision === sessionRevision() &&
+      this.context === contextRevision();
     this.owner = owner;
     this.revision = sessionRevision();
+    this.context = contextRevision();
     this.active = true;
     this.version += 1;
     return sameOwner;
@@ -40,10 +40,12 @@ export class PageScope {
     const version = ++this.version;
     const owner = this.owner;
     const revision = this.revision;
+    const context = this.context;
     return () =>
       this.active &&
       version === this.version &&
       revision === sessionRevision() &&
+      context === contextRevision() &&
       owner !== null &&
       currentCredential()?.userId === owner;
   }
@@ -55,6 +57,7 @@ export class PageScope {
     return (
       this.active &&
       this.revision === sessionRevision() &&
+      this.context === contextRevision() &&
       this.owner !== null &&
       currentCredential()?.userId === this.owner
     );

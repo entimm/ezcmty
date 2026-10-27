@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend_app.core.config import Settings, get_settings
-from backend_app.core.resident_sessions import ResidentContext, StoredResidentSession
+from backend_app.domain.client.types import ClientAuthorization
 from backend_app.models.admin import utc_now
 from backend_app.models.house_claims import HouseClaim, ResidentHouseBinding
 from backend_app.models.miniapp import MiniappUser
@@ -24,7 +24,7 @@ class OrderScenario:
     setup: BillingSetup
     payment: PaymentSetup
     bill_id: str
-    context: ResidentContext
+    context: ClientAuthorization
     now: datetime
     peer: WechatPayHarness
     settings: Settings
@@ -126,14 +126,7 @@ def order_scenario(setup: BillingSetup) -> OrderScenario:
                 request_id="receiver_ready",
             )
         )
-        context = ResidentContext(
-            user.id,
-            user.session_version,
-            "isolated-session",
-            StoredResidentSession(
-                version=user.session_version, absolute_expires_at=now.timestamp() + 3600
-            ),
-        )
+        context = ClientAuthorization(user.id, user.session_version)
         db.commit()
     settings = get_settings().model_copy(
         update={

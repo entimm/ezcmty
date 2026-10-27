@@ -1,8 +1,9 @@
-import { bill, entries } from '../../../../core/api';
+import { requireIdentity } from '../../../../core/identities';
+import { onContextReset } from '../../../../core/identities';
+import { bill, entries } from '../../api';
 import { formatTime, money } from '../../../../core/format';
 import { ApiError, errorText } from '../../../../core/request';
-import { onSessionReset, requireSession } from '../../../../core/session';
-import { ResidentBill } from '../../../../core/types';
+import { ResidentBill } from '../../types';
 import { go, pageUrl } from '../../../../ui/navigation';
 import { billPresentation } from '../payment-detail/view';
 
@@ -43,7 +44,7 @@ Page({
   off: () => {},
   onLoad(options) {
     this.id = options.id || '';
-    this.off = onSessionReset(() => {
+    this.off = onContextReset(() => {
       this.epoch++;
       this.setData({
         item: null,
@@ -77,7 +78,8 @@ Page({
     this.off();
   },
   async load() {
-    if (!requireSession(pageUrl('bill-detail', { id: this.id }))) return;
+    if (!requireIdentity('resident', pageUrl('bill-detail', { id: this.id })))
+      return;
     const epoch = ++this.epoch;
     this.setData({
       loading: true,

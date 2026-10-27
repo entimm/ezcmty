@@ -7,7 +7,7 @@
     <view wx:if="{{error}}" class="xp-notice error">{{error}}</view>
     <view class="login-actions"><button class="xp-button" loading="{{busy}}" disabled="{{busy}}" bindtap="signIn">{{busy ? '正在登录…' : '微信一键登录'}}</button><button class="xp-button xp-neutral" disabled="{{busy}}" bindtap="browse">先看看</button></view>
     <view class="xp-legal">手机号在需要认领时再授权<view><button class="xp-link" bindtap="openInfo">了解登录与数据使用</button></view></view>
-    <view class="login-signature">安心相邻 · 简单生活</view>
+    <button wx:if="{{error && signed}}" class="xp-link" bindtap="phones">管理本人手机号</button><view class="login-signature">安心相邻 · 简单生活</view>
   </view>
 </app-shell>
 <bottom-sheet show="{{infoOpen}}" title="登录与数据使用" confirm-text="知道了" hide-cancel bindconfirm="closeInfo" bindclose="closeInfo">

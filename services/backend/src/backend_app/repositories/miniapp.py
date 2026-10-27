@@ -2,7 +2,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend_app.core.errors import AppError
-from backend_app.core.resident_sessions import ResidentContext
 from backend_app.models.miniapp import MiniappUser, PhoneBinding, PhoneVerification
 from backend_app.repositories.pagination import read_page
 
@@ -12,13 +11,13 @@ class MiniappRepository:
         self.db = db
 
     def user(
-        self, ctx: ResidentContext, *, lock: bool = False, exclusive: bool = False
+        self, user_id: str, version: int, *, lock: bool = False, exclusive: bool = False
     ) -> MiniappUser:
-        query = select(MiniappUser).where(MiniappUser.id == ctx.user_id)
+        query = select(MiniappUser).where(MiniappUser.id == user_id)
         if lock:
             query = query.with_for_update(read=not exclusive, of=MiniappUser)
         item = self.db.scalar(query.execution_options(populate_existing=True))
-        if item is None or not item.enabled or item.session_version != ctx.version:
+        if item is None or not item.enabled or item.session_version != version:
             raise AppError("auth.unauthenticated")
         return item
 

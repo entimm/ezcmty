@@ -1,11 +1,11 @@
 import { vi } from 'vitest';
 import { API_BASE_URL } from '../../src/config';
-import { PaymentOrder, ResidentBill } from '../../src/core/types';
+import { PaymentOrder, ResidentBill } from '../../src/packages/resident/types';
 
 export function device(userId = 'resident-a') {
   const storage = new Map<string, unknown>([
     [
-      'ezcmty:' + API_BASE_URL + ':resident-session',
+      'ezcmty:' + API_BASE_URL + ':client-session',
       {
         token: 'test-token',
         userId,
@@ -23,7 +23,29 @@ export function device(userId = 'resident-a') {
     }),
     getStorageInfoSync: vi.fn(() => ({ keys: [...storage.keys()] })),
     navigateTo: vi.fn(),
-    request: vi.fn(),
+    reLaunch: vi.fn(),
+    request: vi
+      .fn()
+      .mockImplementation(
+        (options: {
+          url: string;
+          success(value: unknown): void;
+          complete(): void;
+        }) => {
+          if (options.url.endsWith('/client-sessions/current')) {
+            options.success({
+              statusCode: 200,
+              data: {
+                expires_at: '2030-01-01T00:00:00Z',
+                user: { id: userId, enabled: true },
+              },
+              header: {},
+            });
+            options.complete();
+          }
+          return { abort: vi.fn() };
+        },
+      ),
     login: vi.fn(),
     requestPayment: vi.fn(),
   };

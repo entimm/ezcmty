@@ -6,7 +6,7 @@ import {
   houseClaimConflict,
   loadAll,
 } from '../../src/packages/resident/presentation';
-import type { Binding, Claim } from '../../src/core/types';
+import type { Binding, Claim } from '../../src/packages/resident/types';
 const binding: Binding = {
   id: 'binding',
   community_id: 'community',

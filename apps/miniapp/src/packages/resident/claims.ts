@@ -1,8 +1,8 @@
-import { createClaim } from '../../core/api';
+import { onContextReset } from '../../core/identities';
+import { createClaim } from './api';
 import { newKey } from '../../core/ids';
 import { isUnknownResult, StaleSessionError } from '../../core/request';
-import { onSessionReset } from '../../core/session';
-import { Claim, ClaimInput } from '../../core/types';
+import { Claim, ClaimInput } from './types';
 
 /** A claim draft never leaves memory; an uncertain write can only replay its original input. */
 export class ClaimSubmission {
@@ -10,7 +10,7 @@ export class ClaimSubmission {
   private epoch = 0;
   private active = false;
   private uncertain = false;
-  private off = onSessionReset(() => this.reset());
+  private off = onContextReset(() => this.reset());
   get unknown(): boolean {
     return this.uncertain;
   }

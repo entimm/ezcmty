@@ -52,6 +52,9 @@ class RequestIdMiddleware:
                 ):
                     headers = [(k, v) for k, v in headers if k.lower() != b"cache-control"]
                     headers.append((b"cache-control", b"no-store"))
+                if self.no_store and status_code == 401:
+                    headers = [(k, v) for k, v in headers if k.lower() != b"www-authenticate"]
+                    headers.append((b"www-authenticate", b"Bearer"))
                 message["headers"] = headers
             await send(message)
 

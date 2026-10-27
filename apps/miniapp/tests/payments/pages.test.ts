@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PaymentOrder } from '../../src/core/types';
+import { PaymentOrder } from '../../src/packages/resident/types';
 import {
   billFixture,
   bindingFixture,
@@ -31,7 +31,7 @@ const mocks = vi.hoisted(() => ({
   sessionListeners: [] as (() => void)[],
   setSelection: vi.fn(),
 }));
-vi.mock('../../src/core/api', () => ({
+vi.mock('../../src/packages/resident/api', () => ({
   bill: mocks.bill,
   bills: mocks.bills,
   bindings: mocks.bindings,
@@ -41,7 +41,18 @@ vi.mock('../../src/core/api', () => ({
 }));
 vi.mock('../../src/core/session', () => ({
   requireSession: mocks.requireSession,
-  onSessionReset: (listener: () => void) => {
+  onContextReset: (listener: () => void) => {
+    mocks.sessionListeners.push(listener);
+    return () => {
+      const index = mocks.sessionListeners.indexOf(listener);
+      if (index >= 0) mocks.sessionListeners.splice(index, 1);
+    };
+  },
+  currentCredential: mocks.credential,
+}));
+vi.mock('../../src/core/identities', () => ({
+  requireIdentity: mocks.requireSession,
+  onContextReset: (listener: () => void) => {
     mocks.sessionListeners.push(listener);
     return () => {
       const index = mocks.sessionListeners.indexOf(listener);

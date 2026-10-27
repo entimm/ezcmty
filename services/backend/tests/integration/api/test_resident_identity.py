@@ -28,7 +28,7 @@ def test_login_reuses_wechat_account_and_sessions_are_isolated(
     )
     assert (
         resident.client.delete(
-            "/v1/resident-sessions/current", headers=resident.headers()
+            "/v1/client-sessions/current", headers=resident.headers()
         ).status_code
         == 204
     )

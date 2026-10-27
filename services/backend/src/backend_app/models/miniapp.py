@@ -8,8 +8,10 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     Integer,
+    PrimaryKeyConstraint,
     String,
     UniqueConstraint,
+    text,
     true,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -40,6 +42,50 @@ class MiniappUser(Base):
         Integer, nullable=False, default=1, server_default="1"
     )
     last_login_at: Mapped[datetime] = mapped_column(UTC_TIMESTAMP, nullable=False, default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(UTC_TIMESTAMP, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(UTC_TIMESTAMP, nullable=False, default=utc_now)
+
+
+class MiniappUserIdentity(Base):
+    __tablename__ = "miniapp_user_identities"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_miniapp_user_identities"),
+        ForeignKeyConstraint(["user_id"], ["miniapp_users.id"], name="fk_miniapp_identity_user"),
+        CheckConstraint(
+            "identity_type ~ '^[a-z][a-z0-9_]{0,31}$'", name="ck_miniapp_identity_type"
+        ),
+        CheckConstraint("identity_type <> 'resident'", name="ck_miniapp_identity_non_resident"),
+        CheckConstraint(
+            "(status = 'active' AND revoked_at IS NULL) OR "
+            "(status = 'revoked' AND revoked_at IS NOT NULL)",
+            name="ck_miniapp_identity_status",
+        ),
+        CheckConstraint(
+            "revoked_at IS NULL OR revoked_at >= created_at",
+            name="ck_miniapp_identity_revoked_time",
+        ),
+        CheckConstraint("row_version > 0", name="ck_miniapp_identity_version"),
+        Index(
+            "uq_miniapp_identity_active",
+            "user_id",
+            "identity_type",
+            "subject_id",
+            unique=True,
+            postgresql_where=text("status = 'active'"),
+        ),
+        Index("ix_miniapp_identity_user_status_time", "user_id", "status", "created_at", "id"),
+    )
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), default=new_id)
+    user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), nullable=False)
+    identity_type: Mapped[str] = mapped_column(String(32, collation="C"), nullable=False)
+    subject_id: Mapped[str] = mapped_column(UUID(as_uuid=False), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active", server_default="active"
+    )
+    row_version: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=1, server_default="1"
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(UTC_TIMESTAMP)
     created_at: Mapped[datetime] = mapped_column(UTC_TIMESTAMP, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(UTC_TIMESTAMP, nullable=False, default=utc_now)
 

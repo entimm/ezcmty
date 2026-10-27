@@ -28,7 +28,7 @@ from backend_app.services.worker.payments.orders import OrderService
 @contextmanager
 def resident_listener(house: PaymentHouse) -> Iterator[str]:
     app = FastAPI()
-    app.mount("/api/resident", cast(FastAPI, house.resident.client.app))
+    app.mount("/api/client", cast(FastAPI, house.resident.client.app))
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", 0))
         listener.listen()
@@ -45,7 +45,7 @@ def resident_listener(house: PaymentHouse) -> Iterator[str]:
                 assert thread.is_alive(), "Resident HTTP server stopped before readiness"
                 assert monotonic() < deadline, "Resident HTTP server startup timed out"
                 interval.wait(0.01)
-            yield f"http://127.0.0.1:{port}/api/resident"
+            yield f"http://127.0.0.1:{port}/api/client"
         finally:
             server.should_exit = True
             thread.join(timeout=10)
@@ -110,7 +110,7 @@ def test_compiled_miniapp_recovers_original_payment_over_http_and_isolated_postg
 ) -> None:
     house = payment_house
     peer, settings = configure_payment_api(house, monkeypatch)
-    monkeypatch.setattr("backend_app.api.resident.billing.get_settings", lambda: settings)
+    monkeypatch.setattr("backend_app.api.client.resident.billing.get_settings", lambda: settings)
     peer.now = utc_now().timestamp()
     factory = house.workspace.platform.factory
     calls: list[tuple[str, str]] = []

@@ -1,10 +1,13 @@
 import { expectTypeOf, it } from 'vitest';
-import type { BillFilters, OrderFilters } from '../../src/core/api';
+import type {
+  BillFilters,
+  OrderFilters,
+} from '../../src/packages/resident/api';
 import type {
   ClaimInput,
   PaymentInput,
   ResidentBill,
-} from '../../src/core/types';
+} from '../../src/packages/resident/types';
 
 it('uses the resident contract optional remark, nullable balance state, and one-bill payment input', () => {
   expectTypeOf<ClaimInput['applicant_remark']>().toEqualTypeOf<

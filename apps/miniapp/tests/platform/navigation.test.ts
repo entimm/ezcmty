@@ -1,3 +1,10 @@
+vi.mock('../../src/core/identities', () => ({
+  currentIdentity: () => ({
+    id: 'resident',
+    type: 'resident',
+    display_name: '居民',
+  }),
+}));
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
   back,

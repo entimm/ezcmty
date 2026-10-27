@@ -34,7 +34,7 @@ beforeEach(() => {
   vi.resetModules();
 });
 afterEach(() => {
-  vi.doUnmock('../../src/core/api');
+  vi.doUnmock('../../src/packages/resident/api');
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -46,7 +46,7 @@ it('recovers an uncertain create using its original key and version after house 
   api.createOrder.mockRejectedValueOnce(
     new ApiError(503, 'service.unavailable', '响应未知'),
   );
-  vi.doMock('../../src/core/api', () => api);
+  vi.doMock('../../src/packages/resident/api', () => api);
   const { PaymentController } =
     await import('../../src/packages/resident/payments');
   const first = new PaymentController();
@@ -72,7 +72,7 @@ it('finds a submitted order by its exact idempotency key instead of creating it 
   const { ApiError } = await import('../../src/core/request');
   const api = paymentApi();
   api.createOrder.mockRejectedValueOnce(new ApiError(0, 'network', '响应未知'));
-  vi.doMock('../../src/core/api', () => api);
+  vi.doMock('../../src/packages/resident/api', () => api);
   const { PaymentController } =
     await import('../../src/packages/resident/payments');
   const controller = new PaymentController();
@@ -97,7 +97,7 @@ it('keeps the original key after an ambiguous conflict instead of silently rotat
   api.createOrder.mockRejectedValueOnce(
     new ApiError(409, 'payment.idempotency_conflict', '冲突'),
   );
-  vi.doMock('../../src/core/api', () => api);
+  vi.doMock('../../src/packages/resident/api', () => api);
   const { PaymentController } =
     await import('../../src/packages/resident/payments');
   const controller = new PaymentController();
@@ -115,7 +115,7 @@ it('returns to confirmation when the currently authorized bill amount changes', 
   api.bill.mockResolvedValue(
     bill({ row_version: 4, outstanding_cents: 25000 }),
   );
-  vi.doMock('../../src/core/api', () => api);
+  vi.doMock('../../src/packages/resident/api', () => api);
   const { PaymentController } =
     await import('../../src/packages/resident/payments');
   const controller = new PaymentController();
@@ -133,7 +133,7 @@ it('blocks repeated payment after an unknown SDK result even while an asynchrono
       options.fail({ errMsg: 'requestPayment:fail unknown' }),
   );
   const api = paymentApi();
-  vi.doMock('../../src/core/api', () => api);
+  vi.doMock('../../src/packages/resident/api', () => api);
   const { PaymentController, canContinuePayment, hasUncertainPayment } =
     await import('../../src/packages/resident/payments');
   const controller = new PaymentController();
@@ -161,7 +161,7 @@ it('treats SDK success as unconfirmed until the backend confirms posting', async
     options.success(),
   );
   const api = paymentApi();
-  vi.doMock('../../src/core/api', () => api);
+  vi.doMock('../../src/packages/resident/api', () => api);
   const { PaymentController, canContinuePayment, hasUncertainPayment } =
     await import('../../src/packages/resident/payments');
   const controller = new PaymentController();
@@ -190,7 +190,7 @@ it('retains the original order after panel cancellation and permits continuing o
       options.fail({ errMsg: 'requestPayment:fail cancel' }),
   );
   const api = paymentApi();
-  vi.doMock('../../src/core/api', () => api);
+  vi.doMock('../../src/packages/resident/api', () => api);
   const { PaymentController, canContinuePayment } =
     await import('../../src/packages/resident/payments');
   const controller = new PaymentController();
@@ -208,7 +208,7 @@ it('never signs another payment for confirmed receipts awaiting posting', async 
   api.order.mockResolvedValue(
     order({ confirmation_status: 'awaiting_posting' }),
   );
-  vi.doMock('../../src/core/api', () => api);
+  vi.doMock('../../src/packages/resident/api', () => api);
   const { PaymentController } =
     await import('../../src/packages/resident/payments');
   const controller = new PaymentController();
@@ -239,7 +239,7 @@ it.each(['success', 'cancelled'] as const)(
       },
     );
     const api = paymentApi();
-    vi.doMock('../../src/core/api', () => api);
+    vi.doMock('../../src/packages/resident/api', () => api);
     const { PaymentController } =
       await import('../../src/packages/resident/payments');
     const session = await import('../../src/core/session');
@@ -288,7 +288,7 @@ it.each(['success', 'cancelled'] as const)(
       [...storage.keys()].some((key) =>
         key.includes(':resident-payment:resident-a:'),
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(storage).toEqual(afterLogin);
     expect(storage.get(userBKey)).toBe(true);
     expect(session.currentCredential()?.userId).toBe('resident-b');
@@ -302,7 +302,7 @@ it('does not start a write when it cannot persist the original recovery key', as
     throw new Error('storage full');
   });
   const api = paymentApi();
-  vi.doMock('../../src/core/api', () => api);
+  vi.doMock('../../src/packages/resident/api', () => api);
   const { PaymentController } =
     await import('../../src/packages/resident/payments');
   const controller = new PaymentController();
@@ -316,7 +316,7 @@ it('does not start a write when it cannot persist the original recovery key', as
 it('clears the original recovery record as soon as a directly read terminal order is observed', async () => {
   device();
   const api = paymentApi();
-  vi.doMock('../../src/core/api', () => api);
+  vi.doMock('../../src/packages/resident/api', () => api);
   const { PaymentController, reconcilePaymentOrder } =
     await import('../../src/packages/resident/payments');
   const controller = new PaymentController();
@@ -331,7 +331,7 @@ it('requires fresh confirmation after recovery proves that the original request 
   const { ApiError } = await import('../../src/core/request');
   const api = paymentApi();
   api.createOrder.mockRejectedValueOnce(new ApiError(0, 'network', '响应未知'));
-  vi.doMock('../../src/core/api', () => api);
+  vi.doMock('../../src/packages/resident/api', () => api);
   const { PaymentController } =
     await import('../../src/packages/resident/payments');
   const controller = new PaymentController();
@@ -353,7 +353,7 @@ it('persists an uncertain close before the POST so reopening cannot pay the orig
   api.close.mockRejectedValueOnce(
     new ApiError(503, 'service.unavailable', '关闭结果未知'),
   );
-  vi.doMock('../../src/core/api', () => api);
+  vi.doMock('../../src/packages/resident/api', () => api);
   const { PaymentController, canContinuePayment, hasUncertainPayment } =
     await import('../../src/packages/resident/payments');
   const controller = new PaymentController();
@@ -373,5 +373,51 @@ it('persists an uncertain close before the POST so reopening cannot pay the orig
   );
   const closed = await reopened.refresh(order());
   expect(hasUncertainPayment(closed)).toBe(false);
+  reopened.dispose();
+});
+it('keeps the original unknown payment through 401 and fresh same-user login', async () => {
+  const { wx, storage } = device();
+  const api = paymentApi();
+  vi.doMock('../../src/packages/resident/api', () => api);
+  const { ApiError } = await import('../../src/core/request');
+  api.createOrder.mockRejectedValueOnce(new ApiError(0, 'network', '响应未知'));
+  const { PaymentController } =
+    await import('../../src/packages/resident/payments');
+  const session = await import('../../src/core/session');
+  const first = new PaymentController();
+  await expect(first.create(bill())).rejects.toMatchObject({ status: 0 });
+  const original = api.createOrder.mock.calls[0];
+  const key =
+    'ezcmty:' + API_BASE_URL + ':resident-payment:resident-a:bill:bill-a';
+  const saved = storage.get(key);
+  wx.request.mockImplementation((call) => {
+    const login = call.url.endsWith('/client-sessions');
+    call.success({
+      statusCode: login ? 201 : 401,
+      data: login
+        ? {
+            token: 'fresh-token',
+            user: { id: 'resident-a', enabled: true },
+            expires_at: '2030-01-01T00:00:00Z',
+          }
+        : { code: 'auth.unauthenticated' },
+      header: {},
+    });
+    call.complete();
+    return { abort: vi.fn() };
+  });
+  await expect(
+    session.clientRequest('/miniapp-users/me'),
+  ).rejects.toMatchObject({ status: 401 });
+  expect(storage.get(key)).toEqual(saved);
+  wx.login.mockImplementation(
+    (call: { success(result: { code: string }): void }) =>
+      call.success({ code: 'fresh-code' }),
+  );
+  await session.login();
+  const reopened = new PaymentController();
+  await reopened.recover('bill-a');
+  expect(api.createOrder.mock.calls[1]).toEqual(original);
+  first.dispose();
   reopened.dispose();
 });

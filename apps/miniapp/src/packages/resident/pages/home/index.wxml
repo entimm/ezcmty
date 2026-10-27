@@ -1,4 +1,4 @@
-<app-shell refreshable refreshing="{{loading}}" bindrefresh="onPullDownRefresh" title="美好社区" tab="home">
+<app-shell tabs="{{tabs}}" refreshable refreshing="{{loading}}" bindrefresh="onPullDownRefresh" title="美好社区" tab="home">
   <state-view loading="{{loading && !loaded}}" error="{{error}}" bindretry="load" />
   <block wx:if="{{loaded}}">
     <view class="xp-home-heading"><button class="xp-location" bindtap="openPicker"><view class="home-location-mark"><ui-icon name="{{selected ? 'map-pin' : 'house'}}" size="36" /></view><view class="home-location-copy"><text class="home-location-title">{{selected ? selected.community : '美好社区'}}</text><text class="xp-caption">{{selected ? selected.room : '安心相邻，简单生活'}}</text></view><ui-icon wx:if="{{available.length > 1}}" name="chevron-down" size="32" /></button><button class="home-avatar" aria-label="个人中心" bindtap="profile"><ui-icon name="user-round" size="42" /></button></view>

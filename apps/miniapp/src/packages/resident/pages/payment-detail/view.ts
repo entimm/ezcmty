@@ -1,9 +1,10 @@
+import { onContextReset } from '../../../../core/identities';
 import { canContinuePayment, hasUncertainPayment } from '../../payments';
-import { currentCredential, onSessionReset } from '../../../../core/session';
-import { ResidentBill, PaymentOrder } from '../../../../core/types';
+import { currentCredential } from '../../../../core/session';
+import { ResidentBill, PaymentOrder } from '../../types';
 
 const panelMessages = new Map<string, string>();
-onSessionReset(() => panelMessages.clear());
+onContextReset(() => panelMessages.clear());
 const panelKey = (id: string) => `${currentCredential()?.userId || ''}:${id}`;
 export function rememberPanelMessage(id: string, message: string): void {
   panelMessages.set(panelKey(id), message);

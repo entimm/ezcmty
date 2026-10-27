@@ -49,7 +49,7 @@ def services(root: Path, selected: list[str]) -> list[Service]:
     for name, module, service, port in (
         ("platform", "platform_admin_api", "platform-admin-api", 8001),
         ("property", "property_admin_api", "property-admin-api", 8002),
-        ("resident", "resident_api", "resident-api", 8003),
+        ("client", "client_api", "client-api", 8003),
         ("webhook", "webhook", "webhook", 8004),
     ):
         definitions[name] = Service(

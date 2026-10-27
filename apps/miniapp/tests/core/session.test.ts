@@ -22,7 +22,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('resident request lifecycle', () => {
+describe('client request lifecycle', () => {
   it('drops a late response after logout and aborts the old request', async () => {
     const { wx } = device();
     let call!: RequestCall;
@@ -32,7 +32,7 @@ describe('resident request lifecycle', () => {
       return { abort };
     });
     const session = await import('../../src/core/session');
-    const request = session.residentRequest('/miniapp-users/me');
+    const request = session.clientRequest('/miniapp-users/me');
     session.clearSession();
     call.success({
       statusCode: 200,
@@ -56,7 +56,7 @@ describe('resident request lifecycle', () => {
     const { errorText } = await import('../../src/core/request');
     let failure: unknown;
     try {
-      await session.residentRequest('/miniapp-users/me');
+      await session.clientRequest('/miniapp-users/me');
     } catch (error) {
       failure = error;
     }
@@ -72,7 +72,7 @@ describe('resident request lifecycle', () => {
       return { abort: vi.fn() };
     });
     await expect(
-      session.residentRequest('/miniapp-users/me'),
+      session.clientRequest('/miniapp-users/me'),
     ).rejects.toMatchObject({ status: 401 });
     expect(session.currentCredential()).toBeNull();
   });
@@ -92,7 +92,7 @@ describe('resident request lifecycle', () => {
     expect(session.currentCredential()).toBeNull();
   });
 
-  it('keeps the resident token on the resident audience and returns only allowed native pages', async () => {
+  it('keeps the client token on the client audience and returns only allowed native pages', async () => {
     const { wx } = device();
     let call!: RequestCall;
     wx.request.mockImplementation((options: RequestCall) => {
@@ -102,7 +102,7 @@ describe('resident request lifecycle', () => {
       return { abort: vi.fn() };
     });
     const session = await import('../../src/core/session');
-    await session.residentRequest('/miniapp-users/me');
+    await session.clientRequest('/miniapp-users/me');
     expect(call.url).toBe(
       API_BASE_URL.replace(/\/$/, '') + '/v1/miniapp-users/me',
     );
@@ -129,12 +129,112 @@ describe('resident request lifecycle', () => {
       options.complete();
       return { abort: vi.fn() };
     });
-    const { residentRequest } = await import('../../src/core/session');
+    const { clientRequest } = await import('../../src/core/session');
     const { errorText } = await import('../../src/core/request');
     try {
-      await residentRequest('/miniapp-users/me');
+      await clientRequest('/miniapp-users/me');
     } catch (error) {
       expect(errorText(error)).toBe('操作较频繁，请 12 秒后重试');
     }
   });
+});
+
+it('never treats the old resident credential as a client credential', async () => {
+  const { storage } = device();
+  const prefix = 'ezcmty:' + API_BASE_URL;
+  storage.delete(prefix + ':client-session');
+  storage.set(prefix + ':resident-session', {
+    token: 'old-resident-token',
+    userId: 'resident-a',
+    expiresAt: '2030-01-01T00:00:00Z',
+  });
+  const session = await import('../../src/core/session');
+  expect(session.currentCredential()).toBeNull();
+  await expect(
+    session.clientRequest('/miniapp-users/me'),
+  ).rejects.toMatchObject({ status: 401 });
+  expect(storage.has(prefix + ':client-session')).toBe(false);
+});
+it.each(['resident-a', 'resident-b'])(
+  'does not let an old completed restore replace a fresh token for %s',
+  async (userId) => {
+    const { wx } = device();
+    const calls: RequestCall[] = [];
+    wx.request.mockImplementation((call: RequestCall) => {
+      calls.push(call);
+      return { abort: vi.fn() };
+    });
+    wx.login.mockImplementation(
+      (options: { success(result: { code: string }): void }) =>
+        options.success({ code: 'fresh-code' }),
+    );
+    const session = await import('../../src/core/session');
+    const restoring = session.restoreSession();
+    const signing = session.login();
+    const results = Promise.allSettled([restoring, signing]);
+    await Promise.resolve();
+    calls[0].success({
+      statusCode: 200,
+      data: {
+        user: { id: 'resident-a', enabled: true },
+        expires_at: '2028-01-01T00:00:00Z',
+      },
+      header: {},
+    });
+    calls[0].complete();
+    calls[1].success({
+      statusCode: 201,
+      data: {
+        token: 'fresh-token',
+        user: { id: userId, enabled: true },
+        expires_at: '2031-01-01T00:00:00Z',
+      },
+      header: {},
+    });
+    calls[1].complete();
+    expect(await results).toMatchObject([
+      { status: 'rejected', reason: { name: 'StaleSessionError' } },
+      { status: 'fulfilled' },
+    ]);
+    expect(session.currentCredential()).toEqual({
+      token: 'fresh-token',
+      userId,
+      expiresAt: '2031-01-01T00:00:00Z',
+    });
+  },
+);
+it('ignores an old token 401 after a same-user token replacement', async () => {
+  const { wx } = device();
+  const calls: RequestCall[] = [];
+  wx.request.mockImplementation((call: RequestCall) => {
+    calls.push(call);
+    return { abort: vi.fn() };
+  });
+  wx.login.mockImplementation(
+    (options: { success(result: { code: string }): void }) =>
+      options.success({ code: 'new-code' }),
+  );
+  const session = await import('../../src/core/session');
+  const old = session.clientRequest('/miniapp-users/me');
+  const signing = session.login();
+  await Promise.resolve();
+  calls[1].success({
+    statusCode: 201,
+    data: {
+      token: 'fresh-token',
+      user: { id: 'resident-a', enabled: true },
+      expires_at: '2031-01-01T00:00:00Z',
+    },
+    header: {},
+  });
+  calls[1].complete();
+  await signing;
+  calls[0].success({
+    statusCode: 401,
+    data: { code: 'auth.unauthenticated' },
+    header: {},
+  });
+  calls[0].complete();
+  await expect(old).rejects.toMatchObject({ name: 'StaleSessionError' });
+  expect(session.currentCredential()?.token).toBe('fresh-token');
 });

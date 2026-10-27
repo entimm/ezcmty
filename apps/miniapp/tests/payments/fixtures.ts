@@ -4,7 +4,7 @@ import {
   PaymentOrder,
   ResidentBill,
   SettlementEntry,
-} from '../../src/core/types';
+} from '../../src/packages/resident/types';
 
 export const billFixture = (
   changes: Partial<ResidentBill> = {},

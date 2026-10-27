@@ -13,9 +13,9 @@ from backend_app.models.housing import SpaceNode
 from backend_app.models.miniapp import MiniappUser
 from backend_app.models.payments import PaymentChannelRequest, PaymentTask
 from backend_app.schemas.house_claims import ClaimReview, HouseRelease
+from backend_app.services.client.resident.billing import ResidentBillingService
+from backend_app.services.client.resident.house_claims import ResidentHouseClaimService
 from backend_app.services.property_admin.house_claims import PropertyHouseClaimService
-from backend_app.services.resident.billing import ResidentBillingService
-from backend_app.services.resident.house_claims import ResidentHouseClaimService
 
 
 def approved(setup: ClaimSetup) -> tuple[BillingSetup, str]:

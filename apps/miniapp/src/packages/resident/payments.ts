@@ -1,18 +1,19 @@
-import { API_BASE_URL } from '../../config';
-import * as api from '../../core/api';
+import { onContextReset } from '../../core/identities';
+import { readStored, writeStored, removeStored } from './storage';
+import * as api from './api';
 import { newKey } from '../../core/ids';
 import {
   ApiError,
   isUnknownResult,
   StaleSessionError,
 } from '../../core/request';
-import { currentCredential, onSessionReset } from '../../core/session';
+import { authenticatedUserId, restoreSession } from '../../core/session';
 import {
   ClientParameters,
   PaymentInput,
   PaymentOrder,
   ResidentBill,
-} from '../../core/types';
+} from './types';
 
 interface PendingPayment {
   key: string;
@@ -20,75 +21,60 @@ interface PendingPayment {
   orderId?: string;
 }
 export type PanelResult = 'success' | 'cancelled' | 'unknown';
-const prefix = 'ezcmty:' + API_BASE_URL + ':resident-payment:';
-let owner = currentCredential()?.userId;
-
-function scopedKey(kind: 'bill' | 'uncertain', id: string): string {
-  owner = currentCredential()?.userId;
-  if (!owner) throw new ApiError(401, 'auth.unauthenticated', '请先微信登录');
-  return prefix + owner + ':' + kind + ':' + id;
+function normalizePending(
+  value: unknown,
+  billId: string,
+): PendingPayment | undefined {
+  const item = value as Partial<PendingPayment> | null;
+  if (
+    !item ||
+    typeof item.key !== 'string' ||
+    !/^[A-Za-z0-9_-]{1,128}$/.test(item.key) ||
+    !Array.isArray(item.data?.items) ||
+    item.data.items.length !== 1 ||
+    item.data.items[0].bill_id !== billId ||
+    !Number.isSafeInteger(item.data.items[0].expected_row_version) ||
+    item.data.items[0].expected_row_version < 1 ||
+    (item.orderId !== undefined && typeof item.orderId !== 'string')
+  )
+    return undefined;
+  return {
+    key: item.key,
+    data: {
+      items: [
+        {
+          bill_id: billId,
+          expected_row_version: item.data.items[0].expected_row_version,
+        },
+      ],
+    },
+    ...(item.orderId ? { orderId: item.orderId } : {}),
+  };
 }
-onSessionReset(() => {
-  if (owner) {
-    try {
-      wx.getStorageInfoSync()
-        .keys.filter((key) => key.startsWith(prefix + owner + ':'))
-        .forEach((key) => wx.removeStorageSync(key));
-    } catch {
-      /* Old scope is inaccessible after reset even if device cleanup fails. */
-    }
-  }
-  owner = undefined;
-});
-
+function scopedKey(kind: 'bill' | 'uncertain', id: string): string {
+  return ':' + kind + ':' + id;
+}
 function save(key: string, value: unknown): void {
-  try {
-    wx.setStorageSync(key, value);
-  } catch {
-    throw new ApiError(
-      0,
-      'storage.unavailable',
-      '无法保存支付恢复信息，请检查设备存储后重试',
-    );
-  }
+  writeStored('resident-payment', key, value);
 }
 function remove(key: string): void {
   try {
-    wx.removeStorageSync(key);
+    removeStored('resident-payment', key);
   } catch {
-    /* Keeping a known original order is safe. */
+    /* A retained recovery must still be checked against the server. */
   }
 }
 function readPending(billId: string): PendingPayment | null {
-  let value: PendingPayment | undefined;
-  try {
-    value = wx.getStorageSync(scopedKey('bill', billId)) as
-      PendingPayment | undefined;
-  } catch (error) {
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(
-      0,
-      'storage.unavailable',
-      '无法读取原支付，请先到缴费记录核实',
-    );
-  }
-  if (!value) return null;
-  if (
-    typeof value.key !== 'string' ||
-    !/^[A-Za-z0-9_-]{1,128}$/.test(value.key) ||
-    !Array.isArray(value.data?.items) ||
-    value.data.items.length !== 1 ||
-    value.data.items[0].bill_id !== billId ||
-    !Number.isSafeInteger(value.data.items[0].expected_row_version) ||
-    value.data.items[0].expected_row_version < 1 ||
-    (value.orderId !== undefined && typeof value.orderId !== 'string')
-  )
-    throw new ApiError(
-      0,
-      'storage.invalid',
-      '原支付恢复信息异常，请先到缴费记录核实',
-    );
-  return value;
+  return readStored('resident-payment', scopedKey('bill', billId), (value) =>
+    normalizePending(value, billId),
+  );
+}
+function uncertain(id: string): boolean {
+  return (
+    readStored('resident-payment', scopedKey('uncertain', id), (value) =>
+      value === true ? true : undefined,
+    ) === true
+  );
 }
 function remember(billId: string, value: PendingPayment): void {
   save(scopedKey('bill', billId), value);
@@ -122,7 +108,7 @@ export function canContinuePayment(item: PaymentOrder): boolean {
   )
     return false;
   try {
-    return !wx.getStorageSync(scopedKey('uncertain', item.id));
+    return !uncertain(item.id);
   } catch {
     return false;
   }
@@ -130,7 +116,7 @@ export function canContinuePayment(item: PaymentOrder): boolean {
 export function hasUncertainPayment(item: PaymentOrder): boolean {
   if (terminal(item)) return false;
   try {
-    return !!wx.getStorageSync(scopedKey('uncertain', item.id));
+    return !!uncertain(item.id);
   } catch {
     return true;
   }
@@ -157,7 +143,7 @@ export function requestPayment(
 export class PaymentController {
   private epoch = 0;
   private busy = false;
-  private off = onSessionReset(() => this.pause());
+  private off = onContextReset(() => this.pause());
   pause(): void {
     this.epoch++;
     this.busy = false;
@@ -174,6 +160,8 @@ export class PaymentController {
     this.busy = true;
     const epoch = this.epoch;
     try {
+      if (!authenticatedUserId()) await restoreSession();
+      this.current(epoch);
       return await operation(epoch);
     } finally {
       if (epoch === this.epoch) this.busy = false;

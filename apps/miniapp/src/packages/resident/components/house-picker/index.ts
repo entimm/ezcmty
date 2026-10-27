@@ -1,16 +1,8 @@
-import * as api from '../../../../core/api';
-import {
-  currentCredential,
-  onSessionReset,
-  sessionRevision,
-} from '../../../../core/session';
+import { onContextReset } from '../../../../core/identities';
+import * as api from '../../api';
+import { currentCredential, sessionRevision } from '../../../../core/session';
 import { errorText } from '../../../../core/request';
-import type {
-  Binding,
-  Community,
-  House,
-  SpaceNode,
-} from '../../../../core/types';
+import type { Binding, Community, House, SpaceNode } from '../../types';
 import { bindingView, loadAll } from '../../presentation';
 
 const versions = new WeakMap<object, number>();
@@ -51,7 +43,7 @@ Component({
     attached() {
       unsubscribe.set(
         this,
-        onSessionReset(() => {
+        onContextReset(() => {
           this.invalidate();
           this.setData({
             community: null,

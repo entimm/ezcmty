@@ -1,9 +1,10 @@
-import { bill } from '../../../../core/api';
+import { requireIdentity } from '../../../../core/identities';
+import { onContextReset } from '../../../../core/identities';
+import { bill } from '../../api';
 import { money } from '../../../../core/format';
 import { canContinuePayment, PaymentController } from '../../payments';
 import { ApiError, errorText } from '../../../../core/request';
-import { onSessionReset, requireSession } from '../../../../core/session';
-import { PaymentOrder, ResidentBill } from '../../../../core/types';
+import { PaymentOrder, ResidentBill } from '../../types';
 import { go, pageUrl } from '../../../../ui/navigation';
 import { billPresentation, rememberPanelMessage } from '../payment-detail/view';
 
@@ -29,7 +30,7 @@ Page({
   onLoad(options) {
     this.id = options.id || '';
     this.controller = new PaymentController();
-    this.off = onSessionReset(() => {
+    this.off = onContextReset(() => {
       this.epoch++;
       this.setData({
         item: null,
@@ -81,7 +82,10 @@ Page({
   },
   async load() {
     if (this.data.busy) return;
-    if (!requireSession(pageUrl('payment-confirm', { id: this.id }))) return;
+    if (
+      !requireIdentity('resident', pageUrl('payment-confirm', { id: this.id }))
+    )
+      return;
     const epoch = ++this.epoch;
     this.setData({ loading: true, error: '', needsRecovery: false });
     try {

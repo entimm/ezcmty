@@ -1,8 +1,11 @@
+import { currentIdentity } from '../core/identities';
+import { entryFor } from './business-navigation';
 import { safeReturn } from '../core/session';
 export const paths = {
   index: '/pages/index/index',
   login: '/pages/login/index',
   phones: '/pages/phones/index',
+  identities: '/pages/identities/index',
   home: '/packages/resident/pages/home/index',
   bills: '/packages/resident/pages/bills/index',
   houses: '/packages/resident/pages/houses/index',
@@ -41,7 +44,19 @@ export function go(page: string, params: Record<string, string> = {}): void {
   else wx.navigateTo({ url, fail: () => wx.redirectTo({ url }) });
 }
 export function returnAfterLogin(url: string): void {
-  wx.reLaunch({ url: safeReturnTo(url) });
+  const target = safeReturnTo(url);
+  const selected = currentIdentity();
+  const entry = selected && entryFor(selected.type);
+  wx.reLaunch({
+    url:
+      target === paths.phones
+        ? target
+        : entry
+          ? entry.accepts(target)
+            ? target
+            : entry.home
+          : paths.identities,
+  });
 }
 export function back(fallback = 'home'): void {
   if (getCurrentPages().length > 1)

@@ -4,7 +4,7 @@ import type {
   Community,
   House,
   SpaceNode,
-} from '../../src/core/types';
+} from '../../src/packages/resident/types';
 const mocks = vi.hoisted(() => ({
   communities: vi.fn(),
   nodes: vi.fn(),
@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   revision: 1,
   resets: new Set<() => void>(),
 }));
-vi.mock('../../src/core/api', () => ({
+vi.mock('../../src/packages/resident/api', () => ({
   communities: mocks.communities,
   nodes: mocks.nodes,
   houses: mocks.houses,
@@ -21,7 +21,18 @@ vi.mock('../../src/core/api', () => ({
 vi.mock('../../src/core/session', () => ({
   currentCredential: () => (mocks.owner ? { userId: mocks.owner } : null),
   sessionRevision: () => mocks.revision,
-  onSessionReset: (listener: () => void) => {
+  onContextReset: (listener: () => void) => {
+    mocks.resets.add(listener);
+    return () => {
+      mocks.resets.delete(listener);
+    };
+  },
+}));
+vi.mock('../../src/core/identities', () => ({
+  requireIdentity: () => true,
+  currentCredential: () => (mocks.owner ? { userId: mocks.owner } : null),
+  contextRevision: () => mocks.revision,
+  onContextReset: (listener: () => void) => {
     mocks.resets.add(listener);
     return () => {
       mocks.resets.delete(listener);

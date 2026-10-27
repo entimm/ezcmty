@@ -1,9 +1,12 @@
-import { bindings, bills } from '../../../../core/api';
+import { residentTabs } from '../../navigation';
+import { requireIdentity as requireResidentIdentity } from '../../../../core/identities';
+import { onContextReset } from '../../../../core/identities';
+import { bindings, bills } from '../../api';
 import { money } from '../../../../core/format';
 import { ApiError, errorText } from '../../../../core/request';
 import { getSelectedBindingId, setSelectedBindingId } from '../../selection';
-import { currentCredential, onSessionReset } from '../../../../core/session';
-import { Binding, ResidentBill } from '../../../../core/types';
+import { currentCredential } from '../../../../core/session';
+import { Binding, ResidentBill } from '../../types';
 import { go, pageUrl } from '../../../../ui/navigation';
 import { bindingView } from '../../presentation';
 import { billPresentation } from '../payment-detail/view';
@@ -19,6 +22,7 @@ interface BillRow extends ResidentBill {
 }
 Page({
   data: {
+    tabs: residentTabs,
     signed: false,
     loading: true,
     moreLoading: false,
@@ -39,7 +43,7 @@ Page({
   off: () => {},
   onLoad(options) {
     this.requestedHouseId = options.house_id || '';
-    this.off = onSessionReset(() => this.showGuest());
+    this.off = onContextReset(() => this.showGuest());
   },
   showGuest() {
     this.epoch++;
@@ -59,6 +63,14 @@ Page({
     });
   },
   onShow() {
+    if (
+      currentCredential() &&
+      !requireResidentIdentity(
+        'resident',
+        '/packages/resident/pages/bills/index',
+      )
+    )
+      return;
     this.visible = true;
     void this.load();
   },

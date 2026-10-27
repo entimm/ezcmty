@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Binding } from '../../src/core/types';
+import type { Binding } from '../../src/packages/resident/types';
 const state = vi.hoisted(() => ({
   credential: null as { userId: string } | null,
   revision: 1,
@@ -10,14 +10,27 @@ const state = vi.hoisted(() => ({
 vi.mock('../../src/core/session', () => ({
   currentCredential: () => state.credential,
   sessionRevision: () => state.revision,
-  onSessionReset: (listener: () => void) => {
+  onContextReset: (listener: () => void) => {
     state.resets.add(listener);
     return () => {
       state.resets.delete(listener);
     };
   },
 }));
-vi.mock('../../src/core/api', () => ({ bindings: state.bindings }));
+vi.mock('../../src/core/identities', () => ({
+  requireIdentity: () => true,
+  currentCredential: () => state.credential,
+  contextRevision: () => state.revision,
+  onContextReset: (listener: () => void) => {
+    state.resets.add(listener);
+    return () => {
+      state.resets.delete(listener);
+    };
+  },
+}));
+vi.mock('../../src/packages/resident/api', () => ({
+  bindings: state.bindings,
+}));
 vi.mock('../../src/ui/navigation', () => ({
   go: state.go,
   pageUrl: (key: string) => '/packages/resident/pages/' + key + '/index',

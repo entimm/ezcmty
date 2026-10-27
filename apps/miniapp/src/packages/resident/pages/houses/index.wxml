@@ -1,4 +1,4 @@
-<app-shell refreshable="{{signed}}" refreshing="{{loading}}" bindrefresh="onPullDownRefresh" title="我的房屋" tab="houses">
+<app-shell tabs="{{tabs}}" refreshable="{{signed}}" refreshing="{{loading}}" bindrefresh="onPullDownRefresh" title="我的房屋" tab="houses">
   <state-view wx:if="{{!signed}}" empty title="登录后继续" description="微信登录即可使用本人服务，手机号按需授权。" action-text="微信登录" icon="user-round" bindaction="signIn" />
   <block wx:else>
   <view class="xp-tabs"><button class="{{filter === 'active' ? 'active' : ''}}" bindtap="selectFilter" data-filter="active">当前房屋</button><button class="{{filter === 'history' ? 'active' : ''}}" bindtap="selectFilter" data-filter="history">历史记录</button></view>

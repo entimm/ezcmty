@@ -4,14 +4,15 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import WithJsonSchema
 from sqlalchemy.orm import Session
 
-from backend_app.api.resident.dependencies import Context, resident_responses
+from backend_app.api.client.dependencies import ResidentContext as Context
+from backend_app.api.client.dependencies import client_responses
 from backend_app.core.config import get_settings
 from backend_app.core.openapi import get_request_id_headers
 from backend_app.db.session import get_database_session
 from backend_app.schemas.admin import Identifier
 from backend_app.schemas.billing import Month
 from backend_app.schemas.payments import resident_billing as schema
-from backend_app.services.resident.billing import ResidentBillingService
+from backend_app.services.client.resident.billing import ResidentBillingService
 
 
 def create_resident_billing_router() -> APIRouter:
@@ -21,7 +22,7 @@ def create_resident_billing_router() -> APIRouter:
         return ResidentBillingService(db, get_settings())
 
     Service = Annotated[ResidentBillingService, Depends(service)]
-    responses = resident_responses()
+    responses = client_responses()
     responses.pop(409)
     responses[200] = {
         "headers": {

@@ -1,5 +1,5 @@
-import * as api from '../../../../core/api';
-import { requireSession } from '../../../../core/session';
+import { requireIdentity } from '../../../../core/identities';
+import * as api from '../../api';
 import { ApiError, errorText } from '../../../../core/request';
 import { setSelectedBindingId } from '../../selection';
 import { go, pageUrl } from '../../../../ui/navigation';
@@ -26,11 +26,14 @@ Page({
         confirming: false,
         loading: false,
       });
-      if (visible) requireSession(pageUrl('house-detail', { id: this.id }));
+      if (visible)
+        requireIdentity('resident', pageUrl('house-detail', { id: this.id }));
     });
   },
   onShow() {
-    if (!requireSession(pageUrl('house-detail', { id: this.id }))) {
+    if (
+      !requireIdentity('resident', pageUrl('house-detail', { id: this.id }))
+    ) {
       this.setData({ binding: null });
       return;
     }

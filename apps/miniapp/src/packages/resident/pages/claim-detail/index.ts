@@ -1,5 +1,5 @@
-import * as api from '../../../../core/api';
-import { requireSession } from '../../../../core/session';
+import { requireIdentity } from '../../../../core/identities';
+import * as api from '../../api';
 import { ApiError, errorText } from '../../../../core/request';
 import { go, pageUrl } from '../../../../ui/navigation';
 import { PageScope } from '../../page-state';
@@ -25,11 +25,14 @@ Page({
         confirming: false,
         loading: false,
       });
-      if (visible) requireSession(pageUrl('claim-detail', { id: this.id }));
+      if (visible)
+        requireIdentity('resident', pageUrl('claim-detail', { id: this.id }));
     });
   },
   onShow() {
-    if (!requireSession(pageUrl('claim-detail', { id: this.id }))) {
+    if (
+      !requireIdentity('resident', pageUrl('claim-detail', { id: this.id }))
+    ) {
       this.setData({ claim: null });
       return;
     }

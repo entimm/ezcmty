@@ -10,7 +10,21 @@ vi.mock('../../src/core/session', () => ({
       ? { userId: session.owner, token: 'token', expiresAt: '2026-12-01' }
       : null,
   sessionRevision: () => session.revision,
-  onSessionReset: (listener: () => void) => {
+  onContextReset: (listener: () => void) => {
+    session.listeners.add(listener);
+    return () => {
+      session.listeners.delete(listener);
+    };
+  },
+}));
+vi.mock('../../src/core/identities', () => ({
+  requireIdentity: () => true,
+  currentCredential: () =>
+    session.owner
+      ? { userId: session.owner, token: 'token', expiresAt: '2026-12-01' }
+      : null,
+  contextRevision: () => session.revision,
+  onContextReset: (listener: () => void) => {
     session.listeners.add(listener);
     return () => {
       session.listeners.delete(listener);

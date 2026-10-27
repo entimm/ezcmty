@@ -1,0 +1,15 @@
+.identity-caption {
+  margin: 12rpx 0 24rpx;
+}
+.identity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  margin-top: 16rpx;
+  min-height: 104rpx;
+}
+.identity-row text {
+  display: block;
+}

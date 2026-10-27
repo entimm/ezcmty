@@ -1,0 +1,9 @@
+<app-shell title="选择身份">
+  <view class="xp-h2">使用哪个身份？</view>
+  <view class="xp-caption identity-caption">选择后进入对应服务，同一微信账号可拥有多个身份。</view>
+  <state-view loading="{{loading}}" error="{{error}}" bindretry="load" />
+  <button wx:for="{{items}}" wx:key="id" class="xp-card identity-row" data-id="{{item.id}}" bindtap="choose" disabled="{{!item.supported || !!busy}}" loading="{{busy === item.id}}">
+    <view><text>{{item.display_name}}</text><text wx:if="{{!item.supported}}" class="xp-caption">当前版本暂不支持，请更新小程序</text></view><ui-icon name="chevron-right" size="32" />
+  </button>
+  <button class="xp-link" bindtap="phones">管理本人手机号</button>
+</app-shell>

@@ -1,4 +1,4 @@
-import { listPhones, unbindPhone } from '../../core/api';
+import { listPhones, unbindPhone } from '../../core/account-api';
 import { PhoneBinding } from '../../core/types';
 import {
   currentCredential,

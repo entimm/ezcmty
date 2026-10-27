@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import BaseModel
 from redis import Redis
 
-SessionScope = Literal["platform_admin", "property_admin", "resident"]
+SessionScope = Literal["platform_admin", "property_admin", "client"]
 
 
 class SessionData(BaseModel):
@@ -22,7 +22,7 @@ class RedisSessionStore:
         self.key_prefix = key_prefix
 
     def _key(self, scope: SessionScope, token: str) -> str:
-        if scope not in ("platform_admin", "property_admin", "resident"):
+        if scope not in ("platform_admin", "property_admin", "client"):
             raise ValueError("Invalid session scope")
         token_hash = sha256(token.encode()).hexdigest()
         return f"{self.key_prefix}:{scope}:{token_hash}"

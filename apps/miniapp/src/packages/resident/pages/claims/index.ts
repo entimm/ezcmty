@@ -1,8 +1,8 @@
-import * as api from '../../../../core/api';
-import { requireSession } from '../../../../core/session';
+import { requireIdentity } from '../../../../core/identities';
+import * as api from '../../api';
 import { ApiError, errorText } from '../../../../core/request';
 import { go, pageUrl } from '../../../../ui/navigation';
-import type { Claim } from '../../../../core/types';
+import type { Claim } from '../../types';
 import { PageScope } from '../../page-state';
 import { claimView, loadAll } from '../../presentation';
 Page({
@@ -20,11 +20,11 @@ Page({
     this.scope.watch((visible) => {
       this.records = [];
       this.setData({ loaded: false, rows: [], loading: false, error: '' });
-      if (visible) requireSession(pageUrl('claims'));
+      if (visible) requireIdentity('resident', pageUrl('claims'));
     });
   },
   onShow() {
-    if (!requireSession(pageUrl('claims'))) {
+    if (!requireIdentity('resident', pageUrl('claims'))) {
       this.setData({ loaded: false, rows: [] });
       return;
     }

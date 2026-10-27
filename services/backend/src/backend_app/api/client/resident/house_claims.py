@@ -3,12 +3,13 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Header, Query, Response
 from sqlalchemy.orm import Session
 
-from backend_app.api.resident.dependencies import Context, Store, resident_responses
+from backend_app.api.client.dependencies import ResidentContext as Context
+from backend_app.api.client.dependencies import Store, client_responses
 from backend_app.db.session import get_database_session
 from backend_app.schemas import house_claims as schema
 from backend_app.schemas.admin import Identifier
 from backend_app.schemas.miniapp import IdempotencyKey
-from backend_app.services.resident.house_claims import ResidentHouseClaimService
+from backend_app.services.client.resident.house_claims import ResidentHouseClaimService
 
 
 def service(db: Annotated[Session, Depends(get_database_session)]) -> ResidentHouseClaimService:
@@ -23,7 +24,7 @@ Sort = Literal["created_at", "-created_at"]
 
 def create_resident_house_claim_router() -> APIRouter:
     router = APIRouter(prefix="/v1", tags=["miniapp"])
-    ok = resident_responses()
+    ok = client_responses()
 
     @router.get(
         "/claimable-communities",
@@ -113,7 +114,7 @@ def create_resident_house_claim_router() -> APIRouter:
         status_code=201,
         response_model=schema.ResidentHouseClaim,
         responses={
-            **resident_responses(201),
+            **client_responses(201),
             200: {"headers": ok[200]["headers"], "model": schema.ResidentHouseClaim},
         },
     )

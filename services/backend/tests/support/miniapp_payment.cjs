@@ -11,7 +11,7 @@ const storage = new Map(
     ? JSON.parse(fs.readFileSync(stateFile, 'utf8'))
     : [],
 );
-storage.set('ezcmty:' + input.base + ':resident-session', {
+storage.set('ezcmty:' + input.base + ':client-session', {
   token: input.token,
   userId: input.userId,
   expiresAt: new Date(Date.now() + 3600000).toISOString(),
@@ -81,11 +81,14 @@ const load = (name) => require(path.join(compiled, name));
 const { PaymentController, canContinuePayment } = load(
   'packages/resident/payments.js',
 );
-const api = load('core/api.js');
-const { residentRequest } = load('core/session.js');
+const api = load('packages/resident/api.js');
+const { restoreSession } = load('core/session.js');
+const { businessRequest, discoverIdentity } = load('core/identities.js');
 const { ApiError } = load('core/request.js');
 
 async function run() {
+  await restoreSession();
+  await discoverIdentity();
   let result;
   if (phase === 'create') {
     const bill = await api.bill(input.billId);
@@ -160,7 +163,7 @@ async function run() {
   } else if (phase === 'release') {
     const closed = await api.order(input.orderId);
     assert.equal(closed.status, 'closed');
-    await residentRequest(
+    await businessRequest(
       '/miniapp-users/me/house-bindings/' + input.bindingId + '/releases',
       { method: 'POST', data: { expected_row_version: 1 } },
     );

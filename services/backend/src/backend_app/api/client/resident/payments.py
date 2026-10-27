@@ -5,13 +5,14 @@ from fastapi import APIRouter, Depends, Header, Query, Response
 from pydantic import WithJsonSchema
 from sqlalchemy.orm import Session
 
-from backend_app.api.resident.dependencies import Context, resident_responses
+from backend_app.api.client.dependencies import ResidentContext as Context
+from backend_app.api.client.dependencies import client_responses
 from backend_app.core.config import get_settings
 from backend_app.db.session import get_database_session
 from backend_app.schemas.admin import Identifier
 from backend_app.schemas.miniapp import IdempotencyKey
 from backend_app.schemas.payments import resident as schema
-from backend_app.services.resident.payments import ResidentPaymentService
+from backend_app.services.client.resident.payments import ResidentPaymentService
 
 
 def service(db: Annotated[Session, Depends(get_database_session)]) -> ResidentPaymentService:
@@ -57,7 +58,7 @@ TimeFilter = Annotated[datetime | None, WithJsonSchema({"type": "string", "forma
 def responses(
     status: int = 200, *, conflict: bool = False, pending: bool = False
 ) -> dict[int | str, dict[str, Any]]:
-    result: dict[int | str, dict[str, Any]] = resident_responses(status)
+    result: dict[int | str, dict[str, Any]] = client_responses(status)
     if not conflict:
         result.pop(409, None)
     result[status]["headers"]["Cache-Control"] = {"schema": {"type": "string", "const": "no-store"}}

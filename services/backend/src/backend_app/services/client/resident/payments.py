@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from backend_app.core.config import Settings
 from backend_app.core.errors import AppError
 from backend_app.core.identifiers import new_id
-from backend_app.core.resident_sessions import ResidentContext
 from backend_app.db.errors import is_unique_violation
+from backend_app.domain.client.types import ClientAuthorization
 from backend_app.domain.payments.configuration import (
     configuration_reasons,
     fingerprint,
@@ -85,12 +85,12 @@ class ResidentPaymentService:
             updated_at=order.updated_at,
         )
 
-    def get(self, ctx: ResidentContext, order_id: str) -> schema.ResidentPaymentOrder:
-        self.identity.user(ctx)
+    def get(self, ctx: ClientAuthorization, order_id: str) -> schema.ResidentPaymentOrder:
+        self.identity.user(ctx.user_id, ctx.version)
         return self.view(self.repo.order(order_id, user_id=ctx.user_id))
 
-    def list(self, ctx: ResidentContext, **filters: Any) -> schema.ResidentPaymentOrderPage:
-        self.identity.user(ctx)
+    def list(self, ctx: ClientAuthorization, **filters: Any) -> schema.ResidentPaymentOrderPage:
+        self.identity.user(ctx.user_id, ctx.version)
         start, end = filters.get("created_at_from"), filters.get("created_at_to")
         if (
             start is not None
@@ -115,13 +115,13 @@ class ResidentPaymentService:
 
     def create(
         self,
-        ctx: ResidentContext,
+        ctx: ClientAuthorization,
         data: schema.ResidentPaymentOrderCreate,
         key: str,
     ) -> schema.ResidentPaymentOrder:
         digest = fingerprint(data.model_dump())
         try:
-            self.identity.user(ctx)
+            self.identity.user(ctx.user_id, ctx.version)
             previous = self.repo.previous(ctx.user_id, key)
             if previous is not None:
                 if previous.request_fingerprint != digest:
@@ -129,7 +129,7 @@ class ResidentPaymentService:
                 return self.view(previous)
             requested = data.items[0]
             guard = self.repo.guard_bill(requested.bill_id, ctx.user_id, exclusive_user=True)
-            self.identity.user(ctx)
+            self.identity.user(ctx.user_id, ctx.version)
             previous = self.repo.previous(ctx.user_id, key)
             if previous is not None:
                 if previous.request_fingerprint != digest:
@@ -216,12 +216,12 @@ class ResidentPaymentService:
             raise
 
     def parameters(
-        self, ctx: ResidentContext, order_id: str
+        self, ctx: ClientAuthorization, order_id: str
     ) -> schema.ResidentClientPaymentParameters:
         try:
-            self.identity.user(ctx)
+            self.identity.user(ctx.user_id, ctx.version)
             order, authorized = self.repo.guard_order(order_id, user_id=ctx.user_id)
-            self.identity.user(ctx)
+            self.identity.user(ctx.user_id, ctx.version)
             if not authorized:
                 raise AppError("resource.not_found")
             if (
@@ -251,15 +251,15 @@ class ResidentPaymentService:
 
     def request_recovery(
         self,
-        ctx: ResidentContext,
+        ctx: ClientAuthorization,
         order_id: str,
         *,
         close: bool = False,
     ) -> tuple[schema.ResidentPaymentOrder, bool]:
         try:
-            self.identity.user(ctx)
+            self.identity.user(ctx.user_id, ctx.version)
             order, _ = self.repo.guard_order(order_id, user_id=ctx.user_id)
-            self.identity.user(ctx)
+            self.identity.user(ctx.user_id, ctx.version)
             terminal = order.status in {"succeeded", "closed"}
             if not terminal:
                 now = self.clock()

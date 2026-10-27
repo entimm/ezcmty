@@ -7,9 +7,10 @@ from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from backend_app.core.client_sessions import ClientSessionStore
 from backend_app.core.errors import AppError
 from backend_app.core.identifiers import new_id
-from backend_app.core.resident_sessions import ResidentContext, ResidentSessionStore
+from backend_app.domain.client.types import ClientAuthorization
 from backend_app.integrations.wechat_miniapp import WechatMiniapp
 from backend_app.models.admin import utc_now
 from backend_app.models.miniapp import MiniappUser, PhoneBinding, PhoneVerification
@@ -29,7 +30,7 @@ def phone_view(item: PhoneBinding) -> schema.PhoneBinding:
     return schema.PhoneBinding.model_validate(item, from_attributes=True)
 
 
-class ResidentIdentityService:
+class ClientAccountService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = MiniappRepository(db)
@@ -37,11 +38,11 @@ class ResidentIdentityService:
     def login(
         self,
         data: schema.MiniappLogin,
-        store: ResidentSessionStore,
+        store: ClientSessionStore,
         wechat: WechatMiniapp,
         source_ip: str,
-    ) -> schema.ResidentSession:
-        store.limit("login", source_ip, store.settings.resident_login_limit)
+    ) -> schema.ClientSession:
+        store.limit("login", source_ip, store.settings.client_login_limit)
         openid = wechat.login(data.code)
         now = utc_now()
         try:
@@ -70,7 +71,7 @@ class ResidentIdentityService:
             user.updated_at = now
             self.db.commit()
             token, stored = store.create(user.id, user.session_version)
-            return schema.ResidentSession(
+            return schema.ClientSession(
                 token=token,
                 expires_at=datetime.fromtimestamp(stored.absolute_expires_at, UTC),
                 user=user_view(user),
@@ -79,13 +80,13 @@ class ResidentIdentityService:
             self.db.rollback()
             raise
 
-    def profile(self, ctx: ResidentContext) -> schema.MiniappUser:
-        return user_view(self.repo.user(ctx))
+    def profile(self, ctx: ClientAuthorization) -> schema.MiniappUser:
+        return user_view(self.repo.user(ctx.user_id, ctx.version))
 
     def list_phones(
-        self, ctx: ResidentContext, page: int, page_size: int
+        self, ctx: ClientAuthorization, page: int, page_size: int
     ) -> schema.PhoneBindingPage:
-        self.repo.user(ctx)
+        self.repo.user(ctx.user_id, ctx.version)
         items, total = self.repo.bindings(ctx.user_id, page, page_size)
         return schema.PhoneBindingPage(
             items=[phone_view(i) for i in items], total=total, page=page, page_size=page_size
@@ -93,19 +94,19 @@ class ResidentIdentityService:
 
     def bind_phone(
         self,
-        ctx: ResidentContext,
+        ctx: ClientAuthorization,
         data: schema.PhoneBindingCreate,
         key: str,
         request_id: str,
-        store: ResidentSessionStore,
+        store: ClientSessionStore,
         wechat: WechatMiniapp,
     ) -> schema.PhoneBinding:
         try:
             # Coordination only: no code, phone or exchange result is stored in Redis.
             with store.client.lock(
-                f"app:resident-phone-write:{ctx.user_id}", timeout=60, blocking_timeout=1
+                f"app:client-phone-write:{ctx.user_id}", timeout=60, blocking_timeout=1
             ):
-                self.repo.user(ctx)
+                self.repo.user(ctx.user_id, ctx.version)
                 previous = self.repo.verification(ctx.user_id, key)
                 digest = fingerprint(data)
                 if previous:
@@ -120,14 +121,14 @@ class ResidentIdentityService:
                     )
                 ):
                     raise AppError("resident.idempotency_conflict")
-                user = self.repo.user(ctx)
+                user = self.repo.user(ctx.user_id, ctx.version)
                 openid = user.wechat_openid
                 self.db.rollback()  # No database write transaction during the external request.
-                store.limit("phone", ctx.user_id, store.settings.resident_phone_limit)
+                store.limit("phone", ctx.user_id, store.settings.client_phone_limit)
                 verified = wechat.verify_phone(data.code, openid)
                 if data.expected_phone is not None and data.expected_phone != verified.phone:
                     raise AppError("wechat.phone_mismatch")
-                self.repo.user(ctx, lock=True, exclusive=True)
+                self.repo.user(ctx.user_id, ctx.version, lock=True, exclusive=True)
                 binding = self.db.scalar(
                     select(PhoneBinding)
                     .where(
@@ -177,9 +178,9 @@ class ResidentIdentityService:
             self.db.rollback()
             raise
 
-    def unbind_phone(self, ctx: ResidentContext, binding_id: str, version: int) -> None:
+    def unbind_phone(self, ctx: ClientAuthorization, binding_id: str, version: int) -> None:
         try:
-            self.repo.user(ctx, lock=True, exclusive=True)
+            self.repo.user(ctx.user_id, ctx.version, lock=True, exclusive=True)
             self.repo.binding(ctx.user_id, binding_id)
             now = utc_now()
             changed = self.db.scalar(

@@ -1,5 +1,10 @@
 {
-  "pages": ["pages/index/index", "pages/login/index", "pages/phones/index"],
+  "pages": [
+    "pages/index/index",
+    "pages/login/index",
+    "pages/phones/index",
+    "pages/identities/index"
+  ],
   "subpackages": [
     {
       "root": "packages/resident",

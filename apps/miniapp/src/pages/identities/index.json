@@ -1,0 +1,7 @@
+{
+  "usingComponents": {
+    "app-shell": "/components/app-shell/index",
+    "state-view": "/components/state-view/index",
+    "ui-icon": "/components/ui-icon/index"
+  }
+}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -115,8 +116,23 @@ class Harness:
         if not (project / "node_modules" / "@umijs" / "max" / "bin" / "max.js").is_file():
             pytest.skip("Umi dependencies are not installed; run make install")
         port = free_port()
+        # Keep workspace-level contract generation and all of its output isolated.
+        workspace = self.registry.root
+        for name in ("package.json", "pnpm-workspace.yaml"):
+            shutil.copyfile(ROOT / name, workspace / name)
+        (workspace / "node_modules").symlink_to(ROOT / "node_modules", target_is_directory=True)
+        (workspace / "scripts").mkdir()
+        shutil.copyfile(
+            ROOT / "scripts" / "generate_api_types.mjs",
+            workspace / "scripts" / "generate_api_types.mjs",
+        )
+        shutil.copytree(
+            ROOT / "openapi",
+            workspace / "openapi",
+            ignore=shutil.ignore_patterns("types.d.ts", ".types-*"),
+        )
         # Exercise the real Umi process with an isolated frontend and listener.
-        fixture = self.registry.root / "admin"
+        fixture = workspace / "apps" / "admin-web"
         (fixture / "src").mkdir(parents=True)
         (fixture / "node_modules").symlink_to(project / "node_modules", target_is_directory=True)
         (fixture / "package.json").write_text((project / "package.json").read_text())

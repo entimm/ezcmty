@@ -198,7 +198,7 @@ TLS_ROOT="$HOME/.config/local-https"
 | `make stop`               | 停止本仓库所有开发入口登记的批次                                            |
 | `make platform`           | 前台启动平台管理 API，8001                                                  |
 | `make property`           | 前台启动物业管理 API，8002                                                  |
-| `make resident`           | 前台启动居民 API，8003                                                      |
+| `make client`             | 前台启动客户端 API，8003                                                    |
 | `make webhook`            | 前台启动 Webhook，8004                                                      |
 | `make worker`             | 前台启动持久任务 Worker                                                     |
 | `make admin`              | 前台启动管理后台，5173                                                      |
@@ -243,7 +243,20 @@ cp apps/miniapp/.env.example apps/miniapp/.env.local
 make miniapp-build
 ```
 
-`MINIAPP_API_BASE_URL` 指定后端地址；模板和未配置时默认直连本地居民 API `http://127.0.0.1:8003`。HTTPS 网关地址包含 `/api/resident`，不包含 `/v1`。API 地址不能包含凭证、查询串或片段；`NODE_ENV=production` 时必须使用 HTTPS。平台 AppID 在 `project.config.json` 配置，产品名称为“美好社区”。
+`MINIAPP_API_BASE_URL` 指定后端地址；模板和未配置时默认直连本地客户端 API `http://127.0.0.1:8003`。HTTPS 网关地址包含 `/api/client`，不包含 `/v1`。API 地址不能包含凭证、查询串或片段；`NODE_ENV=production` 时必须使用 HTTPS。平台 AppID 在 `project.config.json` 配置，产品名称为“美好社区”。
+
+客户端进程入口为 `backend_app.runtimes.client_api:app`，统一登录、恢复和退出使用 `/v1/client-sessions` 及其 `/current` 资源。会话使用 `APP_CLIENT_SESSION_IDLE_SECONDS`、`APP_CLIENT_SESSION_ABSOLUTE_SECONDS`；公共登录、手机号和限流窗口使用 `APP_CLIENT_LOGIN_LIMIT`、`APP_CLIENT_PHONE_LIMIT`、`APP_CLIENT_RATE_WINDOW_SECONDS`。居民认领限流仍使用 `APP_RESIDENT_CLAIM_LIMIT`，完整默认值见[后端配置模板](../../services/backend/.env.example)。
+
+当前尚未发布，仅用于开发联调，本次直接切换到 `/api/client`，不保留旧 API 兼容入口。旧居民 Token 不自动升级为客户端凭据，切换后重新微信认证。既有开发环境须同步配置变量、网关和小程序 API 地址，并按[客户端迁移与发布](../design/client/architecture.md#迁移与发布)处理同环境、同用户的非敏感业务恢复信息；开发命令不额外启动旧居民进程，也不修改实际部署或业务数据。
+
+API 地址改变时，只有发布者已确认旧、新地址属于同一部署环境、沿用同一用户及业务数据，才可配置 `MINIAPP_API_STORAGE_MIGRATIONS`。该构建变量为 JSON 数组，每项包含 `from`、`to`；只有 `to` 等于当前 `MINIAPP_API_BASE_URL` 的显式映射生效，不根据 URL 相似或同域名推断环境。可在 `apps/miniapp/.env.local` 中配置，例如同一开发环境的网关前缀调整：
+
+```dotenv
+MINIAPP_API_BASE_URL=https://api.ezcmty.test/api/client
+MINIAPP_API_STORAGE_MIGRATIONS='[{"from":"https://api.ezcmty.test/api/resident","to":"https://api.ezcmty.test/api/client"}]'
+```
+
+迁移只在新的客户端会话经服务端确认是同一用户后，读取该用户的选房 ID 和非敏感原支付恢复依据；不迁移旧令牌、权限或敏感草稿，不读取其他用户的数据。先确认新副本写入成功再清理对应旧键，失败保留原依据，不生成新幂等键重复付款。不配置映射时不跨 API 地址迁移；变量改变后重新构建小程序。
 
 在微信开发者工具打开 `apps/miniapp/`，项目输出位于 `dist/`。IP 入口用于开发者工具联调，需关闭合法域名校验；真机需要可访问的 HTTPS 域名及微信后台合法域名配置，服务端配置见 `services/backend/.env.example`。
 
@@ -262,7 +275,7 @@ make miniapp-build
 
 实际微信登录和手机号授权需在项目配置中填写平台 AppID，并在后端配置匹配的 `APP_WECHAT_MINIAPP_APP_ID`、`APP_WECHAT_MINIAPP_APP_SECRET`；仅配置 AppID 不提供登录凭据。构建变量变更后重新构建。
 
-`pnpm --filter resident-miniapp test` 验证会话隔离、请求恢复和选房交互。构建后可运行 `pnpm --filter resident-miniapp check:native` 调用微信开发者工具的 WXML/WXSS 编译器；默认查找 macOS 安装目录，其他环境通过 `MINIAPP_WCC`、`MINIAPP_WCSC` 指定编译器绝对路径。此检查要求本机已安装微信编译器，不能替代体验版登录及手机号授权的真机验收。
+`pnpm --filter client-miniapp test` 验证会话隔离、身份选择、请求恢复和选房交互。构建后可运行 `pnpm --filter client-miniapp check:native` 调用微信开发者工具的 WXML/WXSS 编译器；默认查找 macOS 安装目录，其他环境通过 `MINIAPP_WCC`、`MINIAPP_WCSC` 指定编译器绝对路径。此检查要求本机已安装微信编译器，不能替代体验版登录及手机号授权的真机验收。
 
 ## 开发数据填充
 
@@ -362,7 +375,7 @@ make dev
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | 平台管理 API | http://127.0.0.1:8001/docs                                                                                                     |
 | 物业管理 API | http://127.0.0.1:8002/docs                                                                                                     |
-| 居民 API     | http://127.0.0.1:8003/docs                                                                                                     |
+| 客户端 API   | http://127.0.0.1:8003/docs                                                                                                     |
 | Webhook      | http://127.0.0.1:8004/docs                                                                                                     |
 | 平台管理页面 | http://127.0.0.1:5173/platform                                                                                                 |
 | 物业管理页面 | http://127.0.0.1:5173/property                                                                                                 |
@@ -378,7 +391,7 @@ make dev-bg
 
 后台协调器与服务脱离当前终端，关闭终端后继续运行。全部服务就绪后，命令显示批次、地址、日志目录与停止命令。前后台使用相同的协调、就绪及故障清理逻辑。
 
-每批日志位于 `.dev/run/<批次 ID>/`：`platform.log`、`property.log`、`resident.log`、`webhook.log`、`worker.log`、`admin.log`，以及记录启动、重载、失败和停止原因的 `coordinator.log`。该目录的 `state.json` 保留批次最终状态，仓库活动登记位于 `.dev/run/state.json`。整个 `.dev/` 已加入 Git 和 Prettier 忽略规则。
+每批日志位于 `.dev/run/<批次 ID>/`：`platform.log`、`property.log`、`client.log`、`webhook.log`、`worker.log`、`admin.log`，以及记录启动、重载、失败和停止原因的 `coordinator.log`。该目录的 `state.json` 保留批次最终状态，仓库活动登记位于 `.dev/run/state.json`。整个 `.dev/` 已加入 Git 和 Prettier 忽略规则。
 
 启动、单次探测、热重载恢复和停止的默认时限见 [时间限制](../architecture/local-development.md#时间限制)。正常热重载及实际 API 子进程故障的识别方式见 [API 热重载与故障识别](../architecture/local-development.md#api-热重载与故障识别)。
 

@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Binding, Claim, House, PhoneBinding } from '../../src/core/types';
+import type {
+  Binding,
+  Claim,
+  House,
+  PhoneBinding,
+} from '../../src/packages/resident/types';
 const mocks = vi.hoisted(() => ({
   listPhones: vi.fn(),
   house: vi.fn(),
@@ -14,7 +19,8 @@ const mocks = vi.hoisted(() => ({
   revision: 1,
   resets: new Set<() => void>(),
 }));
-vi.mock('../../src/core/api', () => ({
+vi.mock('../../src/core/account-api', () => ({ listPhones: mocks.listPhones }));
+vi.mock('../../src/packages/resident/api', () => ({
   listPhones: mocks.listPhones,
   house: mocks.house,
   bindings: mocks.bindings,
@@ -25,7 +31,18 @@ vi.mock('../../src/core/session', () => ({
   currentCredential: () => (mocks.owner ? { userId: mocks.owner } : null),
   sessionRevision: () => mocks.revision,
   requireSession: mocks.requireSession,
-  onSessionReset: (listener: () => void) => {
+  onContextReset: (listener: () => void) => {
+    mocks.resets.add(listener);
+    return () => {
+      mocks.resets.delete(listener);
+    };
+  },
+}));
+vi.mock('../../src/core/identities', () => ({
+  currentCredential: () => (mocks.owner ? { userId: mocks.owner } : null),
+  contextRevision: () => mocks.revision,
+  requireIdentity: mocks.requireSession,
+  onContextReset: (listener: () => void) => {
     mocks.resets.add(listener);
     return () => {
       mocks.resets.delete(listener);

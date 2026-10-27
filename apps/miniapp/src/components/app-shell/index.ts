@@ -2,6 +2,7 @@ import { back, go } from '../../ui/navigation';
 Component({
   options: { styleIsolation: 'apply-shared' },
   properties: {
+    tabs: { type: Array, value: [] },
     title: { type: String, value: '美好社区' },
     tab: { type: String, value: '' },
     interceptBack: Boolean,
@@ -12,12 +13,6 @@ Component({
     statusHeight: 20,
     navHeight: 44,
     capsuleWidth: 90,
-    tabs: [
-      { key: 'home', label: '首页', icon: 'house' },
-      { key: 'bills', label: '缴费', icon: 'receipt-text' },
-      { key: 'houses', label: '房屋', icon: 'building-2' },
-      { key: 'profile', label: '我的', icon: 'user-round' },
-    ],
   },
   lifetimes: {
     attached() {

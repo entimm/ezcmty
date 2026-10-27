@@ -22,7 +22,7 @@ def get_sample_contract() -> dict[str, Any]:
             "/resources": {
                 "get": {
                     "operationId": "getResources",
-                    "x-runtimes": ["resident_api"],
+                    "x-runtimes": ["client_api"],
                     "parameters": [{"in": "query", "name": "page", "schema": {"type": "integer"}}],
                     "responses": {
                         "200": {
@@ -73,7 +73,7 @@ def test_contract_check_rejects_interface_drift(
         case "revision":
             generated["info"]["version"] = "wrong"
     with pytest.raises(AssertionError):
-        checker.check_documents(contract, generated, runtime="resident_api")
+        checker.check_documents(contract, generated, runtime="client_api")
 
 
 def test_contract_check_enforces_runtime_ownership(
@@ -85,12 +85,12 @@ def test_contract_check_enforces_runtime_ownership(
     empty_runtime["paths"] = {}
     checker.check_documents(contract, empty_runtime, runtime="platform_admin_api")
     with pytest.raises(AssertionError, match="Operation mismatch"):
-        checker.check_documents(contract, empty_runtime, runtime="resident_api")
+        checker.check_documents(contract, empty_runtime, runtime="client_api")
     with pytest.raises(AssertionError, match="Operation mismatch"):
         checker.check_documents(contract, contract, runtime="property_admin_api")
     contract["paths"]["/resources"]["get"]["x-runtimes"] = ["typo"]
     with pytest.raises(AssertionError, match="Invalid runtime ownership"):
-        checker.check_documents(contract, empty_runtime, runtime="resident_api")
+        checker.check_documents(contract, empty_runtime, runtime="client_api")
 
 
 def test_parameter_override_obeys_openapi_semantics(
@@ -101,7 +101,7 @@ def test_parameter_override_obeys_openapi_semantics(
     inherited = {"in": "query", "name": "page", "schema": {"type": "string"}}
     contract["paths"]["/resources"]["parameters"] = [inherited]
     generated = get_sample_contract()
-    checker.check_documents(contract, generated, runtime="resident_api")
+    checker.check_documents(contract, generated, runtime="client_api")
 
 
 def test_bad_reference_is_rejected(contract_tools: tuple[ModuleType, ModuleType]) -> None:

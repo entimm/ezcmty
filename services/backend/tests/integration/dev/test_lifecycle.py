@@ -15,7 +15,7 @@ from tests.support.dev import ROOT, Harness, assert_ports_released, eventually
 def test_all_services_start_and_stop(harness: Harness) -> None:
     from scripts.dev.runtime import stop_all
 
-    selected = [harness.api(name) for name in ("platform", "property", "resident", "webhook")]
+    selected = [harness.api(name) for name in ("platform", "property", "client", "webhook")]
     selected.append(harness.worker())
     selected.append(harness.admin())
     batch, coordinator = harness.start(selected)
@@ -31,7 +31,7 @@ def test_all_services_start_and_stop(harness: Harness) -> None:
     harness.ready(next_batch)
 
 
-@pytest.mark.parametrize("name", ["platform", "property", "resident", "webhook", "worker"])
+@pytest.mark.parametrize("name", ["platform", "property", "client", "webhook", "worker"])
 def test_individual_services_share_the_lifecycle(harness: Harness, name: str) -> None:
     selected = [harness.worker() if name == "worker" else harness.api(name)]
     batch, coordinator = harness.start(selected)
@@ -142,7 +142,17 @@ def test_service_mapping_ports_umi_and_readiness_identity(harness: Harness) -> N
     from scripts.dev.services import http_probe, services
 
     definitions = services(ROOT, ["all"])
+    assert [service.name for service in definitions] == [
+        "platform",
+        "property",
+        "client",
+        "webhook",
+        "worker",
+        "admin",
+    ]
     assert [service.port for service in definitions] == [8001, 8002, 8003, 8004, None, 5173]
+    assert definitions[2].command[-2:] == ["backend_app.runtimes.client_api:app", "8003"]
+    assert definitions[2].expected_service == "client-api"
     assert definitions[-1].command[1].endswith("apps/admin-web/scripts/dev.cjs")
     assert len(definitions[-1].command) == 2
     selected = [harness.api()]

@@ -5,6 +5,9 @@ const mocks = vi.hoisted(() => ({
   bindPhone: vi.fn(),
   unbindPhone: vi.fn(),
   login: vi.fn(),
+  discoverIdentity: vi.fn(),
+  restoreSession: vi.fn(),
+  revision: 0,
   requireSession: vi.fn(),
   go: vi.fn(),
   back: vi.fn(),
@@ -13,7 +16,10 @@ const mocks = vi.hoisted(() => ({
   credential: { value: { userId: 'resident-a' } as { userId: string } | null },
   resets: new Set<() => void>(),
 }));
-vi.mock('../../src/core/api', () => ({
+vi.mock('../../src/core/identities', () => ({
+  discoverIdentity: mocks.discoverIdentity,
+}));
+vi.mock('../../src/core/account-api', () => ({
   listPhones: mocks.listPhones,
   bindPhone: mocks.bindPhone,
   unbindPhone: mocks.unbindPhone,
@@ -22,6 +28,8 @@ vi.mock('../../src/core/session', () => ({
   currentCredential: () => mocks.credential.value,
   requireSession: mocks.requireSession,
   login: mocks.login,
+  restoreSession: mocks.restoreSession,
+  sessionRevision: () => mocks.revision,
   safeReturn: (value: string | undefined) =>
     value || '/packages/resident/pages/home/index',
   onSessionReset: (listener: () => void) => {
@@ -94,9 +102,16 @@ beforeEach(() => {
   vi.resetModules();
   vi.resetAllMocks();
   mocks.resets.clear();
+  mocks.revision = 0;
+  mocks.restoreSession.mockResolvedValue({});
   mocks.credential.value = { userId: 'resident-a' };
   mocks.requireSession.mockReturnValue(true);
   mocks.listPhones.mockResolvedValue(phonePage());
+  mocks.discoverIdentity.mockResolvedValue({
+    id: 'resident',
+    type: 'resident',
+    display_name: '居民',
+  });
   vi.stubGlobal('Page', (value: Definition) => {
     definition = value;
   });
@@ -250,6 +265,7 @@ describe('登录页返回目标与后台响应', () => {
     view.invoke('onShow');
     mocks.login.mockImplementation(async () => {
       mocks.credential.value = { userId: 'resident-a' };
+      mocks.revision++;
     });
     await view.invoke<Promise<void>>('signIn');
     expect(mocks.returnAfterLogin).toHaveBeenLastCalledWith(target);
@@ -270,7 +286,9 @@ describe('登录页返回目标与后台响应', () => {
     await signing;
     expect(mocks.returnAfterLogin).not.toHaveBeenCalled();
     view.invoke('onShow');
-    expect(mocks.returnAfterLogin).toHaveBeenCalledWith(target);
+    await vi.waitFor(() =>
+      expect(mocks.returnAfterLogin).toHaveBeenCalledWith(target),
+    );
     expect(view.data.busy).toBe(false);
   });
   it('隐藏后重新显示的进行中登录不会卡busy或重复发登录请求', async () => {
@@ -291,4 +309,16 @@ describe('登录页返回目标与后台响应', () => {
     expect(mocks.login).toHaveBeenCalledTimes(1);
     expect(view.data.busy).toBe(false);
   });
+});
+
+it('目录异常仍保留已认证用户的公共手机号入口', async () => {
+  mocks.discoverIdentity.mockRejectedValue(new Error('身份目录不完整'));
+  await import('../../src/pages/index/index');
+  const view = page();
+  await view.invoke<Promise<void>>('restore');
+  expect(view.data.signed).toBe(true);
+  expect(view.data.error).toBe('身份目录不完整');
+  expect(mocks.credential.value).not.toBeNull();
+  view.invoke('phones');
+  expect(mocks.go).toHaveBeenCalledWith('phones');
 });

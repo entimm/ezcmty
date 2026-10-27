@@ -68,7 +68,7 @@ def configure_payment_api(
             "wechatpay_platform_receiver_name": SecretStr("隔离平台"),
         }
     )
-    monkeypatch.setattr("backend_app.api.resident.payments.get_settings", lambda: settings)
+    monkeypatch.setattr("backend_app.api.client.resident.payments.get_settings", lambda: settings)
     with setup.workspace.platform.factory() as db:
         binding = PropertyMerchantBinding(
             property_company_id=setup.workspace.company_id,

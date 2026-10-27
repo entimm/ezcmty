@@ -100,5 +100,5 @@ def test_housing_downgrade_refuses_existing_data_and_keeps_revision(
         assert db.scalar(select(SpaceNode.name)) == "A"
         assert (
             db.scalar(text("SELECT version_num FROM alembic_version"))
-            == "20261023_import_preparation"
+            == "20261027_client_identities"
         )

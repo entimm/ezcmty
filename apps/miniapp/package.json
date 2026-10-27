@@ -1,5 +1,5 @@
 {
-  "name": "resident-miniapp",
+  "name": "client-miniapp",
   "private": true,
   "scripts": {
     "build": "node --env-file-if-exists=.env.local scripts/build.mjs",

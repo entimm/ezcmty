@@ -24,6 +24,7 @@ export interface RequestOptions {
   method?: HttpMethod;
   data?: object;
   token?: string;
+  identity?: string;
   key?: string;
   register?: (task: WechatMiniprogram.RequestTask) => () => void;
 }
@@ -47,6 +48,9 @@ export function request<T>(
           'Content-Type': 'application/json',
           ...(options.token
             ? { Authorization: 'Bearer ' + options.token }
+            : {}),
+          ...(options.identity
+            ? { 'X-Client-Identity': options.identity }
             : {}),
           ...(options.key ? { 'Idempotency-Key': options.key } : {}),
         },

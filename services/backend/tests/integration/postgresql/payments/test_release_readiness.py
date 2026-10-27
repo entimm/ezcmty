@@ -38,7 +38,7 @@ from backend_app.schemas.payments.resident import (
     ResidentPaymentItemCreate,
     ResidentPaymentOrderCreate,
 )
-from backend_app.services.resident.payments import ResidentPaymentService
+from backend_app.services.client.resident.payments import ResidentPaymentService
 from backend_app.services.webhook.payments import PaymentWebhookService
 from backend_app.services.worker.payments.notifications import NotificationService
 from backend_app.services.worker.payments.orders import OrderService

@@ -24,7 +24,7 @@ def create_app(service_name: str) -> FastAPI:
         get_import_registry()
 
         app.add_middleware(ImportUploadLimitMiddleware)
-    app.add_middleware(RequestIdMiddleware, no_store=service_name == "resident-api")
+    app.add_middleware(RequestIdMiddleware, no_store=service_name == "client-api")
     register_exception_handlers(app)
     app.include_router(create_system_router(service_name))
     runtime = service_name.replace("-", "_")
@@ -36,10 +36,10 @@ def create_app(service_name: str) -> FastAPI:
         from backend_app.api.property_admin.router import create_property_admin_router
 
         app.include_router(create_property_admin_router())
-    elif runtime == "resident_api":
-        from backend_app.api.resident.router import create_resident_router
+    elif runtime == "client_api":
+        from backend_app.api.client.router import create_client_router
 
-        app.include_router(create_resident_router())
+        app.include_router(create_client_router())
     elif runtime == "webhook":
         from backend_app.api.webhook.router import create_webhook_router
 

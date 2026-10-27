@@ -175,7 +175,7 @@ def test_billing_downgrade_refuses_populated_history(billing_setup: BillingSetup
         assert db.get(BillSettlementEntry, created.settlement_entries[0].id) is not None
         assert (
             db.scalar(text("SELECT version_num FROM alembic_version"))
-            == "20261023_import_preparation"
+            == "20261027_client_identities"
         )
 
 

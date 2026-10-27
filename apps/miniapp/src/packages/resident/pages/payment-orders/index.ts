@@ -1,8 +1,9 @@
-import { orders } from '../../../../core/api';
+import { requireIdentity } from '../../../../core/identities';
+import { onContextReset } from '../../../../core/identities';
+import { orders } from '../../api';
 import { formatTime, money } from '../../../../core/format';
 import { ApiError, errorText } from '../../../../core/request';
-import { onSessionReset, requireSession } from '../../../../core/session';
-import { PaymentOrder } from '../../../../core/types';
+import { PaymentOrder } from '../../types';
 import { go, pageUrl } from '../../../../ui/navigation';
 import { paymentPresentation } from '../payment-detail/view';
 
@@ -31,7 +32,7 @@ Page({
   visible: false,
   off: () => {},
   onLoad() {
-    this.off = onSessionReset(() => {
+    this.off = onContextReset(() => {
       this.epoch++;
       this.setData({
         items: [],
@@ -65,7 +66,7 @@ Page({
     this.off();
   },
   async load(more = false) {
-    if (!requireSession(pageUrl('payment-orders'))) return;
+    if (!requireIdentity('resident', pageUrl('payment-orders'))) return;
     if (
       more &&
       (this.data.loading || this.data.moreLoading || !this.data.hasMore)

@@ -1,4 +1,6 @@
-import { order } from '../../../../core/api';
+import { requireIdentity } from '../../../../core/identities';
+import { onContextReset } from '../../../../core/identities';
+import { order } from '../../api';
 import { formatTime, money } from '../../../../core/format';
 import {
   canContinuePayment,
@@ -6,8 +8,7 @@ import {
   reconcilePaymentOrder,
 } from '../../payments';
 import { ApiError, errorText } from '../../../../core/request';
-import { onSessionReset, requireSession } from '../../../../core/session';
-import { PaymentOrder } from '../../../../core/types';
+import { PaymentOrder } from '../../types';
 import { go, pageUrl } from '../../../../ui/navigation';
 import {
   panelMessage,
@@ -48,7 +49,7 @@ Page({
   onLoad(options) {
     this.id = options.id || '';
     this.controller = new PaymentController();
-    this.off = onSessionReset(() => {
+    this.off = onContextReset(() => {
       this.epoch++;
       this.stopPolling();
       this.setData({
@@ -133,7 +134,7 @@ Page({
     if (
       !this.visible ||
       this.data.busy ||
-      !requireSession(pageUrl('payment-detail', { id: this.id }))
+      !requireIdentity('resident', pageUrl('payment-detail', { id: this.id }))
     )
       return;
     this.stopPolling();

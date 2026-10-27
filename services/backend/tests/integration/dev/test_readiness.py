@@ -5,6 +5,8 @@ import time
 from dataclasses import replace
 
 import pytest
+from fastapi.testclient import TestClient
+from pytest import MonkeyPatch
 from tests.support.dev import HELPER, Harness, assert_ports_released, eventually
 
 
@@ -101,3 +103,31 @@ def test_launcher_timeout_identifies_unready_worker(harness: Harness, background
 
     assert client.returncode != 0
     assert "启动总超时（2 秒）：worker: 等待服务启动" in output.decode()
+
+
+@pytest.mark.parametrize(
+    ("postgresql", "redis", "status"),
+    [("ok", "ok", 200), ("unavailable", "ok", 503), ("ok", "unavailable", 503)],
+)
+def test_client_runtime_reports_its_health_and_dependency_readiness(
+    monkeypatch: MonkeyPatch, postgresql: str, redis: str, status: int
+) -> None:
+    from backend_app.core import system_routes
+    from backend_app.runtimes.client_api import app
+
+    dependencies = {"postgresql": postgresql, "redis": redis}
+    monkeypatch.setattr(system_routes, "check_readiness", lambda: dependencies)
+
+    with TestClient(app) as client:
+        health = client.get("/healthz")
+        ready = client.get("/readyz")
+
+    assert health.status_code == 200
+    assert health.json() == {"status": "ok", "service": "client-api"}
+    assert ready.status_code == status
+    assert ready.json() == {
+        "status": "ok" if status == 200 else "not_ready",
+        "service": "client-api",
+        "dependencies": dependencies,
+    }
+    assert ready.headers["Cache-Control"] == "no-store"

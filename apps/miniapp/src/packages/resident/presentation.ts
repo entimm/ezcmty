@@ -1,5 +1,5 @@
 import { formatTime, maskPhone } from '../../core/format';
-import type { Binding, Claim, PageResult } from '../../core/types';
+import type { Binding, Claim, PageResult } from './types';
 
 export function addressParts(label: string): {
   community: string;

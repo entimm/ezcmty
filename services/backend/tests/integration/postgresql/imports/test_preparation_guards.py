@@ -141,7 +141,7 @@ def test_preparation_migration_upgrade_and_safe_downgrade_preserve_evidence(
     with import_setup.factory() as db:
         assert (
             db.scalar(text("SELECT version_num FROM alembic_version"))
-            == "20261023_import_preparation"
+            == "20261027_client_identities"
         )
         batch = db.get(ImportBatch, batch_id)
         assert batch is not None

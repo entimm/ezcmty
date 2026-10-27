@@ -1,18 +1,11 @@
-import * as api from '../../../../core/api';
-import {
-  currentCredential,
-  requireSession,
-  sessionRevision,
-} from '../../../../core/session';
+import { requireIdentity } from '../../../../core/identities';
+import * as api from '../../api';
+import * as account from '../../../../core/account-api';
+import { currentCredential, sessionRevision } from '../../../../core/session';
 import { errorText } from '../../../../core/request';
 import { maskPhone } from '../../../../core/format';
 import { ClaimSubmission } from '../../claims';
-import type {
-  Binding,
-  Claim,
-  House,
-  PhoneBinding,
-} from '../../../../core/types';
+import type { Binding, Claim, House, PhoneBinding } from '../../types';
 import { back, go, pageUrl } from '../../../../ui/navigation';
 import { PageScope } from '../../page-state';
 import { addressParts, houseClaimConflict, loadAll } from '../../presentation';
@@ -53,12 +46,13 @@ Page({
     this.scope.watch((visible) => {
       this.clearDraft();
       this.initialized = false;
-      if (visible) requireSession(pageUrl('claim'));
+      if (visible) requireIdentity('resident', pageUrl('claim'));
     });
   },
   onShow() {
     if (
-      !requireSession(
+      !requireIdentity(
+        'resident',
         pageUrl(
           'claim',
           this.initialHouseId
@@ -130,7 +124,7 @@ Page({
     this.setData({ loading: true, phoneError: '' });
     try {
       const [phones, house, bindings, claims] = await Promise.all([
-        loadAll((page) => api.listPhones(page)),
+        loadAll((page) => account.listPhones(page)),
         !this.initialized && this.initialHouseId && this.initialCommunityId
           ? api.house(this.initialCommunityId, this.initialHouseId)
           : Promise.resolve(null),

@@ -1,12 +1,15 @@
-import * as api from '../../../../core/api';
+import { residentTabs } from '../../navigation';
+import { requireIdentity as requireResidentIdentity } from '../../../../core/identities';
+import * as api from '../../api';
 import { currentCredential } from '../../../../core/session';
 import { ApiError, errorText } from '../../../../core/request';
 import { go, pageUrl } from '../../../../ui/navigation';
-import type { Binding } from '../../../../core/types';
+import type { Binding } from '../../types';
 import { PageScope } from '../../page-state';
 import { bindingView, loadAll } from '../../presentation';
 Page({
   data: {
+    tabs: residentTabs,
     signed: false,
     loading: false,
     loaded: false,
@@ -30,6 +33,14 @@ Page({
     });
   },
   onShow() {
+    if (
+      currentCredential() &&
+      !requireResidentIdentity(
+        'resident',
+        '/packages/resident/pages/houses/index',
+      )
+    )
+      return;
     if (!currentCredential()) {
       this.scope.leave();
       this.records = [];
