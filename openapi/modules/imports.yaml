@@ -11,10 +11,11 @@ types:
       houses: [property.housing.manage]
       house_owners: [property.housing.manage]
       property_fee_bills: [property.bill.manage]
+      property_fee_basis_versions: [property.fee_basis.manage]
     tags:
       - imports
     summary: 查询当前可用导入类型
-    description: 目录不分页，仅返回当前后台支持且具备对应业务维护或经办权限的类型；无授权类型时items=[]。生产类型property_fee_bills仅属于property_admin、community范围、create模式，要求property.bill.manage；平台端不返回该类型。初始已缴大于零的输入行还要求property.bill_receipt.create。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
+    description: 目录不分页，仅返回当前后台支持且具备对应业务维护或经办权限的类型；无授权类型时items=[]。生产类型property_fee_bills仅属于property_admin、community范围、create模式，要求property.bill.manage；平台端不返回该类型。property_fee_basis_versions同属物业小区范围、create模式，要求property.fee_basis.manage；仅向已有房屋追加依据，同房同生效月最新内容相同则跳过，否则新增；同批每房一行，不重算已有账单。初始已缴大于零的输入行还要求property.bill_receipt.create。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -64,6 +65,7 @@ template:
       houses: [property.housing.manage]
       house_owners: [property.housing.manage]
       property_fee_bills: [property.bill.manage]
+      property_fee_basis_versions: [property.fee_basis.manage]
     tags:
       - imports
     summary: 读取固定模板版本
@@ -115,6 +117,7 @@ templateFile:
       houses: [property.housing.manage]
       house_owners: [property.housing.manage]
       property_fee_bills: [property.bill.manage]
+      property_fee_basis_versions: [property.fee_basis.manage]
     tags:
       - imports
     summary: 下载固定版本模板
@@ -195,6 +198,7 @@ batches:
       houses: [property.housing.manage]
       house_owners: [property.housing.manage]
       property_fee_bills: [property.bill.manage]
+      property_fee_basis_versions: [property.fee_basis.manage]
     tags:
       - imports
     summary: 创建导入草稿
@@ -260,6 +264,7 @@ batches:
       houses: [property.housing.read]
       house_owners: [property.housing.read]
       property_fee_bills: [property.bill.read]
+      property_fee_basis_versions: [property.bill.read]
     tags:
       - imports
     summary: 分页查询导入历史
@@ -373,6 +378,7 @@ batch:
       houses: [property.housing.read]
       house_owners: [property.housing.read]
       property_fee_bills: [property.bill.read]
+      property_fee_basis_versions: [property.bill.read]
     tags:
       - imports
     summary: 读取批次详情
@@ -421,6 +427,7 @@ sourceFile:
       houses: [property.housing.manage]
       house_owners: [property.housing.manage]
       property_fee_bills: [property.bill.manage]
+      property_fee_basis_versions: [property.fee_basis.manage]
     tags:
       - imports
     summary: 接收源文件并安排解析预检
@@ -508,6 +515,7 @@ rows:
       houses: [property.housing.read]
       house_owners: [property.housing.read]
       property_fee_bills: [property.bill.read]
+      property_fee_basis_versions: [property.bill.read]
     tags:
       - imports
     summary: 分页读取当前预览及本批次行结果
@@ -588,6 +596,7 @@ issues:
       houses: [property.housing.read]
       house_owners: [property.housing.read]
       property_fee_bills: [property.bill.read]
+      property_fee_basis_versions: [property.bill.read]
     tags:
       - imports
     summary: 分页读取文件和行问题
@@ -682,6 +691,7 @@ events:
       houses: [property.housing.read]
       house_owners: [property.housing.read]
       property_fee_bills: [property.bill.read]
+      property_fee_basis_versions: [property.bill.read]
     tags:
       - imports
     summary: 分页读取安全事件时间线
@@ -741,6 +751,7 @@ precheck:
       houses: [property.housing.manage]
       house_owners: [property.housing.manage]
       property_fee_bills: [property.bill.manage]
+      property_fee_basis_versions: [property.fee_basis.manage]
     tags:
       - imports
     summary: 重新预检未确认批次
@@ -809,10 +820,11 @@ confirm:
       houses: [property.housing.manage]
       house_owners: [property.housing.manage]
       property_fee_bills: [property.bill.manage]
+      property_fee_basis_versions: [property.fee_basis.manage]
     tags:
       - imports
     summary: 确认预览并安排业务执行
-    description: 校验预览版本/摘要/有效期、固定配置、当前权限和范围。all_rows要求无普通错误，valid_rows_only是显式部分执行；include_warning_rows显式决定警告行。边界错误始终阻断，无可执行行409。property_fee_bills要求property.bill.manage；任一输入行初始已缴可解释为正金额时，即使该行其他字段有错，也要求property.bill_receipt.create。条件权限检查覆盖全部输入行，不能通过仅执行通过行、排除警告行或幂等成功复用绕过；确认、执行、重跑、恢复及结果复用前均复核。策略、确认时间、任务、审计、首次响应同事务保存，Worker只读取保存策略。202表示排队，phase=apply_queued。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
+    description: 校验预览版本/摘要/有效期、固定配置、当前权限和范围。all_rows要求无普通错误，valid_rows_only是显式部分执行；include_warning_rows显式决定警告行。边界错误始终阻断，无可执行行409。property_fee_basis_versions要求property.fee_basis.manage；确认后固定房屋、位置与版本基线，版本变化报冲突并须新建批次重新预览；恢复原成功核验原具体版本，不要求仍为最新。property_fee_bills要求property.bill.manage；任一输入行初始已缴可解释为正金额时，即使该行其他字段有错，也要求property.bill_receipt.create。条件权限检查覆盖全部输入行，不能通过仅执行通过行、排除警告行或幂等成功复用绕过；确认、执行、重跑、恢复及结果复用前均复核。策略、确认时间、任务、审计、首次响应同事务保存，Worker只读取保存策略。202表示排队，phase=apply_queued。所有请求复核当前后台、公司与范围；不可见资源404，已可见资源缺少操作权限403。通用动作按目标业务授权，不能扩张后台业务能力。
     security:
       - AdminSession: []
     parameters:
@@ -877,6 +889,7 @@ cancel:
       houses: [property.housing.manage]
       house_owners: [property.housing.manage]
       property_fee_bills: [property.bill.manage]
+      property_fee_basis_versions: [property.fee_basis.manage]
     tags:
       - imports
     summary: 请求协作式取消
@@ -937,6 +950,7 @@ retryFailed:
       houses: [property.housing.manage]
       house_owners: [property.housing.manage]
       property_fee_bills: [property.bill.manage]
+      property_fee_basis_versions: [property.fee_basis.manage]
     tags:
       - imports
     summary: 创建失败行重跑批次并重新预检
@@ -1005,6 +1019,7 @@ recover:
       houses: [property.housing.manage]
       house_owners: [property.housing.manage]
       property_fee_bills: [property.bill.manage]
+      property_fee_basis_versions: [property.fee_basis.manage]
     tags:
       - imports
     summary: 核实并恢复原任务
@@ -1073,6 +1088,7 @@ errorFile:
       houses: [property.housing.read]
       house_owners: [property.housing.read]
       property_fee_bills: [property.bill.read]
+      property_fee_basis_versions: [property.bill.read]
     tags:
       - imports
     summary: 安排固定版本错误文件生成
@@ -1141,6 +1157,7 @@ errorFileArtifact:
       houses: [property.housing.read]
       house_owners: [property.housing.read]
       property_fee_bills: [property.bill.read]
+      property_fee_basis_versions: [property.bill.read]
     tags:
       - imports
     summary: 读取当前错误文件生成状态
@@ -1189,6 +1206,7 @@ errorFileDownload:
       houses: [property.housing.read]
       house_owners: [property.housing.read]
       property_fee_bills: [property.bill.read]
+      property_fee_basis_versions: [property.bill.read]
     tags:
       - imports
     summary: 鉴权下载指定代次错误文件

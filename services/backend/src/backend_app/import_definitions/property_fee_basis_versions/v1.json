@@ -1,0 +1,157 @@
+{
+  "key": "property_fee_basis_versions",
+  "name": "房屋计费依据",
+  "version_no": 1,
+  "adapter_key": "property_fee_basis_versions_v1",
+  "allowed_scope_types": [
+    "community"
+  ],
+  "supported_modes": [
+    "create"
+  ],
+  "allowed_actor_scopes": [
+    "property_admin"
+  ],
+  "required_permissions": [
+    "property.fee_basis.manage"
+  ],
+  "read_permissions": [
+    "property.bill.read"
+  ],
+  "released_at": "2026-10-28T00:00:00Z",
+  "release_notes": "仅为已有房屋追加计费依据；同房屋同生效月的最新内容相同则跳过，不同则新增版本。同批每房一行，不改变已建账单。",
+  "sheet_name": "导入数据",
+  "fields": [
+    {
+      "key": "phase_name",
+      "label": "分区",
+      "order": 1,
+      "max_length": 80,
+      "example": "一期",
+      "description": "无分区层级时留空，空白不是通配。",
+      "normalization_rules": [
+        "trim"
+      ]
+    },
+    {
+      "key": "building_name",
+      "label": "楼栋",
+      "order": 2,
+      "required": true,
+      "max_length": 80,
+      "example": "01栋",
+      "description": "现有楼栋名称，按完整路径精确匹配。",
+      "normalization_rules": [
+        "trim"
+      ]
+    },
+    {
+      "key": "unit_name",
+      "label": "单元",
+      "order": 3,
+      "max_length": 80,
+      "example": "1单元",
+      "description": "房屋直属楼栋时留空，否则填写现有单元名称。",
+      "normalization_rules": [
+        "trim"
+      ]
+    },
+    {
+      "key": "room_no",
+      "label": "房号",
+      "order": 4,
+      "required": true,
+      "max_length": 32,
+      "example": "0001",
+      "description": "现有房号，使用文本格式，保留前导零、大小写和内部字符。",
+      "normalization_rules": [
+        "trim"
+      ]
+    },
+    {
+      "key": "house_external_code",
+      "label": "房屋外部编号",
+      "order": 5,
+      "max_length": 64,
+      "example": "0001A",
+      "description": "可选，仅核验已定位房屋，不替代定位或回填档案。",
+      "normalization_rules": [
+        "trim"
+      ]
+    },
+    {
+      "key": "effective_from_month",
+      "label": "生效月份",
+      "order": 6,
+      "required": true,
+      "max_length": 7,
+      "example": "2026-10",
+      "description": "必填 YYYY-MM，支持历史、当前及未来月份，不默认导入月份。",
+      "normalization_rules": [
+        "trim"
+      ]
+    },
+    {
+      "key": "house_usage",
+      "label": "房屋用途",
+      "order": 7,
+      "required": true,
+      "enum_values": [
+        "住宅",
+        "商业",
+        "办公",
+        "其他"
+      ],
+      "example": "住宅",
+      "description": "填写住宅、商业、办公或其他。",
+      "normalization_rules": [
+        "trim"
+      ]
+    },
+    {
+      "key": "area_sqm",
+      "label": "计费面积（㎡）",
+      "order": 8,
+      "data_type": "decimal",
+      "example": "100.0000",
+      "description": "可空；填写时须大于零，最多四位小数，上限 99999999.9999。空值不继承旧依据。",
+      "normalization_rules": [
+        "trim"
+      ]
+    },
+    {
+      "key": "unit_price_amount",
+      "label": "月单价（元/㎡）",
+      "order": 9,
+      "data_type": "decimal",
+      "example": "2.50",
+      "description": "可空；填写时非负，最多两位小数，不带货币符号，不静默舍入。",
+      "normalization_rules": [
+        "trim"
+      ]
+    },
+    {
+      "key": "fixed_amount",
+      "label": "固定月费（元）",
+      "order": 10,
+      "data_type": "decimal",
+      "example": "",
+      "description": "可空；填写时优先采用，非负且最多两位小数，0 是有效固定金额。未填时面积及月单价均须填写。",
+      "normalization_rules": [
+        "trim"
+      ]
+    },
+    {
+      "key": "change_reason",
+      "label": "变更原因",
+      "order": 11,
+      "required": true,
+      "max_length": 1000,
+      "example": "初始计费标准",
+      "description": "必填，最多 1000 字符；仅原因不同不追加依据，也不修改旧原因。",
+      "normalization_rules": [
+        "trim"
+      ]
+    }
+  ]
+}

@@ -239,7 +239,11 @@ function importRoutes(scope: Scope): Route[] {
       title: '新建导入',
       anyPermissions:
         scope === 'property'
-          ? ['property.housing.manage', 'property.bill.manage']
+          ? [
+              'property.housing.manage',
+              'property.bill.manage',
+              'property.fee_basis.manage',
+            ]
           : [],
       parent: 'imports',
     },

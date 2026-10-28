@@ -22,11 +22,22 @@ def fields(adapter: Any) -> list[dict[str, Any]] | None:
     return result
 
 
-def values(adapter: Any, prepared: Mapping[str, Any] | None) -> dict[str, Any] | None:
+def values(
+    adapter: Any,
+    prepared: Mapping[str, Any] | None,
+    *,
+    execution_status: str = "pending",
+    target: Mapping[str, str] | None = None,
+) -> dict[str, Any] | None:
     declared = fields(adapter)
     if prepared is None or declared is None:
         return None
-    projected = adapter.presentation(prepared)
+    projected = dict(adapter.presentation(prepared))
+    result_projection = getattr(adapter, "result_presentation", None)
+    if callable(result_projection):
+        projected.update(
+            result_projection(prepared, execution_status=execution_status, target=target)
+        )
     result: dict[str, Any] = {}
     for field in declared:
         value = projected.get(field["key"])

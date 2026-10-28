@@ -193,7 +193,7 @@ ImportTypeList:
       type: array
       items:
         $ref: ./import-schemas.yaml#/ImportType
-  description: 不分页；无可新建类型时 items=[]，不返回测试类型。property_fee_bills 要求 property.bill.manage，houses 和 house_owners 要求 property.housing.manage，仅向 property_admin 开放，范围仅 community，模式仅 create；platform_admin 不提供这些类型。历史、行值、预览及错误文件分别按 property.bill.read 或 property.housing.read 授权；账务最小房屋引用不授予房产及业主资料读取。
+  description: 不分页；无可新建类型时 items=[]，不返回测试类型。property_fee_bills 要求 property.bill.manage，property_fee_basis_versions 要求 property.fee_basis.manage，houses 和 house_owners 要求 property.housing.manage，仅向 property_admin 开放，范围仅 community，模式仅 create；platform_admin 不提供这些类型。历史、行值、预览及错误文件分别按 property.bill.read 或 property.housing.read 授权；账务最小房屋引用不授予房产及业主资料读取。property_fee_basis_versions 仅向已有房屋追加依据，读取按 property.bill.read；同房同生效月最新版本的用途、面积、单价与固定金额一致则跳过，原因不参与内容判同；不同月份保留新节点，同批每房一行，已有账单不重算。
 ImportTemplateField:
   type: object
   additionalProperties: false

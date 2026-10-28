@@ -12,10 +12,16 @@ export function canImport(
       ? ['bill']
       : ['houses', 'house_owners'].includes(type)
         ? ['housing']
-        : []
-    : ['housing', 'bill'];
+        : type === 'property_fee_basis_versions'
+          ? ['fee_basis']
+          : []
+    : ['housing', 'bill', 'fee_basis'];
   const operation = ['read', 'download', 'generate_error_file'].includes(action)
     ? 'read'
     : 'manage';
-  return resources.some((resource) => can(`property.${resource}.${operation}`));
+  return resources.some((resource) =>
+    can(
+      `property.${operation === 'read' && resource === 'fee_basis' ? 'bill' : resource}.${operation}`,
+    ),
+  );
 }

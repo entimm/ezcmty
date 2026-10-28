@@ -116,7 +116,9 @@ registry = JsonImportRegistry.from_resources(
     adapters={"fixture_v1": adapter, "fixture_v2": adapter},
 )
 production = get_import_registry()
-assert [item.key for item in production.list()] == ["house_owners", "houses", "property_fee_bills"]
+assert [item.key for item in production.list()] == [
+    "house_owners", "houses", "property_fee_basis_versions", "property_fee_bills"
+]
 assert {item.key: item.config_hash for item in production.list()} == json.loads(sys.argv[2])
 owners = production.get("house_owners", 1)
 assert owners.allowed_actor_scopes == ("property_admin",)
@@ -135,6 +137,15 @@ assert current.allowed_actor_scopes == ("property_admin",)
 assert current.allowed_scope_types == ("community",)
 assert production.get_adapter(current.adapter_key).__class__.__name__ == "BillImportAdapter"
 assert files("backend_app.import_definitions").joinpath("property_fee_bills/v1.json").is_file()
+fee_bases = production.get("property_fee_basis_versions", 1)
+assert fee_bases.allowed_actor_scopes == ("property_admin",)
+assert fee_bases.allowed_scope_types == ("community",)
+assert fee_bases.required_permissions == ("property.fee_basis.manage",)
+assert fee_bases.read_permissions == ("property.bill.read",)
+assert production.get_adapter(fee_bases.adapter_key).__class__.__name__ == "FeeBasisImportAdapter"
+assert files("backend_app.import_definitions").joinpath(
+    "property_fee_basis_versions/v1.json"
+).is_file()
 assert files("backend_app.import_definitions").joinpath("catalog.py").is_file()
 assert registry.get("fixture", 1).release_notes == "v1"
 assert registry.get("fixture", 2).release_notes == "v2"

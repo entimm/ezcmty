@@ -1,7 +1,6 @@
 import hashlib
 import json
 from datetime import date
-from decimal import Decimal
 from typing import Any, cast
 
 from sqlalchemy.exc import IntegrityError
@@ -19,10 +18,11 @@ from backend_app.domain.billing import (
     month_date,
     next_month,
 )
+from backend_app.domain.billing.basis import FeeBasisCreationCommand
 from backend_app.domain.billing.creation import BillCreationCommand, creation_permissions
 from backend_app.domain.billing.posting import append_receipt
 from backend_app.models.admin import AdminAccount, utc_now
-from backend_app.models.billing import Bill, BillOperation, BillSettlementEntry, FeeBasisVersion
+from backend_app.models.billing import Bill, BillOperation, BillSettlementEntry
 from backend_app.models.housing import House, SpaceNode
 from backend_app.models.property import Community
 from backend_app.repositories.admin import AdminRepository
@@ -38,6 +38,7 @@ from backend_app.schemas.mappers.billing import (
 )
 from backend_app.services.bill_creation import create_bill
 from backend_app.services.contracts.admin import AdminContext
+from backend_app.services.fee_basis_creation import create_fee_basis
 
 PERMISSIONS: dict[Action, str] = {
     "create": "property.bill.manage",
@@ -145,43 +146,23 @@ class PropertyBillingService:
         request_id: str,
     ) -> schema.FeeBasisVersion:
         try:
-            repo, identity, actor, community = self._protect(
-                ctx, "property.fee_basis.manage", community_id
-            )
-            assert community
-            house, path = self._house(repo, community, house_id, lock=True, exclusive=True)
-            self._require_enabled(community, house, path)
-            number = repo.latest_basis_number(house_id)
-            if number != data.expected_latest_version_no:
-                raise AppError("billing.basis_version_conflict")
-            item = FeeBasisVersion(
-                id=new_id(),
-                house_id=house_id,
-                version_no=number + 1,
-                effective_from_month=month_date(data.effective_from_month),
-                house_usage=data.house_usage,
-                area_sqm=Decimal(data.area_sqm) if data.area_sqm is not None else None,
-                unit_price_cents=data.unit_price_cents,
-                fixed_amount_cents=data.fixed_amount_cents,
-                change_reason=data.change_reason,
-                created_by=actor.id,
-                created_at=utc_now(),
-            )
-            self.db.add(item)
-            identity.audit.record(
-                actor=actor,
-                action="property.fee_basis.create",
-                target_type="fee_basis_version",
-                target_id=item.id,
+            self._protect(ctx, "property.fee_basis.manage", community_id)
+            result = create_fee_basis(
+                self.db,
+                company_id=cast(str, ctx.property_company_id),
+                community_id=community_id,
+                actor_id=ctx.account_id,
+                command=FeeBasisCreationCommand.from_input(
+                    {
+                        "house_id": house_id,
+                        **data.model_dump(exclude={"expected_latest_version_no"}),
+                    }
+                ),
+                expected_latest_version_no=data.expected_latest_version_no,
                 request_id=request_id,
-                metadata={
-                    "house_id": house_id,
-                    "version_no": item.version_no,
-                    "effective_from_month": data.effective_from_month,
-                },
             )
             self.db.commit()
-            return basis_view(item)
+            return basis_view(result.basis)
         except IntegrityError as exc:
             self.db.rollback()
             if is_unique_violation(exc, "uq_fee_basis_house_version"):

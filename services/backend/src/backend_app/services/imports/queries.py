@@ -6,9 +6,10 @@ from backend_app.core.errors import AppError
 from backend_app.domain.imports.registry import ImportDefinition
 from backend_app.integrations.import_files.errors import ImportFileError
 from backend_app.models.admin import utc_now
-from backend_app.models.imports import ImportBatch
+from backend_app.models.imports import ImportBatch, ImportOperation
 from backend_app.repositories.admin import AdminRepository
 from backend_app.repositories.imports import queries
+from backend_app.repositories.imports.operations import get_operations
 from backend_app.schemas.mappers import imports as view
 from backend_app.services.contracts.admin import AdminContext
 from backend_app.services.imports import presentation
@@ -215,13 +216,37 @@ class ImportQueries:
             batch.template_key, batch.template_version_no, batch.template_config_hash
         )
         adapter = self.access.registry.get_adapter(definition.adapter_key)
+        operations = (
+            get_operations(
+                self.access.db,
+                company_id=batch.property_company_id,
+                operation_ids=[row.operation_id for row in rows if row.operation_id],
+            )
+            if callable(getattr(adapter, "result_presentation", None))
+            else {}
+        )
+
+        def result_target(operation: ImportOperation | None) -> dict[str, str] | None:
+            if operation is None or not operation.target_type or not operation.target_id:
+                return None
+            return {
+                "status": operation.status,
+                "target_type": operation.target_type,
+                "target_id": operation.target_id,
+            }
+
         return dict(
             items=[
                 view.row_view(
                     row,
                     [i for i in issues if i.row_id == row.id],
                     fields,
-                    presentation.values(adapter, prepared_values(row.normalized_values)),
+                    presentation.values(
+                        adapter,
+                        prepared_values(row.normalized_values),
+                        execution_status=row.execution_status,
+                        target=result_target(operations.get(row.operation_id or "")),
+                    ),
                 )
                 for row in rows
             ],

@@ -50,6 +50,20 @@ const permissions: Record<NextAction, string> = {
   generate_error_file: 'generate_error_file',
   download_error_file: 'download',
 };
+const feeBasisFieldWidths: Record<string, number> = {
+  house_label: 220,
+  effective_from_month: 120,
+  comparison_version: 130,
+  old_basis: 280,
+  new_basis: 280,
+  changes: 240,
+  calculated_amount_cents: 140,
+  effective_period: 220,
+  action_reason: 220,
+  change_reason: 200,
+  result_version: 320,
+  result_source: 140,
+};
 export function ImportDetail({
   runtime: r,
   params,
@@ -251,6 +265,14 @@ export function ImportDetail({
     );
   const e = b.statistics.execution,
     p = b.statistics.preview;
+  const feeBasisImport = b.import_type === 'property_fee_basis_versions';
+  const previewFields = b.business_preview?.fields || [];
+  const previewWidth = feeBasisImport
+    ? previewFields.reduce(
+        (width, field) => width + (feeBasisFieldWidths[field.key] ?? 180),
+        85 + 100 + 120 + 200 + 100,
+      )
+    : 850;
   const ended = [
     'completed',
     'partial_failed',
@@ -539,7 +561,8 @@ export function ImportDetail({
               rowKey="id"
               loading={rows.isLoading}
               dataSource={rows.data?.items}
-              scroll={{ x: 850 }}
+              scroll={{ x: previewWidth }}
+              tableLayout={feeBasisImport ? 'fixed' : undefined}
               pagination={{
                 current: rowPage,
                 pageSize: 20,
@@ -550,9 +573,12 @@ export function ImportDetail({
               }}
               columns={[
                 { title: '原始行', dataIndex: 'row_no', width: 85 },
-                ...(b.business_preview?.fields || []).map((field) => ({
+                ...previewFields.map((field) => ({
                   title: field.label,
                   key: field.key,
+                  width: feeBasisImport
+                    ? (feeBasisFieldWidths[field.key] ?? 180)
+                    : undefined,
                   render: (_: unknown, item: ImportRow) =>
                     field.format === 'money_cents'
                       ? cents(
@@ -564,10 +590,12 @@ export function ImportDetail({
                 {
                   title: '计划动作',
                   dataIndex: 'planned_action',
+                  width: feeBasisImport ? 100 : undefined,
                   render: (value) => rowNames[value] || value,
                 },
                 {
                   title: b.confirmed_at ? '执行结果' : '校验结果',
+                  width: feeBasisImport ? 120 : undefined,
                   render: (_, item) => (
                     <Tag
                       color={
@@ -593,10 +621,13 @@ export function ImportDetail({
                 {
                   title: '说明',
                   dataIndex: 'result_message',
+                  width: feeBasisImport ? 200 : undefined,
                   render: (value) => value || '—',
                 },
                 {
                   title: '操作',
+                  width: feeBasisImport ? 100 : undefined,
+                  fixed: feeBasisImport ? 'right' : undefined,
                   render: (_, item) => (
                     <Button type="link" onClick={() => setRow(item)}>
                       查看明细

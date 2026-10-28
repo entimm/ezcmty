@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -14,6 +15,34 @@ def get_operation(db: Session, operation_id: str, *, lock: bool = False) -> Impo
     if lock:
         query = query.with_for_update(of=ImportOperation)
     return db.scalar(query)
+
+
+def get_operation_by_key(
+    db: Session, *, company_id: str, operation_key: str, lock: bool = False
+) -> ImportOperation | None:
+    query = select(ImportOperation).where(
+        ImportOperation.property_company_id == company_id,
+        ImportOperation.operation_key == operation_key,
+    )
+    if lock:
+        query = query.with_for_update(of=ImportOperation)
+    return db.scalar(query)
+
+
+def get_operations(
+    db: Session, *, company_id: str, operation_ids: Sequence[str]
+) -> dict[str, ImportOperation]:
+    if not operation_ids:
+        return {}
+    return {
+        operation.id: operation
+        for operation in db.scalars(
+            select(ImportOperation).where(
+                ImportOperation.property_company_id == company_id,
+                ImportOperation.id.in_(operation_ids),
+            )
+        )
+    }
 
 
 def ensure_operation(

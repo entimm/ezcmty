@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   configuredHosts,
+  canAccessRoute,
   matchRoute,
   resolveScope,
   routePath,
@@ -102,6 +103,25 @@ describe('双后台域名与路由边界', () => {
       matchRoute('platform', '/platform/property/companies', 'localhost')?.route
         .page,
     ).toBe('companies');
+  });
+  it('仅依据维护角色可直达新建导入，账务读取仅能进入导入中心和详情', () => {
+    const writer = (permission: string) =>
+      ['property.bill.read', 'property.fee_basis.manage'].includes(permission);
+    const viewer = (permission: string) => permission === 'property.bill.read';
+    const create = matchRoute(
+      'property',
+      '/imports/new',
+      configuredHosts.property,
+    )!.route;
+    expect(canAccessRoute(create, writer)).toBe(true);
+    expect(canAccessRoute(create, viewer)).toBe(false);
+    for (const path of ['/imports', '/imports/' + house])
+      expect(
+        canAccessRoute(
+          matchRoute('property', path, configuredHosts.property)!.route,
+          viewer,
+        ),
+      ).toBe(true);
   });
   it('生成路径使用所属后台并保留查询，资源参数不重复放入查询', () => {
     const path = routePath(

@@ -163,6 +163,23 @@ class BillingRepository:
             or 0
         )
 
+    def latest_basis_for_month(self, house_id: str, month: date) -> FeeBasisVersion | None:
+        return self.db.scalar(
+            select(FeeBasisVersion)
+            .where(
+                FeeBasisVersion.house_id == house_id, FeeBasisVersion.effective_from_month == month
+            )
+            .order_by(FeeBasisVersion.version_no.desc())
+            .limit(1)
+        )
+
+    def next_basis_month(self, house_id: str, month: date) -> date | None:
+        return self.db.scalar(
+            select(func.min(FeeBasisVersion.effective_from_month)).where(
+                FeeBasisVersion.house_id == house_id, FeeBasisVersion.effective_from_month > month
+            )
+        )
+
     def bases(
         self, house_id: str, *, page: int, page_size: int
     ) -> tuple[list[FeeBasisVersion], int]:

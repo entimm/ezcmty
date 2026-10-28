@@ -258,4 +258,50 @@ describe('导入授权跟随目标业务', () => {
     expect(canImport('platform', () => true, 'create', 'bills')).toBe(false);
     expect(canImport('property', () => false, 'download', 'bills')).toBe(false);
   });
+  it('依据维护独立开放新建总入口与本类型处理，不授予房产和账单经办', () => {
+    const can = (code: string) =>
+      ['property.bill.read', 'property.fee_basis.manage'].includes(code);
+    for (const action of [
+      'create',
+      'upload',
+      'precheck',
+      'execute',
+      'cancel',
+      'retry',
+      'recover',
+    ]) {
+      expect(canImport('property', can, action)).toBe(true);
+      expect(
+        canImport('property', can, action, 'property_fee_basis_versions'),
+      ).toBe(true);
+      expect(canImport('property', can, action, 'houses')).toBe(false);
+      expect(canImport('property', can, action, 'property_fee_bills')).toBe(
+        false,
+      );
+    }
+    expect(
+      canImport('platform', can, 'create', 'property_fee_basis_versions'),
+    ).toBe(false);
+    expect(canImport('property', can, 'create', 'unknown_type')).toBe(false);
+  });
+  it('账务读取可查看依据导入及问题文件，不授予任何处理能力', () => {
+    const can = (code: string) => code === 'property.bill.read';
+    for (const action of ['read', 'download', 'generate_error_file'])
+      expect(
+        canImport('property', can, action, 'property_fee_basis_versions'),
+      ).toBe(true);
+    for (const action of [
+      'create',
+      'upload',
+      'precheck',
+      'execute',
+      'cancel',
+      'retry',
+      'recover',
+    ])
+      expect(
+        canImport('property', can, action, 'property_fee_basis_versions'),
+      ).toBe(false);
+    expect(canImport('property', can, 'create')).toBe(false);
+  });
 });
