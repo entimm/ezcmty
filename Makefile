@@ -15,7 +15,7 @@ install: ## 安装前后端开发依赖
 	uv sync --project services/backend --extra dev --locked
 	@printf '\n[安装] 前端工作区依赖\n'
 	pnpm install --frozen-lockfile
-	@printf '\n[完成] 依赖已安装；配置方式见 docs/guidelines/local-development.md\n'
+	@printf '\n[完成] 依赖已安装；配置方式见 docs/handbook/development/local-setup.md\n'
 
 seed: ## 追加开发数据；SCENARIOS="property housing"，SEED_ARGS="--set housing.houses_per_unit=20"
 	@$(SEED) run $(if $(filter all,$(SCENARIOS)),--all,$(foreach scene,$(SCENARIOS),--scenario $(scene))) $(SEED_ARGS)

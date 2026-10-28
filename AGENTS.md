@@ -14,27 +14,30 @@
 
 ## 权威文档
 
-- 文档治理规范：[docs/standards/documentation.md](docs/standards/documentation.md)
-- 开发规范：[docs/guidelines/development.md](docs/guidelines/development.md)
-- 后台前端开发规范：[docs/conventions/admin-frontend.md](docs/conventions/admin-frontend.md)
-- 测试规范：[docs/conventions/testing.md](docs/conventions/testing.md)
-- 系统架构：[docs/architecture/overview.md](docs/architecture/overview.md)
-- 部署约定：[docs/architecture/deployment.md](docs/architecture/deployment.md)
-- API 规范：[docs/api/conventions.md](docs/api/conventions.md)
+- 开发者手册：[docs/handbook/README.md](docs/handbook/README.md)
+- 文档治理规范：[docs/handbook/standards/documentation.md](docs/handbook/standards/documentation.md)
+- 开发规范：[docs/handbook/standards/development.md](docs/handbook/standards/development.md)
+- 后台前端开发规范：[docs/handbook/standards/admin-frontend.md](docs/handbook/standards/admin-frontend.md)
+- 测试规范：[docs/handbook/standards/testing.md](docs/handbook/standards/testing.md)
+- 系统架构：[docs/handbook/architecture/overview.md](docs/handbook/architecture/overview.md)
+- 部署约定：[docs/handbook/operations/deployment.md](docs/handbook/operations/deployment.md)
+- API 规范：[docs/handbook/standards/api.md](docs/handbook/standards/api.md)
 - OpenAPI 契约：[openapi/](openapi/)
-- 数据库规范：[docs/database/conventions.md](docs/database/conventions.md)
+- 数据库规范：[docs/handbook/standards/database.md](docs/handbook/standards/database.md)
 
 开始任务前，应阅读并遵循与当前任务相关的权威文档。
 
 ## 执行要求
 
-- 工程实现、工程保障、安全、质量检查及提交遵循 [开发规范](docs/guidelines/development.md)。
-- 后台前端新增、修改及评审遵循 [后台前端开发规范](docs/conventions/admin-frontend.md)，保持已确认的设计和双后台边界。
+- 工程实现、工程保障、安全、质量检查及提交遵循 [开发规范](docs/handbook/standards/development.md)。
+- 后台前端新增、修改及评审遵循 [后台前端开发规范](docs/handbook/standards/admin-frontend.md)，保持已确认的设计和双后台边界。
 - 测试新增、维护与执行遵循测试规范。
 - API 设计与实现遵循 API 规范；数据与迁移遵循数据库规范。
 - 文档新增、修改与审查遵循文档治理规范。
-- 复杂任务先完成方案设计；后续评审、确认、落盘及实施授权遵循 [设计工作流](docs/standards/documentation.md#设计工作流)。
-- 工作量较大的任务，实施前须在 `docs/plans/` 对应主题目录编写并落盘可勾选的实施计划，明确任务拆分、依赖顺序和验收条件；执行中及时更新，仅在完成并验证后勾选。
+- 复杂任务先完成方案设计；后续评审、确认、落盘及实施授权遵循 [设计工作流](docs/handbook/standards/documentation.md#设计工作流)。
+- 工作量较大的任务，实施前须在 `docs/plans/` 编写并落盘带日期前缀的可勾选实施计划，明确任务拆分、依赖顺序和验收条件；执行中及时更新，仅在完成并验证后勾选。
+- `docs/design/`、`docs/plans/` 不设模块层级，直接使用 `YYYYMMDD-topic.md` 或 `YYYYMMDD-topic/`；大专题独立成目录。
+- 现行规则维护在开发者手册；功能完成后设计冻结，后续迭代新增方案。文档不引用源码，不记录执行流水。
 - 只修改当前任务直接涉及的文件，不顺带重构无关代码。
 - 当前任务完成后立即停止，不自行开始下一阶段。
 

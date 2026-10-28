@@ -18,6 +18,3 @@ openapi/types.d.ts
 **/.ruff_cache
 
 apps/miniapp/.tmp
-
-# Frozen, user-approved preview; preserve its recorded checksum.
-docs/design/resident/assets/miniapp-review.html

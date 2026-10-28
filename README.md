@@ -1,20 +1,14 @@
 # 社区物业消费返利与物业费抵扣平台
 
-本项目面向社区物业，提供消费返利、积分管理和物业费抵扣能力。
+本项目面向社区物业，当前业务覆盖物业接入、房屋与业主资料、居民认领、物业费账单、批量导入及微信支付资金处理。
 
-当前采用单仓库组织：
+| 阅读目的     | 入口                                                 |
+| ------------ | ---------------------------------------------------- |
+| 了解系统     | [系统架构](docs/handbook/architecture/overview.md)   |
+| 查业务现状   | [模块手册](docs/handbook/modules/README.md)          |
+| 开始本地开发 | [本地开发](docs/handbook/development/local-setup.md) |
+| 查规范与专题 | [开发者手册](docs/handbook/README.md)                |
+| 查看接口契约 | [OpenAPI](openapi/openapi.yaml)                      |
+| AI 执行要求  | [AGENTS.md](AGENTS.md)                               |
 
-- `apps/admin-web/`：平台管理端和物业管理端共用的 Ant Design Pro 项目，工程与隔离设计见 [管理后台前端设计](docs/architecture/admin-web.md)。
-- `apps/miniapp/`：平台微信小程序，居民功能及统一身份框架设计见 [客户端设计](docs/design/client/overview.md)。
-- `services/backend/`：共享 Python 后端包和独立运行进程。
-- `docs/`：按主题组织的项目文档。
-
-后端包、API 模块、进程职责及项目命名见 [系统架构](docs/architecture/overview.md)。
-
-本地开发的环境准备、配置、命令、运行与质量检查见 [本地开发指南](docs/guidelines/local-development.md)。
-
-账单支付的阶段依赖、可勾选任务及验收清单见 [开发实施计划](docs/plans/payment/bill-payments.md)。
-
-客户端统一身份框架、居民适配及迁移的任务与验收见 [实施计划](docs/plans/client/foundation.md)。
-
-执行要求及专题文档入口见 [AGENTS.md](AGENTS.md)。
+设计方案存放在 `docs/design/`，实施与验收计划存放在 `docs/plans/`。两类均按日期批次组织，目录与维护方式见[文档治理规范](docs/handbook/standards/documentation.md)。
