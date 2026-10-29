@@ -179,7 +179,7 @@ Page({
   claim() {
     go(
       this.data.signed ? 'claim' : 'login',
-      this.data.signed ? undefined : { return_to: pageUrl('claim') },
+      this.data.signed ? undefined : { return_to: pageUrl('home') },
     );
   },
   pendingDetail() {
