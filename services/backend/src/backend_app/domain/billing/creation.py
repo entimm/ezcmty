@@ -187,16 +187,28 @@ class BillCreationCommand:
         }
 
 
+def creation_actions(
+    *, initial_paid_cents: int | None = 0, basis_version_id: str | None = None
+) -> frozenset[str]:
+    """Business capabilities independent of an entry point's permission namespace."""
+    actions = {"bill.manage"}
+    if basis_version_id is not None:
+        actions.add("bill.read")
+    if type(initial_paid_cents) is int and initial_paid_cents > 0:
+        actions.add("bill_receipt.create")
+    return frozenset(actions)
+
+
 def creation_permissions(
     *, initial_paid_cents: int | None = 0, basis_version_id: str | None = None
 ) -> frozenset[str]:
-    """Report known authorization needs even when unrelated input fields are invalid."""
-    permissions = {"property.bill.manage"}
-    if basis_version_id is not None:
-        permissions.add("property.bill.read")
-    if type(initial_paid_cents) is int and initial_paid_cents > 0:
-        permissions.add("property.bill_receipt.create")
-    return frozenset(permissions)
+    """Existing import templates retain their property permission contract."""
+    return frozenset(
+        f"property.{action}"
+        for action in creation_actions(
+            initial_paid_cents=initial_paid_cents, basis_version_id=basis_version_id
+        )
+    )
 
 
 def creation_natural_key(command: BillCreationCommand) -> dict[str, str]:

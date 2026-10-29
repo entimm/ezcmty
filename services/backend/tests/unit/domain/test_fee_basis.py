@@ -17,7 +17,12 @@ from backend_app.domain.billing.basis import (
 )
 from backend_app.models.billing import FeeBasisVersion
 from backend_app.repositories.billing import BillingRepository
-from backend_app.services import fee_basis_creation as service
+from backend_app.services.property_business import fee_basis_creation as service
+from backend_app.services.property_business.context import (
+    BusinessActor,
+    BusinessAuthority,
+    PropertyBusinessContext,
+)
 
 
 def command(**changes: Any) -> FeeBasisCreationCommand:
@@ -253,22 +258,26 @@ def test_apply_reuse_protects_parent_resources_before_house_and_does_not_check_l
     repo: Mock, monkeypatch: MonkeyPatch, snapshot: dict[str, Any]
 ) -> None:
     events: list[str] = []
-    actor = Mock(id="actor", enabled=True, must_change_password=False)
+    authority = Mock(spec=BusinessAuthority)
 
-    def protect(*_args: Any) -> tuple[Mock, Mock, Mock]:
-        events.append("company/account/community")
-        return Mock(enabled=True), actor, Mock()
+    def protect(*_args: Any, **kwargs: Any) -> BusinessActor:
+        assert kwargs == {"lock": True, "shared": True}
+        events.append("company/account")
+        return BusinessActor("actor", "操作者", frozenset({"fee_basis.manage"}))
 
     def house(*_args: Any, **kwargs: Any) -> dict[str, Any]:
         events.append("house")
         assert kwargs["lock"] is True and kwargs["exclusive"] is False
         return snapshot
 
-    repo.protect.side_effect = protect
+    authority.authorize.side_effect = protect
+
+    def community(*_args: Any, **_kwargs: Any) -> Mock:
+        events.append("community")
+        return Mock()
+
+    repo.community.side_effect = community
     repo.basis.return_value = basis()
-    identity = Mock()
-    identity.effective_permissions.return_value = {"property.fee_basis.manage"}
-    monkeypatch.setattr(service, "AdminIdentity", lambda *_: identity)
     monkeypatch.setattr(service, "house_location_snapshot", house)
     service.verify_fee_basis_result(
         Mock(spec=Session),
@@ -280,22 +289,17 @@ def test_apply_reuse_protects_parent_resources_before_house_and_does_not_check_l
         expected_latest_version_no=1,
         actor_id="actor",
         lock=True,
+        context=PropertyBusinessContext("company", "actor", "test", authority),
     )
-    assert events == ["company/account/community", "house"]
+    assert events == ["company/account", "community", "house"]
     repo.latest_basis_number.assert_not_called()
 
 
 def test_apply_reuse_requires_current_maintenance_permission_before_house_read(
     repo: Mock, monkeypatch: MonkeyPatch
 ) -> None:
-    repo.protect.return_value = (
-        Mock(enabled=True),
-        Mock(id="actor", enabled=True, must_change_password=False),
-        Mock(),
-    )
-    identity = Mock()
-    identity.effective_permissions.return_value = {"property.bill.read"}
-    monkeypatch.setattr(service, "AdminIdentity", lambda *_: identity)
+    authority = Mock(spec=BusinessAuthority)
+    authority.authorize.side_effect = AppError("auth.forbidden")
     house = Mock()
     monkeypatch.setattr(service, "house_location_snapshot", house)
     with pytest.raises(AppError) as caught:
@@ -308,6 +312,7 @@ def test_apply_reuse_requires_current_maintenance_permission_before_house_read(
             original_status="created",
             actor_id="actor",
             lock=True,
+            context=PropertyBusinessContext("company", "actor", "test", authority),
         )
     assert caught.value.code == "auth.forbidden"
     house.assert_not_called()
@@ -342,14 +347,10 @@ def test_disabled_path_blocks_new_skip_and_success_reuse(
 def test_manual_appends_same_content_and_import_skip_has_no_audit_or_commit(
     repo: Mock, monkeypatch: MonkeyPatch, allow_existing: bool
 ) -> None:
-    repo.protect.return_value = (
-        Mock(enabled=True),
-        Mock(id="actor", enabled=True, must_change_password=False),
-        Mock(),
+    authority = Mock(spec=BusinessAuthority)
+    authority.authorize.return_value = BusinessActor(
+        "actor", "操作者", frozenset({"fee_basis.manage"})
     )
-    identity = Mock()
-    identity.effective_permissions.return_value = {"property.fee_basis.manage"}
-    monkeypatch.setattr(service, "AdminIdentity", lambda *_: identity)
     original = basis()
     repo.basis.return_value = original
     db = Mock(spec=Session)
@@ -364,13 +365,14 @@ def test_manual_appends_same_content_and_import_skip_has_no_audit_or_commit(
         allow_existing=allow_existing,
         expected_action="skip" if allow_existing else None,
         expected_target_id="basis" if allow_existing else None,
+        context=PropertyBusinessContext("company", "actor", "test", authority),
     )
     if allow_existing:
         assert result.status == "skipped" and result.basis is original
-        identity.audit.record.assert_not_called()
+        authority.record.assert_not_called()
         db.add.assert_not_called()
     else:
         assert result.status == "created" and result.basis.version_no == 3
-        identity.audit.record.assert_called_once()
+        authority.record.assert_called_once()
         db.add.assert_called_once_with(result.basis)
     db.commit.assert_not_called()

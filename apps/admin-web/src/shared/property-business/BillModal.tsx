@@ -1,6 +1,9 @@
-import { DatePicker } from '../../shared/DatePicker';
-import { useMemo, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  usePropertyQuery as useQuery,
+  usePropertyQueryClient as useQueryClient,
+} from './queries';
+import { DatePicker } from '../DatePicker';
+import { useRef, useState } from 'react';
 import {
   Alert,
   App,
@@ -17,17 +20,15 @@ import {
   Spin,
 } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
-import { useAdmin } from '../../shared/context';
-import { businessNow } from '../../shared/datetime';
-import { ApiError } from '../../shared/request';
+import { usePropertyBusiness } from './runtime';
+import { businessNow } from '../datetime';
+import { ApiError } from '../request';
 import {
-  createPropertyApi,
-  billRoot,
   type Bill,
   type BillSubmission,
   type BillWriteResult,
   type House,
-} from './api';
+} from './types';
 import type { BillEditorState } from './Billing';
 import { PropertyEditor } from './Editor';
 import {
@@ -43,12 +44,12 @@ interface PendingWrite {
   submission: BillSubmission;
 }
 const permissions = {
-  edit: 'property.bill.manage',
-  receipt: 'property.bill_receipt.create',
-  correct: 'property.bill_receipt.correct',
-  reverse: 'property.bill_receipt.correct',
-  void: 'property.bill.void',
-};
+  edit: 'bill.manage',
+  receipt: 'bill_receipt.create',
+  correct: 'bill_receipt.correct',
+  reverse: 'bill_receipt.correct',
+  void: 'bill.void',
+} as const;
 const titles = {
   edit: '编辑账单资料',
   receipt: '登记线下收款',
@@ -75,9 +76,9 @@ export function BillModal({
   original?: Bill;
   close: () => void;
 }) {
-  const { request, can, communityId, params, setDirty } = useAdmin();
+  const { api, can, company, communityId, params, setDirty } =
+    usePropertyBusiness();
   const { message } = App.useApp();
-  const api = useMemo(() => createPropertyApi(request), [request]);
   const cache = useQueryClient();
   const [form] = Form.useForm();
   const [search, setSearch] = useState('');
@@ -102,7 +103,12 @@ export function BillModal({
   const amount = Form.useWatch('amount', form) as number | undefined;
   const initialHouseId = house?.id || original?.house_id;
   const selectedHouse = useQuery({
-    queryKey: ['property', 'bill-selected-house', c, houseId || initialHouseId],
+    queryKey: [
+      'property-business',
+      'bill-selected-house',
+      c,
+      houseId || initialHouseId,
+    ],
     queryFn: async () =>
       (
         await api.houseOptions(c, {
@@ -112,24 +118,27 @@ export function BillModal({
         })
       ).items[0],
     enabled:
-      !editor &&
-      !!c &&
-      !!(houseId || initialHouseId) &&
-      can('property.bill.read'),
+      !editor && !!c && !!(houseId || initialHouseId) && can('bill.read'),
   });
   const houseOptions = useQuery({
-    queryKey: ['property', 'bill-house-options', c, search, optionsPage],
+    queryKey: [
+      'property-business',
+      'bill-house-options',
+      c,
+      search,
+      optionsPage,
+    ],
     queryFn: () =>
       api.houseOptions(c, {
         page: optionsPage,
         page_size: 50,
         room_no: search || undefined,
       }),
-    enabled: !editor && !!c && can('property.bill.read'),
+    enabled: !editor && !!c && can('bill.read'),
   });
   const calculation = useQuery({
     queryKey: [
-      'property',
+      'property-business',
       'bill-create-calculation',
       c,
       houseId || initialHouseId,
@@ -139,7 +148,7 @@ export function BillModal({
       api.calculate(c, (houseId || initialHouseId)!, month!.format('YYYY-MM')),
     enabled:
       !editor &&
-      can('property.bill.read') &&
+      can('bill.read') &&
       source === 'basis' &&
       !!(houseId || initialHouseId) &&
       !!month &&
@@ -171,7 +180,7 @@ export function BillModal({
         due: original?.due_date
           ? dayjs.utc(original.due_date)
           : businessNow().add(1, 'month').endOf('month'),
-        source: can('property.bill.read') ? 'basis' : 'manual',
+        source: can('bill.read') ? 'basis' : 'manual',
         paid: 0,
       };
   const maximum = bill
@@ -180,7 +189,7 @@ export function BillModal({
     : 0;
   const success = async (result: BillWriteResult) => {
     setPending(undefined);
-    await cache.invalidateQueries({ queryKey: ['property'] });
+    await cache.invalidateQueries({ queryKey: ['property-business'] });
     message.success(
       editor ? `${titles[editor.action]}成功` : '账单已创建并立即生效',
     );
@@ -202,7 +211,7 @@ export function BillModal({
       ) {
         setPending(undefined);
         if (failure.status === 409)
-          await cache.invalidateQueries({ queryKey: ['property'] });
+          await cache.invalidateQueries({ queryKey: ['property-business'] });
       } else {
         setPending(operation);
         setDirty(true);
@@ -217,7 +226,7 @@ export function BillModal({
   };
   const submit = async (values: Record<string, unknown>) => {
     if (pending) throw new Error('请先核实原操作结果');
-    if (!c) throw new Error('请选择小区');
+    if (!company || !c) throw new Error('请选择公司及小区');
     let submission: BillSubmission;
     if (editor) {
       if (!can(permissions[editor.action])) throw new Error('没有此操作权限');
@@ -225,14 +234,18 @@ export function BillModal({
         throw new Error('账单已作废，不能继续修改');
       if (editor.action !== 'edit' && bill!.payment_in_progress)
         throw new Error('居民支付正在处理中，请等待原订单结果');
-      const root = billRoot(c, bill!.id);
+      const target = {
+        companyId: company!.id,
+        communityId: c,
+        billId: bill!.id,
+      };
       const version = { expected_row_version: bill!.row_version };
       const reason =
         typeof values.reason === 'string' ? values.reason.trim() || null : null;
       if (editor.action === 'edit')
         submission = {
-          path: root,
-          method: 'PATCH',
+          ...target,
+          action: 'edit',
           body: {
             ...version,
             external_bill_no:
@@ -247,8 +260,8 @@ export function BillModal({
         if (bill!.settled_cents !== 0)
           throw new Error('账单已存在收款，请先核实');
         submission = {
-          path: `${root}/voids`,
-          method: 'POST',
+          ...target,
+          action: 'void',
           body: { ...version, reason },
         };
       } else if (editor.action === 'reverse') {
@@ -259,8 +272,9 @@ export function BillModal({
         )
           throw new Error('仅可撤销尚未冲正的线下收款');
         submission = {
-          path: `${root}/offline-receipts/${editor.entry.id}/reversals`,
-          method: 'POST',
+          ...target,
+          action: 'reverse',
+          entryId: editor.entry.id,
           body: { ...version, reason },
         };
       } else {
@@ -274,8 +288,8 @@ export function BillModal({
           if (!bill!.house_effective_enabled)
             throw new Error('房屋或上级已停用，暂不能登记收款');
           submission = {
-            path: `${root}/offline-receipts`,
-            method: 'POST',
+            ...target,
+            action: 'receipt',
             body: {
               ...version,
               amount_cents: entered,
@@ -291,8 +305,9 @@ export function BillModal({
           )
             throw new Error('仅可纠正尚未冲正的线下收款');
           submission = {
-            path: `${root}/offline-receipts/${editor.entry.id}/corrections`,
-            method: 'POST',
+            ...target,
+            action: 'correct',
+            entryId: editor.entry.id,
             body: {
               ...version,
               corrected_amount_cents: entered,
@@ -303,7 +318,7 @@ export function BillModal({
         }
       }
     } else {
-      if (!can('property.bill.manage')) throw new Error('没有建账权限');
+      if (!can('bill.manage')) throw new Error('没有建账权限');
       const chosenId = String(values.house_id || initialHouseId || '');
       if (!chosenId || !selectedHouse.data?.effective_enabled)
         throw new Error('请选择当前可用房屋');
@@ -339,7 +354,7 @@ export function BillModal({
       const paid = toCents(values.paid ?? 0);
       if (paid > receivable) throw new Error('初始收款不能超过应收金额');
       if (paid > 0) {
-        if (!can('property.bill_receipt.create'))
+        if (!can('bill_receipt.create'))
           throw new Error('没有初始收款登记权限');
         body.initial_receipt = {
           amount_cents: paid,
@@ -347,7 +362,12 @@ export function BillModal({
           reason: '建账时登记初始线下收款',
         };
       }
-      submission = { path: billRoot(c), method: 'POST', body };
+      submission = {
+        action: 'create',
+        companyId: company!.id,
+        communityId: c,
+        body,
+      };
     }
     await perform({ key: crypto.randomUUID(), submission });
   };
@@ -388,6 +408,7 @@ export function BillModal({
   );
   return (
     <PropertyEditor
+      setDirty={setDirty}
       title={action ? titles[action] : '新增物业费账单'}
       form={form}
       initial={initial}
@@ -503,7 +524,7 @@ export function BillModal({
                 {
                   value: 'basis',
                   label: '计费依据自动计算',
-                  disabled: !can('property.bill.read'),
+                  disabled: !can('bill.read'),
                 },
                 { value: 'manual', label: '手动填写金额' },
               ]}
@@ -560,7 +581,7 @@ export function BillModal({
           <Form.Item name="external" label="外部账单编号（选填）">
             <Input maxLength={128} />
           </Form.Item>
-          {can('property.bill_receipt.create') && (
+          {can('bill_receipt.create') && (
             <>
               <Divider titlePlacement="left" style={{ fontSize: 13 }}>
                 已有线下收款（选填）

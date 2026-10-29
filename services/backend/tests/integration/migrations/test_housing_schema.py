@@ -99,6 +99,5 @@ def test_housing_downgrade_refuses_existing_data_and_keeps_revision(
     with get_session_factory()() as db:
         assert db.scalar(select(SpaceNode.name)) == "A"
         assert (
-            db.scalar(text("SELECT version_num FROM alembic_version"))
-            == "20261027_client_identities"
+            db.scalar(text("SELECT version_num FROM alembic_version")) == "20261029_business_actors"
         )

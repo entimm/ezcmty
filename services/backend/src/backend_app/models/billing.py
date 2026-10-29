@@ -236,8 +236,8 @@ class BillOperation(Base):
             name="fk_bill_operation_bill",
         ),
         ForeignKeyConstraint(
-            ["property_company_id", "actor_id"],
-            ["admin_accounts.property_company_id", "admin_accounts.id"],
+            ["actor_id"],
+            ["admin_accounts.id"],
             name="fk_bill_operation_actor",
         ),
         CheckConstraint(

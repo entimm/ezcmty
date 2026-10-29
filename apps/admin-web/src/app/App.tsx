@@ -588,6 +588,12 @@ function Workspace({
         hasPermission: can,
         session,
         refreshSession: auth.refreshSession,
+        company: company.data
+          ? {
+              id: company.data.property_company_id,
+              name: company.data.property_company_name,
+            }
+          : undefined,
         communityId,
         community,
         communities: options,
@@ -749,6 +755,12 @@ function Workspace({
           </div>
         </div>
         <main className="workspace-scroll">
+          {company.error && (
+            <ReadError
+              error={company.error}
+              retry={() => void company.refetch()}
+            />
+          )}
           {communities.error && (
             <ReadError
               error={communities.error}

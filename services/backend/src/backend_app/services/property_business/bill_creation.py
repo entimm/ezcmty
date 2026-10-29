@@ -8,21 +8,19 @@ from sqlalchemy.orm import Session
 
 from backend_app.core.errors import AppError
 from backend_app.core.identifiers import new_id
-from backend_app.domain.admin.identity import AdminIdentity
 from backend_app.domain.billing import business_today, month_date
 from backend_app.domain.billing.creation import (
     BillCreationCommand,
     create_bill_records,
+    creation_actions,
     creation_fingerprint,
     creation_natural_key,
-    creation_permissions,
     inspect_existing_creation,
     validate_creation,
 )
 from backend_app.domain.housing import house_location_snapshot, revalidate_house_location
 from backend_app.models.admin import utc_now
 from backend_app.models.billing import BillOperation
-from backend_app.repositories.admin import AdminRepository
 from backend_app.repositories.billing import BillingRepository
 from backend_app.schemas import billing as schema
 from backend_app.schemas.mappers.billing import (
@@ -31,6 +29,7 @@ from backend_app.schemas.mappers.billing import (
     historical_write_result,
     operation_view,
 )
+from backend_app.services.property_business.context import PropertyBusinessContext
 
 
 @dataclass(frozen=True)
@@ -88,6 +87,7 @@ def create_bill(
     company_id: str,
     community_id: str,
     actor_id: str,
+    context: PropertyBusinessContext,
     command: BillCreationCommand,
     key: str,
     fingerprint: str,
@@ -99,20 +99,15 @@ def create_bill(
 ) -> BillCreationResult:
     """Apply one authorized creation; the caller owns commit, rollback and retry."""
     repo = BillingRepository(db, company_id)
-    identity = AdminIdentity(AdminRepository(db, "property_admin", company_id))
-    company, actor, community = repo.protect(actor_id, community_id)
-    if company is None or not company.enabled or actor is None or not actor.enabled:
-        raise AppError("auth.unauthenticated")
-    if actor.must_change_password:
-        raise AppError("auth.password_change_required")
-    if community is None:
-        raise AppError("resource.not_found")
-    needed = creation_permissions(
+    if context.company_id != company_id or context.actor_id != actor_id:
+        raise AppError("auth.forbidden")
+    needed = creation_actions(
         initial_paid_cents=command.initial_receipt.amount_cents if command.initial_receipt else 0,
         basis_version_id=command.basis_version_id,
     )
-    if not needed <= set(identity.effective_permissions(actor.id)):
-        raise AppError("auth.forbidden")
+    actor = context.require(*needed, lock=True, shared=True)
+    if repo.community(community_id, lock=True) is None:
+        raise AppError("resource.not_found")
 
     def replay() -> BillCreationResult | None:
         previous = repo.operation_by_key(key)
@@ -222,7 +217,7 @@ def create_bill(
     db.add(operation)
     db.flush()
     db.add_all(entries)
-    identity.audit.record(
+    context.record(
         actor=actor,
         action="property.bill.create",
         target_type="bill",

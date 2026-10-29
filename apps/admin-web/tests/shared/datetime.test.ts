@@ -1,6 +1,6 @@
 import dayjs, { type Dayjs } from 'dayjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { date as formatBusinessDate } from '../../src/features/property/presentation';
+import { date as formatBusinessDate } from '../../src/shared/property-business/presentation';
 import {
   businessNow,
   businessToday,

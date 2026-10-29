@@ -379,9 +379,5 @@ class BillingRepository:
     def actor_names(self, ids: Sequence[str]) -> dict[str, str]:
         return {
             row.id: row.display_name
-            for row in self.db.scalars(
-                select(AdminAccount).where(
-                    AdminAccount.id.in_(ids), AdminAccount.property_company_id == self.company_id
-                )
-            )
+            for row in self.db.scalars(select(AdminAccount).where(AdminAccount.id.in_(ids)))
         }

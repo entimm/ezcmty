@@ -19,9 +19,10 @@ from backend_app.models.housing import House, SpaceNode
 from backend_app.repositories.housing import HousingRepository
 from backend_app.schemas import billing as schema
 from backend_app.schemas import housing as housing_schema
-from backend_app.services.bill_creation import create_bill, prepare_bill_creation
+from backend_app.services.property_account_access import property_task_context
 from backend_app.services.property_admin.billing import PropertyBillingService
 from backend_app.services.property_admin.housing import PropertyHousingService
+from backend_app.services.property_business.bill_creation import create_bill, prepare_bill_creation
 
 
 def _command(setup: BillingSetup, paid: int = 0) -> BillCreationCommand:
@@ -190,6 +191,7 @@ def test_shared_creation_keeps_all_facts_in_the_callers_transaction(
                     "initial_receipt",
                 }
             ),
+            context=property_task_context(db, s.housing.company_id, s.housing.context.account_id),
         )
         assert result.status == "created"
         assert result.result["bill"]["settled_cents"] == 3000
@@ -262,6 +264,7 @@ def test_reimport_compares_original_facts_after_later_receipts_and_edits(
             request_id="import",
             input_fields=frozenset(),
             allow_existing=True,
+            context=property_task_context(db, s.housing.company_id, s.housing.context.account_id),
         )
         assert result.status == "skipped"
         db.commit()
@@ -296,6 +299,7 @@ def test_reusing_successful_creation_does_not_recreate_a_voided_target(
             request_id="import",
             input_fields=frozenset(),
             allow_existing=True,
+            context=property_task_context(db, s.housing.company_id, s.housing.context.account_id),
         )
         db.commit()
         PropertyBillingService(db).write(
@@ -320,6 +324,9 @@ def test_reusing_successful_creation_does_not_recreate_a_voided_target(
                 request_id="retry",
                 input_fields=frozenset(),
                 allow_existing=True,
+                context=property_task_context(
+                    db, s.housing.company_id, s.housing.context.account_id
+                ),
             )
         assert caught.value.code == "billing.bill_voided"
         db.rollback()
@@ -355,6 +362,9 @@ def test_manual_and_shared_entry_concurrently_create_only_one_initial_receipt(
                 request_id="shared",
                 input_fields=frozenset(),
                 allow_existing=True,
+                context=property_task_context(
+                    db, s.housing.company_id, s.housing.context.account_id
+                ),
             )
             db.commit()
             return result.bill_id
@@ -403,6 +413,9 @@ def test_planned_skip_cannot_create_after_concurrent_target_void(
                     input_fields=frozenset(),
                     allow_existing=True,
                     expected_target_id=prepared["target_id"],
+                    context=property_task_context(
+                        db, s.housing.company_id, s.housing.context.account_id
+                    ),
                 )
             except AppError as error:
                 db.rollback()

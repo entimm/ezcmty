@@ -26,7 +26,7 @@ from backend_app.import_definitions.catalog import get_import_registry
 from backend_app.models.admin import AdminAuditLog
 from backend_app.models.billing import Bill, BillOperation, BillSettlementEntry
 from backend_app.models.imports import ImportOperation, ImportRow
-from backend_app.services.bill_creation import BillCreationResult, create_bill
+from backend_app.services.property_business.bill_creation import BillCreationResult, create_bill
 from backend_app.services.worker.imports.adapters import bills as bill_adapter
 from backend_app.services.worker.imports.pipeline import ImportWorkerService
 

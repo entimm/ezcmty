@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { Alert, Button, Empty } from 'antd';
 import dayjs from 'dayjs';
-import { money, Status } from '../../shared/ui';
-import type { Bill, HousingRecord, FeeBasis } from './api';
-export { businessToday, formatTime as time } from '../../shared/datetime';
+import { money, Status } from '../ui';
+import type { Bill, HousingRecord, FeeBasis } from './types';
+export { businessToday, formatTime as time } from '../datetime';
 
 export const usageLabels = {
   residential: '住宅',

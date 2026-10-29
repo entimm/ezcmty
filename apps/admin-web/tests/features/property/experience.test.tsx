@@ -1,3 +1,4 @@
+import { PropertyBusinessBoundary } from '../../../src/features/property/runtime';
 import {
   fireEvent,
   render,
@@ -14,9 +15,9 @@ import {
 } from '../../../src/shared/context';
 import type { AdminRequest, RequestOptions } from '../../../src/shared/request';
 import { PropertyEditor } from '../../../src/features/property/Editor';
-import { HousingPage } from '../../../src/features/property/Housing';
-import { BillModal } from '../../../src/features/property/BillModal';
-import { toCents } from '../../../src/features/property/presentation';
+import { HousingPage } from '../../../src/shared/property-business/Housing';
+import { BillModal } from '../../../src/shared/property-business/BillModal';
+import { toCents } from '../../../src/shared/property-business/presentation';
 import type { House, Owner } from '../../../src/features/property/api';
 
 const firstHouse: House = {
@@ -49,6 +50,8 @@ function show(
     !permissions || permissions.includes(permission);
   const context = {
     scope: 'property',
+    session: { subjectId: 'property-user', permissions: permissions || [] },
+    company: { id: 'company-1', name: '物业公司' },
     request: request ?? vi.fn(),
     can,
     hasPermission: can,
@@ -65,7 +68,9 @@ function show(
   render(
     <QueryClientProvider client={client}>
       <AdminContext.Provider value={context}>
-        <App>{element}</App>
+        <App>
+          <PropertyBusinessBoundary>{element}</PropertyBusinessBoundary>
+        </App>
       </AdminContext.Provider>
     </QueryClientProvider>,
   );

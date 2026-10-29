@@ -28,7 +28,8 @@ from backend_app.domain.imports.types import (
 )
 from backend_app.repositories.billing import BillingRepository
 from backend_app.repositories.housing import HousingRepository
-from backend_app.services.bill_creation import create_bill, prepare_bill_creation
+from backend_app.services.property_account_access import property_task_context
+from backend_app.services.property_business.bill_creation import create_bill, prepare_bill_creation
 
 _FIELDS = (
     "phase_name",
@@ -270,6 +271,9 @@ class BillImportAdapter:
                 company_id=context.scope.property_company_id,
                 community_id=context.scope.community_id,
                 actor_id=context.actor_id,
+                context=property_task_context(
+                    db, context.scope.property_company_id, context.actor_id
+                ),
                 command=BillCreationCommand.from_input(operation.values["command"]),
                 key="import_" + str(operation.values["_operation_key"]),
                 fingerprint=operation.input_fingerprint,

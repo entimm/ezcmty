@@ -1,6 +1,6 @@
-import { DatePicker } from '../../shared/DatePicker';
-import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { usePropertyQuery as useQuery } from './queries';
+import { DatePicker } from '../DatePicker';
+import { useEffect, useState } from 'react';
 import {
   ArrowRightOutlined,
   DownloadOutlined,
@@ -26,15 +26,14 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { type Dayjs } from 'dayjs';
-import { useAdmin } from '../../shared/context';
-import { DetailGrid, PageHeader, Panel, Status } from '../../shared/ui';
+import { usePropertyBusiness } from './runtime';
+import { DetailGrid, PageHeader, Panel, Status } from '../ui';
 import {
-  createPropertyApi,
   type Bill,
   type BillOperation,
   type Filters,
   type SettlementEntry,
-} from './api';
+} from './types';
 import {
   actionLabels,
   basisText,
@@ -71,8 +70,7 @@ export function BillList({
   onPage?: (page: number, size: number) => void;
   editor?: (editor: BillEditorState) => void;
 }) {
-  const { request, can, communityId, params, go } = useAdmin();
-  const api = useMemo(() => createPropertyApi(request), [request]);
+  const { api, can, communityId, params, go } = usePropertyBusiness();
   const c = communityId || params.community_id || '';
   const [localPage, setLocalPage] = useState(1);
   const [localSize, setLocalSize] = useState(20);
@@ -80,10 +78,10 @@ export function BillList({
   const page = outerPage ?? localPage;
   const size = outerSize ?? localSize;
   const list = useQuery({
-    queryKey: ['property', 'bills', c, houseId, filters, page, size],
+    queryKey: ['property-business', 'bills', c, houseId, filters, page, size],
     queryFn: () =>
       api.bills(c, { ...filters, house_id: houseId, page, page_size: size }),
-    enabled: !!c && can('property.bill.read'),
+    enabled: !!c && can('bill.read'),
   });
   const openEditor = onEditor || setEditor;
   const columns: ColumnsType<Bill> = [
@@ -181,7 +179,7 @@ export function BillList({
           >
             详情
           </Button>
-          {can('property.bill_receipt.create') &&
+          {can('bill_receipt.create') &&
             bill.lifecycle_status === 'active' &&
             bill.outstanding_cents > 0 && (
               <Tooltip
@@ -241,8 +239,8 @@ export function BillList({
 }
 
 export function BillingPage({ detail = false }: { detail?: boolean }) {
-  const { request, can, communityId, community, params, go } = useAdmin();
-  const api = useMemo(() => createPropertyApi(request), [request]);
+  const { api, can, communityId, community, params, go } =
+    usePropertyBusiness();
   const c = communityId || params.community_id || '';
   const id = params.bill_id || params.id || '';
   const page = Number(params.page) || 1;
@@ -269,12 +267,7 @@ export function BillingPage({ detail = false }: { detail?: boolean }) {
   const [create, setCreate] = useState(false);
   const [basisOpen, setBasisOpen] = useState(false);
   useEffect(() => {
-    if (
-      !detail &&
-      params.action === 'new-bill' &&
-      c &&
-      can('property.bill.manage')
-    )
+    if (!detail && params.action === 'new-bill' && c && can('bill.manage'))
       setCreate(true);
   }, [params.action, c, detail, can]);
   const closeCreate = () => {
@@ -283,16 +276,16 @@ export function BillingPage({ detail = false }: { detail?: boolean }) {
       go('bills', { ...params, action: undefined });
   };
   const billQuery = useQuery({
-    queryKey: ['property', 'bill', c, id],
+    queryKey: ['property-business', 'bill', c, id],
     queryFn: () => api.bill(c, id),
-    enabled: !!c && !!id && detail && can('property.bill.read'),
+    enabled: !!c && !!id && detail && can('bill.read'),
   });
   const bill = billQuery.data;
   const pageSummary = useQuery({
-    queryKey: ['property', 'bill-page-summary', c, params],
+    queryKey: ['property-business', 'bill-page-summary', c, params],
     queryFn: () =>
       api.bills(c, { ...listFilters(params, tab), page, page_size: size }),
-    enabled: !!c && !detail && can('property.bill.read'),
+    enabled: !!c && !detail && can('bill.read'),
   });
   const current = pageSummary.data?.items ?? [];
   if (!c)
@@ -323,14 +316,14 @@ export function BillingPage({ detail = false }: { detail?: boolean }) {
                   <Status>{billStatus(bill)}</Status>
                   {bill.lifecycle_status === 'active' && (
                     <>
-                      {can('property.bill.manage') && (
+                      {can('bill.manage') && (
                         <Button
                           onClick={() => setEditor({ action: 'edit', bill })}
                         >
                           编辑资料
                         </Button>
                       )}
-                      {can('property.bill_receipt.create') &&
+                      {can('bill_receipt.create') &&
                         bill.outstanding_cents > 0 && (
                           <Tooltip
                             title={
@@ -355,7 +348,7 @@ export function BillingPage({ detail = false }: { detail?: boolean }) {
                             </Button>
                           </Tooltip>
                         )}
-                      {can('property.bill.void') && (
+                      {can('bill.void') && (
                         <Dropdown
                           menu={{
                             items: [
@@ -377,16 +370,15 @@ export function BillingPage({ detail = false }: { detail?: boolean }) {
                       )}
                     </>
                   )}
-                  {bill.lifecycle_status === 'voided' &&
-                    can('property.bill.manage') && (
-                      <Button
-                        type="primary"
-                        disabled={!bill.house_effective_enabled}
-                        onClick={() => setCreate(true)}
-                      >
-                        按原账单重新建账
-                      </Button>
-                    )}
+                  {bill.lifecycle_status === 'voided' && can('bill.manage') && (
+                    <Button
+                      type="primary"
+                      disabled={!bill.house_effective_enabled}
+                      onClick={() => setCreate(true)}
+                    >
+                      按原账单重新建账
+                    </Button>
+                  )}
                 </>
               )
             }
@@ -405,7 +397,7 @@ export function BillingPage({ detail = false }: { detail?: boolean }) {
                 <Button onClick={() => setBasisOpen(true)}>
                   计费依据与试算
                 </Button>
-                {can('property.bill.manage') && (
+                {can('bill.manage') && (
                   <Button
                     icon={<DownloadOutlined />}
                     onClick={() => go('import-new', { import_type: 'bills' })}
@@ -413,7 +405,7 @@ export function BillingPage({ detail = false }: { detail?: boolean }) {
                     批量导入
                   </Button>
                 )}
-                {can('property.bill.manage') && (
+                {can('bill.manage') && (
                   <Button
                     type="primary"
                     icon={<PlusOutlined />}
@@ -612,13 +604,12 @@ function BillDetail({
   bill: Bill;
   edit: (editor: BillEditorState) => void;
 }) {
-  const { request, can, go } = useAdmin();
-  const api = useMemo(() => createPropertyApi(request), [request]);
+  const { api, can, go } = usePropertyBusiness();
   const [entryPage, setEntryPage] = useState(1);
   const [operationPage, setOperationPage] = useState(1);
   const entries = useQuery({
     queryKey: [
-      'property',
+      'property-business',
       'bill-entries',
       bill.community_id,
       bill.id,
@@ -632,7 +623,7 @@ function BillDetail({
   });
   const operations = useQuery({
     queryKey: [
-      'property',
+      'property-business',
       'bill-operations',
       bill.community_id,
       bill.id,
@@ -703,7 +694,7 @@ function BillDetail({
           <Panel
             title="账单资料"
             extra={
-              can('property.housing.read') && (
+              can('housing.read') && (
                 <Button
                   type="link"
                   size="small"
@@ -815,7 +806,7 @@ function BillDetail({
                     !entry.reversed_by_entry_id &&
                     entry.entry_type === 'receipt' &&
                     entry.source_type === 'offline' &&
-                    can('property.bill_receipt.correct') &&
+                    can('bill_receipt.correct') &&
                     bill.lifecycle_status === 'active' ? (
                       <Space>
                         <Button

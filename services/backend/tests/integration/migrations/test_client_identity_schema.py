@@ -99,7 +99,7 @@ def test_client_identity_downgrade_refuses_any_grant_history(
         with Session(engine) as db:
             assert db.get(MiniappUserIdentity, identity_id) is not None
             assert db.scalar(text("SELECT version_num FROM alembic_version")) == (
-                "20261027_client_identities"
+                "20261029_business_actors"
             )
     finally:
         engine.dispose()

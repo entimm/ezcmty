@@ -7,21 +7,19 @@ from typing import Any, Literal
 from sqlalchemy.orm import Session
 
 from backend_app.core.errors import AppError
-from backend_app.domain.admin.identity import AdminIdentity
 from backend_app.domain.housing import (
     HouseCreationCommand,
     create_house_records,
     house_creation_identity,
-    house_creation_permissions,
     inspect_house_creation,
     revalidate_space_location,
     space_location_snapshot,
 )
 from backend_app.models.housing import House
-from backend_app.repositories.admin import AdminRepository
 from backend_app.repositories.housing import HousingRepository
 from backend_app.repositories.property import PropertyRepository
-from backend_app.services.house_owner_creation import audit_house_owner_creation
+from backend_app.services.property_business.context import PropertyBusinessContext
+from backend_app.services.property_business.house_owner_creation import audit_house_owner_creation
 
 
 @dataclass(frozen=True)
@@ -74,6 +72,7 @@ def create_house(
     company_id: str,
     community_id: str,
     actor_id: str,
+    context: PropertyBusinessContext,
     command: HouseCreationCommand,
     request_id: str,
     input_fields: frozenset[str],
@@ -82,20 +81,10 @@ def create_house(
     expected_target_id: str | None = None,
 ) -> HouseCreationResult:
     """Protect resources and apply one creation; caller owns commit and rollback."""
-    properties = PropertyRepository(db)
-    company = properties.company(company_id, lock=True)
-    if company is None or not company.enabled:
-        raise AppError("auth.unauthenticated")
-    identity = AdminIdentity(AdminRepository(db, "property_admin", company_id))
-    actor = identity.account(actor_id, lock=True)
-    if not actor.enabled:
-        raise AppError("auth.unauthenticated")
-    if actor.must_change_password:
-        raise AppError("auth.password_change_required")
-    if not house_creation_permissions(has_owners=bool(command.owners)) <= set(
-        identity.effective_permissions(actor.id)
-    ):
+    if context.company_id != company_id or context.actor_id != actor_id:
         raise AppError("auth.forbidden")
+    actor = context.require("housing.manage", lock=True)
+    properties = PropertyRepository(db)
     community = properties.community(community_id, company_scope_id=company_id, lock=True)
     if community is None:
         raise AppError("resource.not_found")
@@ -118,7 +107,7 @@ def create_house(
         assert existing is not None
         return HouseCreationResult("skipped", existing)
     house, owners = create_house_records(repo, community_id, command)
-    identity.audit.record(
+    context.record(
         actor=actor,
         action="property.house.create",
         target_type="house",
@@ -127,6 +116,6 @@ def create_house(
         metadata={"changed_fields": sorted(input_fields - {"owners"})},
     )
     for owner in owners:
-        audit_house_owner_creation(identity, actor, owner, request_id)
+        audit_house_owner_creation(context, actor, owner, request_id)
     db.flush()
     return HouseCreationResult("created", house)

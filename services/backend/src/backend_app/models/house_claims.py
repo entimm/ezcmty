@@ -39,8 +39,8 @@ class HouseClaim(Base):
             name="fk_house_claim_owner",
         ),
         ForeignKeyConstraint(
-            ["property_company_id", "reviewed_by_admin_id"],
-            ["admin_accounts.property_company_id", "admin_accounts.id"],
+            ["reviewed_by_admin_id"],
+            ["admin_accounts.id"],
             name="fk_house_claim_reviewer",
         ),
         UniqueConstraint("user_id", "idempotency_key", name="uq_house_claim_key"),
@@ -144,8 +144,8 @@ class ResidentHouseBinding(Base):
             name="fk_resident_binding_origin",
         ),
         ForeignKeyConstraint(
-            ["property_company_id", "ended_by_admin_id"],
-            ["admin_accounts.property_company_id", "admin_accounts.id"],
+            ["ended_by_admin_id"],
+            ["admin_accounts.id"],
             name="fk_resident_binding_admin",
         ),
         ForeignKeyConstraint(

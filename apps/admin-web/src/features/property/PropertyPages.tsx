@@ -1,8 +1,12 @@
+import { PropertyBusinessBoundary } from './runtime';
 import { useAdmin } from '../../shared/context';
 import { NoAccess, NotFound } from '../../shared/ui';
-import { HousingPage } from './Housing';
-import { BillingPage } from './Billing';
-import { ClaimsPage, BindingsPage } from './Residents';
+import { HousingPage } from '../../shared/property-business/Housing';
+import { BillingPage } from '../../shared/property-business/Billing';
+import {
+  ClaimsPage,
+  BindingsPage,
+} from '../../shared/property-business/Residents';
 import { CommunitiesPage, CompanyPage } from './Communities';
 import { SystemPages } from '../../shared/system/SystemPages';
 
@@ -29,13 +33,29 @@ export function PropertyPages({
   if (['accounts', 'roles', 'audit'].includes(page))
     return <SystemPages page={page} params={contextParams} go={go} />;
   if (page === 'houses' || page === 'house-detail')
-    return <HousingPage detail={page === 'house-detail'} />;
+    return (
+      <PropertyBusinessBoundary>
+        <HousingPage detail={page === 'house-detail'} />
+      </PropertyBusinessBoundary>
+    );
   if (page === 'bills' || page === 'bill-detail')
-    return <BillingPage detail={page === 'bill-detail'} />;
+    return (
+      <PropertyBusinessBoundary>
+        <BillingPage detail={page === 'bill-detail'} />
+      </PropertyBusinessBoundary>
+    );
   if (page === 'claims' || page === 'claim-detail')
-    return <ClaimsPage detail={page === 'claim-detail'} />;
+    return (
+      <PropertyBusinessBoundary>
+        <ClaimsPage detail={page === 'claim-detail'} />
+      </PropertyBusinessBoundary>
+    );
   if (page === 'bindings' || page === 'binding-detail')
-    return <BindingsPage detail={page === 'binding-detail'} />;
+    return (
+      <PropertyBusinessBoundary>
+        <BindingsPage detail={page === 'binding-detail'} />
+      </PropertyBusinessBoundary>
+    );
   if (page === 'communities') return <CommunitiesPage />;
   if (page === 'company') return <CompanyPage />;
   return <NotFound back={() => go('home')} />;

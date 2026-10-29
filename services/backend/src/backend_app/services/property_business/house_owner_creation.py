@@ -7,20 +7,17 @@ from typing import Any, Literal
 from sqlalchemy.orm import Session
 
 from backend_app.core.errors import AppError
-from backend_app.domain.admin.identity import AdminIdentity
 from backend_app.domain.housing import (
     HouseOwnerCreationCommand,
     create_house_owner_record,
     house_location_snapshot,
-    house_owner_creation_permissions,
     inspect_house_owner_creation,
     revalidate_house_location,
 )
-from backend_app.models.admin import AdminAccount
 from backend_app.models.housing import HouseOwner
-from backend_app.repositories.admin import AdminRepository
 from backend_app.repositories.housing import HousingRepository
 from backend_app.repositories.property import PropertyRepository
+from backend_app.services.property_business.context import BusinessActor, PropertyBusinessContext
 
 
 @dataclass(frozen=True)
@@ -73,9 +70,9 @@ def prepare_house_owner_creation(
 
 
 def audit_house_owner_creation(
-    identity: AdminIdentity, actor: AdminAccount, owner: HouseOwner, request_id: str
+    context: PropertyBusinessContext, actor: BusinessActor, owner: HouseOwner, request_id: str
 ) -> None:
-    identity.audit.record(
+    context.record(
         actor=actor,
         action="property.house_owner.create",
         target_type="house_owner",
@@ -91,23 +88,16 @@ def _protect_house_owner_creation(
     company_id: str,
     community_id: str,
     actor_id: str,
-) -> tuple[AdminIdentity, AdminAccount]:
-    properties = PropertyRepository(db)
-    company = properties.company(company_id, lock=True)
-    if company is None or not company.enabled:
-        raise AppError("auth.unauthenticated")
-    identity = AdminIdentity(AdminRepository(db, "property_admin", company_id))
-    actor = identity.account(actor_id, lock=True)
-    if not actor.enabled:
-        raise AppError("auth.unauthenticated")
-    if actor.must_change_password:
-        raise AppError("auth.password_change_required")
-    if not house_owner_creation_permissions() <= set(identity.effective_permissions(actor.id)):
+    context: PropertyBusinessContext,
+) -> tuple[PropertyBusinessContext, BusinessActor]:
+    if context.company_id != company_id or context.actor_id != actor_id:
         raise AppError("auth.forbidden")
+    actor = context.require("housing.manage", lock=True)
+    properties = PropertyRepository(db)
     community = properties.community(community_id, company_scope_id=company_id, lock=True)
     if community is None:
         raise AppError("resource.not_found")
-    return identity, actor
+    return context, actor
 
 
 def revalidate_house_owner_creation(
@@ -116,13 +106,14 @@ def revalidate_house_owner_creation(
     company_id: str,
     community_id: str,
     actor_id: str,
+    context: PropertyBusinessContext,
     command: HouseOwnerCreationCommand,
     house_snapshot: Mapping[str, Any],
     target_id: str,
 ) -> dict[str, Any]:
     """Protect an existing result until the caller finishes its transaction; write nothing."""
     _protect_house_owner_creation(
-        db, company_id=company_id, community_id=community_id, actor_id=actor_id
+        db, company_id=company_id, community_id=community_id, actor_id=actor_id, context=context
     )
     return prepare_house_owner_creation(
         db,
@@ -141,6 +132,7 @@ def create_house_owner(
     company_id: str,
     community_id: str,
     actor_id: str,
+    context: PropertyBusinessContext,
     command: HouseOwnerCreationCommand,
     request_id: str,
     house_snapshot: Mapping[str, Any] | None = None,
@@ -148,8 +140,8 @@ def create_house_owner(
     expected_target_id: str | None = None,
 ) -> HouseOwnerCreationResult:
     """Protect resources and register one owner without committing or rolling back."""
-    identity, actor = _protect_house_owner_creation(
-        db, company_id=company_id, community_id=community_id, actor_id=actor_id
+    context, actor = _protect_house_owner_creation(
+        db, company_id=company_id, community_id=community_id, actor_id=actor_id, context=context
     )
     prepared = prepare_house_owner_creation(
         db,
@@ -168,6 +160,6 @@ def create_house_owner(
         assert existing is not None
         return HouseOwnerCreationResult("skipped", existing)
     owner = create_house_owner_record(repo, command)
-    audit_house_owner_creation(identity, actor, owner, request_id)
+    audit_house_owner_creation(context, actor, owner, request_id)
     db.flush()
     return HouseOwnerCreationResult("created", owner)

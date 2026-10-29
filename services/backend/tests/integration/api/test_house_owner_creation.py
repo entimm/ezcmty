@@ -9,7 +9,8 @@ from backend_app.core.errors import AppError
 from backend_app.domain.housing import HouseOwnerCreationCommand
 from backend_app.models.admin import AdminAuditLog
 from backend_app.models.housing import HouseOwner
-from backend_app.services.house_owner_creation import (
+from backend_app.services.property_account_access import property_task_context
+from backend_app.services.property_business.house_owner_creation import (
     create_house_owner,
     prepare_house_owner_creation,
 )
@@ -66,6 +67,7 @@ def test_shared_registration_and_audit_participate_in_caller_rollback(
             command=command,
             house_snapshot=prepared["house_snapshot"],
             request_id="owner-rollback",
+            context=property_task_context(db, workspace.company_id, workspace.account_id),
         )
         assert result.status == "created"
         assert db.scalar(select(func.count()).select_from(HouseOwner)) == 1
@@ -125,6 +127,7 @@ def test_existing_disabled_owner_is_skipped_without_reactivation_or_audit(
             expected_target_id=owner["id"],
             allow_existing=True,
             request_id="owner-skip",
+            context=property_task_context(db, workspace.company_id, workspace.account_id),
         )
         assert result.status == "skipped" and result.owner.id == owner["id"]
         assert result.owner.enabled is False
@@ -180,6 +183,7 @@ def test_fixed_owner_after_correction_does_not_rebind_to_another_matching_record
             expected_target_id=prepared["target_id"],
             allow_existing=True,
             request_id="owner-fixed",
+            context=property_task_context(db, workspace.company_id, workspace.account_id),
         )
     assert caught.value.code == "resource.conflict"
     assert caught.value.public_detail == "业主登记资料已变化，请重新核对"

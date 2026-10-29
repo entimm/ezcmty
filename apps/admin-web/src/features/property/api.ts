@@ -1,42 +1,26 @@
 import type { components } from '../../../../../openapi/types';
 import type { AdminRequest } from '../../shared/request';
-import type { Page } from '../../shared/types';
-
-export type { Page } from '../../shared/types';
-export type Filters = Record<
-  string,
-  string | number | boolean | null | undefined
->;
-export type Community = components['schemas']['Community'];
-export type Company = components['schemas']['PropertyCompany'];
-export type WorkspaceSummary =
-  components['schemas']['PropertyWorkspaceSummary'];
-export type SpaceType = components['schemas']['SpaceNode']['node_type'];
-export type HousingRecord = Pick<
-  components['schemas']['SpaceNode'],
-  'id' | 'enabled' | 'effective_enabled' | 'created_at' | 'updated_at'
->;
-export type SpaceAncestor = components['schemas']['SpaceAncestor'];
-export type SpaceNode = components['schemas']['SpaceNode'];
-export type House = components['schemas']['House'];
-export type HouseOption = components['schemas']['HouseOption'];
-export type Owner = components['schemas']['HouseOwner'];
-export type Usage = components['schemas']['FeeBasisVersion']['house_usage'];
-export type FeeBasis = components['schemas']['FeeBasisVersion'];
-export type Calculation = components['schemas']['FeeCalculation'];
-export type Bill = components['schemas']['Bill'];
-export type SettlementEntry = components['schemas']['SettlementEntry'];
-export type BillOperation = components['schemas']['BillOperation'];
-export type BillWriteResult = components['schemas']['BillWriteResult'];
-export interface BillSubmission {
-  path: string;
-  method: 'POST' | 'PATCH';
-  body: Record<string, unknown>;
-}
-export type Claim = components['schemas']['PropertyHouseClaim'];
-export type ClaimStatus = Claim['status'];
-export type Binding = components['schemas']['PropertyHouseBinding'];
-export type BindingStatus = Binding['status'];
+import type {
+  Page,
+  Filters,
+  Community,
+  Company,
+  WorkspaceSummary,
+  SpaceNode,
+  HouseOption,
+  House,
+  Owner,
+  FeeBasis,
+  Calculation,
+  Bill,
+  SettlementEntry,
+  BillOperation,
+  BillSubmission,
+  BillWriteResult,
+  Claim,
+  Binding,
+} from '../../shared/property-business/types';
+export type * from '../../shared/property-business/types';
 
 export function query(filters: Filters = {}) {
   const values = new URLSearchParams();
@@ -114,12 +98,30 @@ export function createPropertyApi(request: AdminRequest) {
       read<SettlementEntry>(`${billRoot(c, id)}/settlement-entries`, filters),
     operations: (c: string, id: string, filters: Filters) =>
       read<BillOperation>(`${billRoot(c, id)}/operations`, filters),
-    submitBill: (submission: BillSubmission, key: string) =>
-      request<BillWriteResult>(submission.path, {
-        method: submission.method,
+    submitBill: (submission: BillSubmission, key: string) => {
+      const root = billRoot(submission.communityId, submission.billId);
+      const suffix = {
+        create: '',
+        edit: '',
+        receipt: '/offline-receipts',
+        void: '/voids',
+        correct: `/offline-receipts/${encodeURIComponent(submission.entryId || '')}/corrections`,
+        reverse: `/offline-receipts/${encodeURIComponent(submission.entryId || '')}/reversals`,
+      }[submission.action];
+      if (
+        !submission.companyId ||
+        !submission.communityId ||
+        (submission.action !== 'create' && !submission.billId) ||
+        (['correct', 'reverse'].includes(submission.action) &&
+          !submission.entryId)
+      )
+        throw new Error('原账务操作范围或资源不完整');
+      return request<BillWriteResult>(root + suffix, {
+        method: submission.action === 'edit' ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
         body: JSON.stringify(submission.body),
-      }),
+      });
+    },
     billResult: (key: string) =>
       request<components['schemas']['BillOperationResult']>(
         `/v1/bill-operation-results/${encodeURIComponent(key)}`,

@@ -500,3 +500,36 @@ def create_house_records(
         for item in command.owners
     ]
     return house, owners
+
+
+def validate_housing_update(kind: str, values: Mapping[str, Any]) -> dict[str, Any]:
+    """Apply existing field invariants to non-HTTP update callers too."""
+    allowed = {
+        "space": {"name", "external_code", "sort_order", "enabled"},
+        "house": {"room_no", "floor_no", "external_code", "enabled"},
+        "owner": {"name", "phone", "enabled"},
+    }
+    if not values or not values.keys() <= allowed[kind]:
+        raise AppError("VALIDATION_ERROR")
+    result = dict(values)
+    for field, limit in (("name", 80), ("room_no", 32), ("external_code", 64)):
+        if field in result:
+            result[field] = _creation_text(result[field], limit, required=field != "external_code")
+    if "phone" in result:
+        phone = normalize_owner_phone(result["phone"])
+        if not isinstance(phone, str) or re.fullmatch(r"1[3-9][0-9]{9}", phone) is None:
+            raise AppError("VALIDATION_ERROR")
+        result["phone"] = phone
+    if "enabled" in result and type(result["enabled"]) is not bool:
+        raise AppError("VALIDATION_ERROR")
+    if "sort_order" in result and (
+        type(result["sort_order"]) is not int or not 0 <= result["sort_order"] <= 2147483647
+    ):
+        raise AppError("VALIDATION_ERROR")
+    if (
+        "floor_no" in result
+        and result["floor_no"] is not None
+        and (type(result["floor_no"]) is not int or not -32768 <= result["floor_no"] <= 32767)
+    ):
+        raise AppError("VALIDATION_ERROR")
+    return result

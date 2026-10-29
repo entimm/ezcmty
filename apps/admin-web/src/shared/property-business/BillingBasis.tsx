@@ -1,6 +1,9 @@
-import { DatePicker } from '../../shared/DatePicker';
-import { useMemo, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  usePropertyQuery as useQuery,
+  usePropertyQueryClient as useQueryClient,
+} from './queries';
+import { DatePicker } from '../DatePicker';
+import { useState } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
 import {
   Alert,
@@ -21,15 +24,10 @@ import {
   Tag,
 } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { useAdmin } from '../../shared/context';
-import { businessNow } from '../../shared/datetime';
-import { DetailGrid, Panel } from '../../shared/ui';
-import {
-  createPropertyApi,
-  type FeeBasis,
-  type HouseOption,
-  type Usage,
-} from './api';
+import { usePropertyBusiness } from './runtime';
+import { businessNow } from '../datetime';
+import { DetailGrid, Panel } from '../ui';
+import { type FeeBasis, type HouseOption, type Usage } from './types';
 import { PropertyEditor } from './Editor';
 import {
   basisText,
@@ -48,20 +46,25 @@ type BasisHouse = {
 };
 
 export function BillingBasisDialog({ onClose }: { onClose: () => void }) {
-  const { request, can, communityId, confirmLeave } = useAdmin();
-  const api = useMemo(() => createPropertyApi(request), [request]);
+  const { api, can, communityId, confirmLeave } = usePropertyBusiness();
   const [room, setRoom] = useState('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<HouseOption>();
   const houses = useQuery({
-    queryKey: ['property', 'basis-house-options', communityId, room, page],
+    queryKey: [
+      'property-business',
+      'basis-house-options',
+      communityId,
+      room,
+      page,
+    ],
     queryFn: () =>
       api.houseOptions(communityId, {
         room_no: room || undefined,
         page,
         page_size: 20,
       }),
-    enabled: !!communityId && can('property.bill.read'),
+    enabled: !!communityId && can('bill.read'),
   });
   const choose = (house: HouseOption) => confirmLeave(() => setSelected(house));
   return (
@@ -133,9 +136,8 @@ export function BillingBasisDialog({ onClose }: { onClose: () => void }) {
 }
 
 export function FeeBasisPanel({ house }: { house: BasisHouse }) {
-  const { request, can } = useAdmin();
+  const { api, can } = usePropertyBusiness();
   const { message } = App.useApp();
-  const api = useMemo(() => createPropertyApi(request), [request]);
   const queryClient = useQueryClient();
   const [month, setMonth] = useState<Dayjs>(businessNow());
   const [page, setPage] = useState(1);
@@ -146,14 +148,20 @@ export function FeeBasisPanel({ house }: { house: BasisHouse }) {
   }>();
   const [detail, setDetail] = useState<FeeBasis>();
   const bases = useQuery({
-    queryKey: ['property', 'bases', house.community_id, house.id, page],
+    queryKey: [
+      'property-business',
+      'bases',
+      house.community_id,
+      house.id,
+      page,
+    ],
     queryFn: () =>
       api.bases(house.community_id, house.id, { page, page_size: 20 }),
-    enabled: can('property.bill.read'),
+    enabled: can('bill.read'),
   });
   const calculation = useQuery({
     queryKey: [
-      'property',
+      'property-business',
       'calculation',
       house.community_id,
       house.id,
@@ -161,7 +169,7 @@ export function FeeBasisPanel({ house }: { house: BasisHouse }) {
     ],
     queryFn: () =>
       api.calculate(house.community_id, house.id, month.format('YYYY-MM')),
-    enabled: can('property.bill.read'),
+    enabled: can('bill.read'),
     retry: false,
   });
   const begin = async (source?: FeeBasis) => {
@@ -184,8 +192,7 @@ export function FeeBasisPanel({ house }: { house: BasisHouse }) {
       setPreparing(false);
     }
   };
-  if (!can('property.bill.read'))
-    return <Empty description="没有计费依据查看权限" />;
+  if (!can('bill.read')) return <Empty description="没有计费依据查看权限" />;
   return (
     <>
       <Panel
@@ -230,7 +237,7 @@ export function FeeBasisPanel({ house }: { house: BasisHouse }) {
       <Panel
         title="计费依据版本"
         extra={
-          can('property.fee_basis.manage') && (
+          can('fee_basis.manage') && (
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -280,7 +287,7 @@ export function FeeBasisPanel({ house }: { house: BasisHouse }) {
                   >
                     详情
                   </Button>
-                  {can('property.fee_basis.manage') && (
+                  {can('fee_basis.manage') && (
                     <Button
                       type="link"
                       size="small"
@@ -303,7 +310,9 @@ export function FeeBasisPanel({ house }: { house: BasisHouse }) {
           expected={editing.expected}
           close={() => setEditing(undefined)}
           done={async () => {
-            await queryClient.invalidateQueries({ queryKey: ['property'] });
+            await queryClient.invalidateQueries({
+              queryKey: ['property-business'],
+            });
           }}
         />
       )}
@@ -315,9 +324,11 @@ export function FeeBasisPanel({ house }: { house: BasisHouse }) {
 }
 
 function BasisDetail({ basis, close }: { basis: FeeBasis; close: () => void }) {
+  const { setDirty } = usePropertyBusiness();
   const [form] = Form.useForm();
   return (
     <PropertyEditor
+      setDirty={setDirty}
       title={`计费依据 v${basis.version_no}`}
       form={form}
       close={close}
@@ -350,9 +361,8 @@ function BasisEditor({
   close: () => void;
   done: () => Promise<void>;
 }) {
-  const { request, can } = useAdmin();
+  const { api, setDirty, can } = usePropertyBusiness();
   const { message } = App.useApp();
-  const api = useMemo(() => createPropertyApi(request), [request]);
   const [form] = Form.useForm();
   const method = Form.useWatch('method', form);
   const [expectedLatest, setExpectedLatest] = useState(expected);
@@ -373,6 +383,7 @@ function BasisEditor({
   };
   return (
     <PropertyEditor
+      setDirty={setDirty}
       title="新增计费依据版本"
       form={form}
       initial={initial}
@@ -389,8 +400,7 @@ function BasisEditor({
         )
       }
       submit={async (values) => {
-        if (!can('property.fee_basis.manage'))
-          throw new Error('没有计费依据维护权限');
+        if (!can('fee_basis.manage')) throw new Error('没有计费依据维护权限');
         const latest = await api.bases(house.community_id, house.id, {
           page: 1,
           page_size: 1,

@@ -16,10 +16,12 @@ class PropertyRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def company(self, company_id: str, *, lock: bool = False) -> PropertyCompany | None:
+    def company(
+        self, company_id: str, *, lock: bool = False, shared: bool = False
+    ) -> PropertyCompany | None:
         query = select(PropertyCompany).where(PropertyCompany.id == company_id)
         if lock:
-            query = query.with_for_update(of=PropertyCompany).execution_options(
+            query = query.with_for_update(read=shared, of=PropertyCompany).execution_options(
                 populate_existing=True
             )
         return self.db.scalar(query)

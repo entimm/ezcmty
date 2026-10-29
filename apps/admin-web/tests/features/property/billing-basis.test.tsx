@@ -1,3 +1,4 @@
+import { PropertyBusinessBoundary } from '../../../src/features/property/runtime';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from 'antd';
@@ -5,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   BillingBasisDialog,
   FeeBasisPanel,
-} from '../../../src/features/property/BillingBasis';
+} from '../../../src/shared/property-business/BillingBasis';
 import {
   AdminContext,
   type AdminContextValue,
@@ -37,6 +38,8 @@ function show(element: React.ReactNode, permissions: string[]) {
   const can = (permission: string) => permissions.includes(permission);
   const context = {
     scope: 'property',
+    session: { subjectId: 'property-user', permissions: permissions || [] },
+    company: { id: 'company-1', name: '物业公司' },
     request,
     can,
     hasPermission: can,
@@ -51,7 +54,9 @@ function show(element: React.ReactNode, permissions: string[]) {
   render(
     <QueryClientProvider client={client}>
       <AdminContext.Provider value={context}>
-        <App>{element}</App>
+        <App>
+          <PropertyBusinessBoundary>{element}</PropertyBusinessBoundary>
+        </App>
       </AdminContext.Provider>
     </QueryClientProvider>,
   );

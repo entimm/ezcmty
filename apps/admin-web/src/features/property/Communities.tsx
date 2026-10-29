@@ -18,7 +18,12 @@ import { canViewPropertyOrganization } from '../../shared/authorization';
 import { DetailGrid, PageHeader, Panel, Status } from '../../shared/ui';
 import { createPropertyApi, type Community } from './api';
 import { PropertyEditor } from './Editor';
-import { Metric, Metrics, QueryError, time } from './presentation';
+import {
+  Metric,
+  Metrics,
+  QueryError,
+  time,
+} from '../../shared/property-business/presentation';
 
 export function CommunitiesPage() {
   const { request, can, params, go } = useAdmin();

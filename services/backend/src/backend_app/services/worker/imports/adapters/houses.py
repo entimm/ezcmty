@@ -22,7 +22,11 @@ from backend_app.domain.imports.types import (
     ImportProblem,
 )
 from backend_app.repositories.housing import HousingRepository
-from backend_app.services.house_creation import create_house, prepare_house_creation
+from backend_app.services.property_account_access import property_task_context
+from backend_app.services.property_business.house_creation import (
+    create_house,
+    prepare_house_creation,
+)
 
 _FIELDS = ("phase_name", "building_name", "unit_name", "room_no", "floor_no", "external_code")
 _INPUT_FIELDS = frozenset({"space_node_id", "room_no", "floor_no", "external_code"})
@@ -174,6 +178,9 @@ class HouseImportAdapter:
                 company_id=context.scope.property_company_id,
                 community_id=context.scope.community_id,
                 actor_id=context.actor_id,
+                context=property_task_context(
+                    db, context.scope.property_company_id, context.actor_id
+                ),
                 command=HouseCreationCommand.from_input(operation.values["command"]),
                 request_id=context.request_id,
                 input_fields=_INPUT_FIELDS,

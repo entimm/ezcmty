@@ -1,6 +1,9 @@
-import { DatePicker } from '../../shared/DatePicker';
-import { useMemo, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  usePropertyQuery as useQuery,
+  usePropertyQueryClient as useQueryClient,
+} from './queries';
+import { DatePicker } from '../DatePicker';
+import { useState } from 'react';
 import {
   ArrowRightOutlined,
   CheckCircleOutlined,
@@ -31,11 +34,11 @@ import {
   dateRangeFromInstants,
   dayStartInstant,
   dayAfterInstant,
-} from '../../shared/datetime';
-import { useAdmin } from '../../shared/context';
-import { ApiError } from '../../shared/request';
-import { DetailGrid, PageHeader, Panel, Status } from '../../shared/ui';
-import { createPropertyApi, type Binding, type Claim, type Owner } from './api';
+} from '../datetime';
+import { usePropertyBusiness } from './runtime';
+import { ApiError } from '../request';
+import { DetailGrid, PageHeader, Panel, Status } from '../ui';
+import { type Binding, type Claim, type Owner } from './types';
 import { PropertyEditor } from './Editor';
 import {
   HousingStatus,
@@ -59,8 +62,7 @@ const bindingLabels = {
 type Review = { claim: Claim; decision: 'approved' | 'rejected' };
 
 export function ClaimsPage({ detail = false }: { detail?: boolean }) {
-  const { request, can, communityId, params, go } = useAdmin();
-  const api = useMemo(() => createPropertyApi(request), [request]);
+  const { api, can, communityId, params, go } = usePropertyBusiness();
   const c = communityId || undefined;
   const page = Number(params.page) || 1;
   const size = Number(params.page_size) || 20;
@@ -73,7 +75,7 @@ export function ClaimsPage({ detail = false }: { detail?: boolean }) {
   const [review, setReview] = useState<Review>();
   const id = params.claim_id || params.id || '';
   const list = useQuery({
-    queryKey: ['property', 'claims', c, params],
+    queryKey: ['property-business', 'claims', c, params],
     queryFn: () =>
       api.claims({
         community_id: c,
@@ -86,15 +88,15 @@ export function ClaimsPage({ detail = false }: { detail?: boolean }) {
         page,
         page_size: size,
       }),
-    enabled: !detail && can('property.resident_access.read'),
+    enabled: !detail && can('resident_access.read'),
   });
   const claimQuery = useQuery({
-    queryKey: ['property', 'claim', id],
+    queryKey: ['property-business', 'claim', id],
     queryFn: () => api.claim(id),
-    enabled: detail && !!id && can('property.resident_access.read'),
+    enabled: detail && !!id && can('resident_access.read'),
   });
   const counts = useQuery({
-    queryKey: ['property', 'claim-counts', c],
+    queryKey: ['property-business', 'claim-counts', c],
     queryFn: async () => {
       const [pending, matched, unmatched] = await Promise.all([
         api.claims({
@@ -124,7 +126,7 @@ export function ClaimsPage({ detail = false }: { detail?: boolean }) {
         unmatched: unmatched.total,
       };
     },
-    enabled: !detail && can('property.resident_access.read'),
+    enabled: !detail && can('resident_access.read'),
   });
   const claim = claimQuery.data;
   const visible = (list.data?.items ?? []).filter(
@@ -161,7 +163,7 @@ export function ClaimsPage({ detail = false }: { detail?: boolean }) {
               claim && (
                 <>
                   <Status>{claimLabels[claim.status]}</Status>
-                  {can('property.resident_access.review') &&
+                  {can('resident_access.review') &&
                     claim.status === 'pending' && (
                       <>
                         <Button
@@ -370,7 +372,7 @@ export function ClaimsPage({ detail = false }: { detail?: boolean }) {
                         详情
                       </Button>
                       {row.status === 'pending' &&
-                        can('property.resident_access.review') && (
+                        can('resident_access.review') && (
                           <Button
                             type="link"
                             size="small"
@@ -404,12 +406,11 @@ export function ClaimsPage({ detail = false }: { detail?: boolean }) {
 }
 
 function ClaimDetail({ claim }: { claim: Claim }) {
-  const { request, can, go } = useAdmin();
-  const api = useMemo(() => createPropertyApi(request), [request]);
+  const { api, can, go } = usePropertyBusiness();
   const [ownerPage, setOwnerPage] = useState(1);
   const owners = useQuery({
     queryKey: [
-      'property',
+      'property-business',
       'claim-owners',
       claim.community_id,
       claim.house_id,
@@ -420,7 +421,7 @@ function ClaimDetail({ claim }: { claim: Claim }) {
         page: ownerPage,
         page_size: 20,
       }),
-    enabled: can('property.housing.read'),
+    enabled: can('housing.read'),
   });
   return (
     <>
@@ -472,11 +473,11 @@ function ClaimDetail({ claim }: { claim: Claim }) {
             />
           </Panel>
           <div style={{ height: 20 }} />
-          {can('property.housing.read') && (
+          {can('housing.read') && (
             <Panel
               title="现有业主档案"
               extra={
-                can('property.housing.read') && (
+                can('housing.read') && (
                   <Button
                     type="link"
                     size="small"
@@ -540,8 +541,7 @@ function ClaimDetail({ claim }: { claim: Claim }) {
 }
 
 export function BindingsPage({ detail = false }: { detail?: boolean }) {
-  const { request, can, communityId, params, go } = useAdmin();
-  const api = useMemo(() => createPropertyApi(request), [request]);
+  const { api, can, communityId, params, go } = usePropertyBusiness();
   const c = communityId || undefined;
   const id = params.binding_id || params.id || '';
   const page = Number(params.page) || 1;
@@ -554,7 +554,7 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
   const [search, setSearch] = useState('');
   const [revoking, setRevoking] = useState<Binding>();
   const list = useQuery({
-    queryKey: ['property', 'bindings', c, params],
+    queryKey: ['property-business', 'bindings', c, params],
     queryFn: () =>
       api.bindings({
         community_id: c,
@@ -567,15 +567,15 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
         page,
         page_size: size,
       }),
-    enabled: !detail && can('property.resident_access.read'),
+    enabled: !detail && can('resident_access.read'),
   });
   const bindingQuery = useQuery({
-    queryKey: ['property', 'binding', id],
+    queryKey: ['property-business', 'binding', id],
     queryFn: () => api.binding(id),
-    enabled: detail && !!id && can('property.resident_access.read'),
+    enabled: detail && !!id && can('resident_access.read'),
   });
   const counts = useQuery({
-    queryKey: ['property', 'binding-counts', c],
+    queryKey: ['property-business', 'binding-counts', c],
     queryFn: async () => {
       const [active, released, revoked] = await Promise.all([
         api.bindings({
@@ -599,7 +599,7 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
       ]);
       return { active: active.total, ended: released.total + revoked.total };
     },
-    enabled: !detail && can('property.resident_access.read'),
+    enabled: !detail && can('resident_access.read'),
   });
   const binding = bindingQuery.data;
   const visible = (list.data?.items ?? []).filter(
@@ -636,7 +636,7 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
               binding && (
                 <>
                   <Status>{bindingLabels[binding.status]}</Status>
-                  {can('property.resident_access.revoke') &&
+                  {can('resident_access.revoke') &&
                     binding.status === 'active' && (
                       <Button danger onClick={() => setRevoking(binding)}>
                         解除房屋绑定
@@ -673,7 +673,7 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
                     ['结束原因', binding.end_reason || '—'],
                     [
                       '来源',
-                      can('property.resident_access.read') ? (
+                      can('resident_access.read') ? (
                         <a
                           key="claim"
                           onClick={() =>
@@ -693,7 +693,7 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
                 />
                 <Divider />
                 <Space>
-                  {can('property.housing.read') && (
+                  {can('housing.read') && (
                     <Button
                       onClick={() =>
                         go('house-detail', {
@@ -882,7 +882,7 @@ export function BindingsPage({ detail = false }: { detail?: boolean }) {
                       >
                         详情
                       </Button>
-                      {can('property.resident_access.revoke') &&
+                      {can('resident_access.revoke') &&
                         row.status === 'active' && (
                           <Button
                             type="link"
@@ -924,9 +924,8 @@ function ResidentEditor({
   binding?: Binding;
   close: () => void;
 }) {
-  const { request, can } = useAdmin();
+  const { api, setDirty, can } = usePropertyBusiness();
   const { message } = App.useApp();
-  const api = useMemo(() => createPropertyApi(request), [request]);
   const cache = useQueryClient();
   const [form] = Form.useForm();
   const decision = Form.useWatch('decision', form) as string | undefined;
@@ -945,8 +944,7 @@ function ResidentEditor({
   const submit = async (values: Record<string, unknown>) => {
     try {
       if (review) {
-        if (!can('property.resident_access.review'))
-          throw new Error('没有审核权限');
+        if (!can('resident_access.review')) throw new Error('没有审核权限');
         await api.reviewClaim(review.claim.id, {
           expected_row_version: review.claim.row_version,
           decision: values.decision,
@@ -955,15 +953,14 @@ function ResidentEditor({
             : {}),
         });
       } else if (binding) {
-        if (!can('property.resident_access.revoke'))
-          throw new Error('没有解除权限');
+        if (!can('resident_access.revoke')) throw new Error('没有解除权限');
         await api.revokeBinding(binding.id, {
           expected_row_version: binding.row_version,
           reason: String(values.reason).trim(),
         });
       }
     } catch (failure) {
-      await cache.invalidateQueries({ queryKey: ['property'] });
+      await cache.invalidateQueries({ queryKey: ['property-business'] });
       if (!(failure instanceof ApiError) || failure.status >= 500)
         throw new Error(
           '操作结果尚未确定，请关闭后重新读取记录核实，避免重复办理。',
@@ -971,7 +968,7 @@ function ResidentEditor({
         );
       throw failure;
     }
-    await cache.invalidateQueries({ queryKey: ['property'] });
+    await cache.invalidateQueries({ queryKey: ['property-business'] });
     message.success(
       binding
         ? '绑定已解除'
@@ -982,6 +979,7 @@ function ResidentEditor({
   };
   return (
     <PropertyEditor
+      setDirty={setDirty}
       title={
         binding
           ? '解除居民房屋绑定'

@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from backend_app.core.errors import AppError
 from backend_app.core.identifiers import new_id
-from backend_app.domain.admin.identity import AdminIdentity
 from backend_app.domain.billing.basis import (
     BASIS_CONTENT_FIELDS,
     FeeBasisCreationCommand,
@@ -19,10 +18,10 @@ from backend_app.domain.billing.basis import (
 )
 from backend_app.domain.billing.calculation import MAX_CENTS, month_date
 from backend_app.domain.housing import house_location_snapshot, revalidate_house_location
-from backend_app.models.admin import AdminAccount, utc_now
+from backend_app.models.admin import utc_now
 from backend_app.models.billing import FeeBasisVersion
-from backend_app.repositories.admin import AdminRepository
 from backend_app.repositories.billing import BillingRepository
+from backend_app.services.property_business.context import BusinessActor, PropertyBusinessContext
 
 
 @dataclass(frozen=True)
@@ -37,18 +36,14 @@ def _protect_fee_basis(
     company_id: str,
     community_id: str,
     actor_id: str,
-) -> tuple[AdminIdentity, AdminAccount]:
-    identity = AdminIdentity(AdminRepository(db, "property_admin", company_id))
-    company, actor, community = repo.protect(actor_id, community_id)
-    if company is None or not company.enabled or actor is None or not actor.enabled:
-        raise AppError("auth.unauthenticated")
-    if actor.must_change_password:
-        raise AppError("auth.password_change_required")
-    if community is None:
-        raise AppError("resource.not_found")
-    if "property.fee_basis.manage" not in identity.effective_permissions(actor.id):
+    context: PropertyBusinessContext,
+) -> tuple[PropertyBusinessContext, BusinessActor]:
+    if context.company_id != company_id or context.actor_id != actor_id:
         raise AppError("auth.forbidden")
-    return identity, actor
+    actor = context.require("fee_basis.manage", lock=True, shared=True)
+    if repo.community(community_id, lock=True) is None:
+        raise AppError("resource.not_found")
+    return context, actor
 
 
 def _resolve_house(
@@ -154,14 +149,15 @@ def verify_fee_basis_result(
     expected_latest_version_no: int | None = None,
     expected_target_id: str | None = None,
     actor_id: str | None = None,
+    context: PropertyBusinessContext | None = None,
     lock: bool = False,
 ) -> FeeBasisVersion:
     """Verify an original immutable result without requiring it to remain latest."""
     repo = BillingRepository(db, company_id)
     if lock:
-        if actor_id is None:
+        if actor_id is None or context is None:
             raise AppError("auth.forbidden")
-        _protect_fee_basis(db, repo, company_id, community_id, actor_id)
+        _protect_fee_basis(db, repo, company_id, community_id, actor_id, context)
     _resolve_house(repo, community_id, command, house_snapshot, lock=lock)
     basis = repo.basis(command.house_id, target_id)
     if original_status not in {"created", "skipped"} or basis is None:
@@ -185,6 +181,7 @@ def create_fee_basis(
     company_id: str,
     community_id: str,
     actor_id: str,
+    context: PropertyBusinessContext,
     command: FeeBasisCreationCommand,
     expected_latest_version_no: int,
     request_id: str,
@@ -196,7 +193,7 @@ def create_fee_basis(
     """Authorize and append or skip under the house lock; the caller owns the transaction."""
     validate_basis_version_number(expected_latest_version_no)
     repo = BillingRepository(db, company_id)
-    identity, actor = _protect_fee_basis(db, repo, company_id, community_id, actor_id)
+    context, actor = _protect_fee_basis(db, repo, company_id, community_id, actor_id, context)
     if allow_existing:
         prepared = prepare_fee_basis_creation(
             db,
@@ -233,7 +230,7 @@ def create_fee_basis(
         created_at=utc_now(),
     )
     db.add(basis)
-    identity.audit.record(
+    context.record(
         actor=actor,
         action="property.fee_basis.create",
         target_type="fee_basis_version",

@@ -38,14 +38,18 @@ class AdminRepository:
             )
         )
 
-    def account(self, account_id: str, *, lock: bool = False) -> AdminAccount | None:
+    def account(
+        self, account_id: str, *, lock: bool = False, shared: bool = False
+    ) -> AdminAccount | None:
         query = select(AdminAccount).where(
             AdminAccount.scope == self.scope,
             AdminAccount.id == account_id,
             AdminAccount.property_company_id == self.property_company_id,
         )
         if lock:
-            query = query.with_for_update(of=AdminAccount).execution_options(populate_existing=True)
+            query = query.with_for_update(read=shared, of=AdminAccount).execution_options(
+                populate_existing=True
+            )
         return self.db.scalar(query)
 
     def account_by_login(self, login_name: str) -> AdminAccount | None:

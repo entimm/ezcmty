@@ -43,4 +43,22 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ['src/shared/property-business/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: ['**/features/**', '**/app/**', '**/context', '**/hooks'],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/^property\\./]',
+          message: '共享物业业务只判断业务动作，后台权限码由端内适配映射。',
+        },
+      ],
+    },
+  },
 );

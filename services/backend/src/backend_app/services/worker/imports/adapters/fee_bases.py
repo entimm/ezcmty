@@ -25,7 +25,8 @@ from backend_app.domain.imports.types import (
 )
 from backend_app.repositories.housing import HousingRepository
 from backend_app.repositories.imports.operations import get_operation_by_key
-from backend_app.services.fee_basis_creation import (
+from backend_app.services.property_account_access import property_task_context
+from backend_app.services.property_business.fee_basis_creation import (
     create_fee_basis,
     prepare_fee_basis_creation,
     verify_fee_basis_result,
@@ -278,6 +279,11 @@ class FeeBasisImportAdapter:
                     target_id=target["target_id"],
                     original_status="created" if prepared["action"] == "create" else "skipped",
                     actor_id=context.actor_id if context.phase == "apply" else None,
+                    context=property_task_context(
+                        db, context.scope.property_company_id, context.actor_id
+                    )
+                    if context.phase == "apply"
+                    else None,
                     lock=context.phase == "apply",
                     expected_latest_version_no=prepared["expected_latest_version_no"],
                     expected_target_id=prepared.get("target_id"),
@@ -308,6 +314,9 @@ class FeeBasisImportAdapter:
                 company_id=context.scope.property_company_id,
                 community_id=context.scope.community_id,
                 actor_id=context.actor_id,
+                context=property_task_context(
+                    db, context.scope.property_company_id, context.actor_id
+                ),
                 command=FeeBasisCreationCommand.from_input(operation.values["command"]),
                 expected_latest_version_no=operation.values["expected_latest_version_no"],
                 request_id=context.request_id,
@@ -343,6 +352,9 @@ class FeeBasisImportAdapter:
                 company_id=context.scope.property_company_id,
                 community_id=context.scope.community_id,
                 actor_id=context.actor_id,
+                context=property_task_context(
+                    db, context.scope.property_company_id, context.actor_id
+                ),
                 command=FeeBasisCreationCommand.from_input(prepared["command"]),
                 expected_latest_version_no=prepared["expected_latest_version_no"],
                 request_id=context.request_id,

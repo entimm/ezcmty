@@ -21,7 +21,8 @@ from backend_app.domain.imports.types import (
     ImportProblem,
 )
 from backend_app.repositories.housing import HousingRepository
-from backend_app.services.house_owner_creation import (
+from backend_app.services.property_account_access import property_task_context
+from backend_app.services.property_business.house_owner_creation import (
     create_house_owner,
     prepare_house_owner_creation,
     revalidate_house_owner_creation,
@@ -186,6 +187,9 @@ class HouseOwnerImportAdapter:
                 company_id=context.scope.property_company_id,
                 community_id=context.scope.community_id,
                 actor_id=context.actor_id,
+                context=property_task_context(
+                    db, context.scope.property_company_id, context.actor_id
+                ),
                 command=HouseOwnerCreationCommand.from_input(prepared["command"]),
                 house_snapshot=prepared["house_snapshot"],
                 target_id=target_id,
@@ -205,6 +209,9 @@ class HouseOwnerImportAdapter:
                 company_id=context.scope.property_company_id,
                 community_id=context.scope.community_id,
                 actor_id=context.actor_id,
+                context=property_task_context(
+                    db, context.scope.property_company_id, context.actor_id
+                ),
                 command=HouseOwnerCreationCommand.from_input(operation.values["command"]),
                 request_id=context.request_id,
                 house_snapshot=operation.values["house_snapshot"],

@@ -1,3 +1,4 @@
+import { PropertyBusinessBoundary } from '../../src/features/property/runtime';
 import type { ReactNode } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -9,7 +10,7 @@ import type { AdminRequest } from '../../src/shared/request';
 import {
   ClaimsPage,
   BindingsPage,
-} from '../../src/features/property/Residents';
+} from '../../src/shared/property-business/Residents';
 import { ImportsPage } from '../../src/shared/imports/ImportsPage';
 import { createImportsApi } from '../../src/shared/imports/api';
 import { PaymentOrders } from '../../src/shared/payments/PaymentOrders';
@@ -36,6 +37,7 @@ function show(
   const go = vi.fn();
   const context: AdminContextValue = {
     scope,
+    company: { id: 'company-1', name: '物业公司' },
     request,
     can: () => true,
     hasPermission: () => true,
@@ -63,7 +65,11 @@ function show(
   render(
     <QueryClientProvider client={client}>
       <AdminContext.Provider value={context}>
-        <App>{element(context)}</App>
+        <App>
+          <PropertyBusinessBoundary>
+            {element(context)}
+          </PropertyBusinessBoundary>
+        </App>
       </AdminContext.Provider>
     </QueryClientProvider>,
   );

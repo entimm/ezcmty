@@ -8,6 +8,7 @@ export interface AdminContextValue {
   hasPermission: (permission: string) => boolean;
   session: AdminSession;
   refreshSession: () => Promise<void>;
+  company?: { id: string; name: string };
   communityId: string;
   community?: Community;
   communities: Community[];

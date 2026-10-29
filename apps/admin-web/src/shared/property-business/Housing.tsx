@@ -1,5 +1,9 @@
-import { useMemo, useState } from 'react';
-import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  usePropertyQueries as useQueries,
+  usePropertyQuery as useQuery,
+  usePropertyQueryClient as useQueryClient,
+} from './queries';
+import { useState } from 'react';
 import {
   ApartmentOutlined,
   DownloadOutlined,
@@ -33,15 +37,15 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { DataNode } from 'antd/es/tree';
-import { useAdmin } from '../../shared/context';
-import { PageHeader, Panel, DetailGrid } from '../../shared/ui';
+import { usePropertyBusiness } from './runtime';
+import { PageHeader, Panel, DetailGrid } from '../ui';
 import {
-  createPropertyApi,
   type House,
   type Owner,
   type SpaceNode,
   type SpaceType,
-} from './api';
+} from './types';
+import type { PropertyBusinessApi } from './runtime';
 import { PropertyEditor } from './Editor';
 import {
   HousingStatus,
@@ -73,10 +77,7 @@ type Editor = {
   node?: SpaceNode;
 };
 
-async function loadSpaces(
-  api: ReturnType<typeof createPropertyApi>,
-  c: string,
-) {
+async function loadSpaces(api: PropertyBusinessApi, c: string) {
   const all: SpaceNode[] = [];
   async function level(parentId?: string) {
     const children: SpaceNode[] = [];
@@ -101,8 +102,8 @@ async function loadSpaces(
 }
 
 export function HousingPage({ detail = false }: { detail?: boolean }) {
-  const { request, can, communityId, community, params, go } = useAdmin();
-  const api = useMemo(() => createPropertyApi(request), [request]);
+  const { api, can, communityId, community, params, go } =
+    usePropertyBusiness();
   const cache = useQueryClient();
   const [editor, setEditor] = useState<Editor>();
   const [createBill, setCreateBill] = useState(false);
@@ -119,12 +120,12 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
   const pageSize = Number(params.page_size) || 20;
   const selectedSpaceId = params.space_node_id || 'all';
   const spaces = useQuery({
-    queryKey: ['property', 'spaces', c],
+    queryKey: ['property-business', 'spaces', c],
     queryFn: () => loadSpaces(api, c),
-    enabled: !!c && can('property.housing.read'),
+    enabled: !!c && can('housing.read'),
   });
   const list = useQuery({
-    queryKey: ['property', 'houses', c, params],
+    queryKey: ['property-business', 'houses', c, params],
     queryFn: () =>
       api.houses(c, {
         page: listPage,
@@ -136,15 +137,15 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
           params.enabled === undefined ? undefined : params.enabled === 'true',
         sort: '-created_at',
       }),
-    enabled: !!c && !detail && can('property.housing.read'),
+    enabled: !!c && !detail && can('housing.read'),
   });
   const houseQuery = useQuery({
-    queryKey: ['property', 'house', c, id],
+    queryKey: ['property-business', 'house', c, id],
     queryFn: () => api.house(c, id),
-    enabled: !!c && !!id && detail && can('property.housing.read'),
+    enabled: !!c && !!id && detail && can('housing.read'),
   });
   const totals = useQuery({
-    queryKey: ['property', 'house-counts', c],
+    queryKey: ['property-business', 'house-counts', c],
     queryFn: async () => {
       const [total, active] = await Promise.all([
         api.houses(c, { page: 1, page_size: 1 }),
@@ -152,25 +153,25 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
       ]);
       return { total: total.total, active: active.total };
     },
-    enabled: !!c && !detail && can('property.housing.read'),
+    enabled: !!c && !detail && can('housing.read'),
   });
   const rows = list.data?.items ?? [];
   const metadata = useQueries({
     queries: rows.map((house) => ({
       queryKey: [
-        'property',
+        'property-business',
         'house-metadata',
         c,
         house.id,
-        can('property.housing.read'),
-        can('property.bill.read'),
+        can('housing.read'),
+        can('bill.read'),
       ],
       queryFn: async () => {
         const [owners, bases] = await Promise.all([
-          can('property.housing.read')
+          can('housing.read')
             ? api.owners(c, house.id, { page: 1, page_size: 100 })
             : null,
-          can('property.bill.read')
+          can('bill.read')
             ? api.bases(c, house.id, { page: 1, page_size: 1 })
             : null,
         ]);
@@ -185,7 +186,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
   const house = houseQuery.data;
   const available = community?.enabled !== false;
   const invalidate = async () => {
-    await cache.invalidateQueries({ queryKey: ['property'] });
+    await cache.invalidateQueries({ queryKey: ['property-business'] });
   };
   const openHouse = (row: House, tab?: string) =>
     go('house-detail', { community_id: c, house_id: row.id, tab });
@@ -233,7 +234,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
             <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
               {data?.data?.basis
                 ? usageLabels[data.data.basis.house_usage]
-                : can('property.bill.read')
+                : can('bill.read')
                   ? '暂无计费依据'
                   : '无计费读取权限'}
             </div>
@@ -246,7 +247,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
       width: 160,
       render: (_, row) => {
         const data = meta.get(row.id);
-        if (!can('property.housing.read'))
+        if (!can('housing.read'))
           return <span className="muted">无读取权限</span>;
         if (data?.isPending) return <Spin size="small" />;
         if (data?.isError) return <span className="muted">读取失败</span>;
@@ -283,7 +284,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
           <Button type="link" size="small" onClick={() => openHouse(row)}>
             详情
           </Button>
-          {can('property.housing.manage') && (
+          {can('housing.manage') && (
             <Tooltip
               title={
                 !row.effective_enabled
@@ -301,7 +302,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
               </Button>
             </Tooltip>
           )}
-          {can('property.housing.manage') && (
+          {can('housing.manage') && (
             <Dropdown
               menu={{
                 items: [
@@ -350,7 +351,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
               house && (
                 <>
                   <HousingStatus record={house} />
-                  {can('property.housing.manage') && (
+                  {can('housing.manage') && (
                     <Button
                       icon={<EditOutlined />}
                       onClick={() => setEditor({ kind: 'house', house })}
@@ -395,9 +396,9 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
               <Tabs
                 activeKey={
                   params.tab ||
-                  (can('property.housing.read')
+                  (can('housing.read')
                     ? 'owners'
-                    : can('property.bill.read')
+                    : can('bill.read')
                       ? 'basis'
                       : 'bills')
                 }
@@ -406,7 +407,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
                 }
                 style={{ marginTop: 20 }}
                 items={[
-                  ...(can('property.housing.read')
+                  ...(can('housing.read')
                     ? [
                         {
                           key: 'owners',
@@ -420,7 +421,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
                         },
                       ]
                     : []),
-                  ...(can('property.bill.read')
+                  ...(can('bill.read')
                     ? [
                         {
                           key: 'basis',
@@ -429,7 +430,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
                         },
                       ]
                     : []),
-                  ...(can('property.bill.read')
+                  ...(can('bill.read')
                     ? [
                         {
                           key: 'bills',
@@ -438,7 +439,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
                             <Panel
                               title="当前房屋账单"
                               extra={
-                                can('property.bill.manage') && (
+                                can('bill.manage') && (
                                   <Button
                                     type="primary"
                                     icon={<PlusOutlined />}
@@ -468,7 +469,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
             description="以房屋为核心，统一维护空间、业主登记与计费资料。"
             extra={
               <>
-                {can('property.housing.manage') && (
+                {can('housing.manage') && (
                   <Button
                     icon={<DownloadOutlined />}
                     onClick={() => go('import-new', { import_type: 'houses' })}
@@ -476,7 +477,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
                     导入房屋 / 业主
                   </Button>
                 )}
-                {can('property.housing.manage') && (
+                {can('housing.manage') && (
                   <Button
                     type="primary"
                     icon={<PlusOutlined />}
@@ -504,8 +505,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
             <Metric
               label="本页业主待补充"
               value={
-                !can('property.housing.read') ||
-                metadata.some((m) => !m.isSuccess)
+                !can('housing.read') || metadata.some((m) => !m.isSuccess)
                   ? '—'
                   : metadata.filter(
                       (m) => !m.data?.owners?.items.some((o) => o.enabled),
@@ -546,7 +546,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
               title="空间定位"
               extra={<ApartmentOutlined style={{ color: '#7b89a2' }} />}
             >
-              <Spin spinning={spaces.isPending && can('property.housing.read')}>
+              <Spin spinning={spaces.isPending && can('housing.read')}>
                 <Tree
                   blockNode
                   defaultExpandedKeys={['all']}
@@ -571,7 +571,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
                   style={{ background: 'transparent', fontSize: 13 }}
                 />
               </Spin>
-              {can('property.housing.manage') && (
+              {can('housing.manage') && (
                 <>
                   <Divider style={{ margin: '20px 0 12px' }} />
                   <Button
@@ -594,7 +594,7 @@ export function HousingPage({ detail = false }: { detail?: boolean }) {
               title={selectedSpace?.name ?? '全部房屋'}
               extra={
                 selectedSpace &&
-                can('property.housing.manage') && (
+                can('housing.manage') && (
                   <Space>
                     <Button
                       type="link"
@@ -752,20 +752,25 @@ function OwnerPanel({
   house: House;
   open: (editor: Editor) => void;
 }) {
-  const { request, can } = useAdmin();
-  const api = useMemo(() => createPropertyApi(request), [request]);
+  const { api, can } = usePropertyBusiness();
   const [page, setPage] = useState(1);
   const list = useQuery({
-    queryKey: ['property', 'owners', house.community_id, house.id, page],
+    queryKey: [
+      'property-business',
+      'owners',
+      house.community_id,
+      house.id,
+      page,
+    ],
     queryFn: () =>
       api.owners(house.community_id, house.id, { page, page_size: 20 }),
-    enabled: can('property.housing.read'),
+    enabled: can('housing.read'),
   });
   return (
     <Panel
       title="业主登记"
       extra={
-        can('property.housing.manage') && (
+        can('housing.manage') && (
           <Button
             type="primary"
             size="small"
@@ -821,7 +826,7 @@ function OwnerPanel({
           {
             title: '操作',
             render: (_, owner) =>
-              can('property.housing.manage') ? (
+              can('housing.manage') ? (
                 <Space>
                   <Button
                     type="link"
@@ -865,9 +870,8 @@ function HousingEditor({
   close: () => void;
   done: () => Promise<void>;
 }) {
-  const { request, community, can } = useAdmin();
+  const { api, setDirty, community, can } = usePropertyBusiness();
   const { message } = App.useApp();
-  const api = useMemo(() => createPropertyApi(request), [request]);
   const [form] = Form.useForm();
   const { kind, house, node, owner } = editor;
   const nodeType = Form.useWatch('node_type', form) as SpaceType | undefined;
@@ -920,15 +924,13 @@ function HousingEditor({
   }[kind];
   const submit = async (values: Record<string, unknown>) => {
     if (kind === 'house') {
-      if (!can('property.housing.manage')) throw new Error('没有操作权限');
+      if (!can('housing.manage')) throw new Error('没有操作权限');
       await api.saveHouse(c, house?.id, {
         ...(house
           ? {}
           : {
               space_node_id: values.space_node_id,
-              ...(can('property.housing.manage')
-                ? { owners: values.owners ?? [] }
-                : {}),
+              ...(can('housing.manage') ? { owners: values.owners ?? [] } : {}),
             }),
         room_no: String(values.room_no).trim(),
         floor_no: values.floor_no ?? null,
@@ -938,7 +940,7 @@ function HousingEditor({
             : null,
       });
     } else if (kind === 'space') {
-      if (!can('property.housing.manage')) throw new Error('没有操作权限');
+      if (!can('housing.manage')) throw new Error('没有操作权限');
       await api.saveNode(c, node?.id, {
         ...(node
           ? {}
@@ -954,19 +956,19 @@ function HousingEditor({
         sort_order: values.sort_order ?? 0,
       });
     } else if (kind === 'owner') {
-      if (!can('property.housing.manage')) throw new Error('没有操作权限');
+      if (!can('housing.manage')) throw new Error('没有操作权限');
       await api.saveOwner(c, house!.id, owner?.id, {
         name: String(values.name).trim(),
         phone: String(values.phone).trim(),
       });
     } else if (kind === 'house-status') {
-      if (!can('property.housing.manage')) throw new Error('没有操作权限');
+      if (!can('housing.manage')) throw new Error('没有操作权限');
       await api.saveHouse(c, house!.id, { enabled: !house!.enabled });
     } else if (kind === 'space-status') {
-      if (!can('property.housing.manage')) throw new Error('没有操作权限');
+      if (!can('housing.manage')) throw new Error('没有操作权限');
       await api.saveNode(c, node!.id, { enabled: !node!.enabled });
     } else if (kind === 'owner-status') {
-      if (!can('property.housing.manage')) throw new Error('没有操作权限');
+      if (!can('housing.manage')) throw new Error('没有操作权限');
       await api.saveOwner(c, house!.id, owner!.id, {
         enabled: !owner!.enabled,
       });
@@ -978,6 +980,7 @@ function HousingEditor({
   };
   return (
     <PropertyEditor
+      setDirty={setDirty}
       title={title}
       form={form}
       initial={initial}
@@ -1043,7 +1046,7 @@ function HousingEditor({
           <Form.Item name="external_code" label="外部房屋编号（选填）">
             <Input maxLength={64} placeholder="用于与物业原系统对应" />
           </Form.Item>
-          {!house && can('property.housing.manage') && (
+          {!house && can('housing.manage') && (
             <>
               <Divider>初始业主（选填）</Divider>
               <Form.List name="owners">
